@@ -5,7 +5,7 @@
 :root {
   --background: #1e293b;
   --foreground: #f8fafc;
-  --card: #0f172a;
+  --card: #161616;
   --card-foreground: #f8fafc;
   --popover: #1e293b;
   --popover-foreground: #f8fafc;
@@ -19,8 +19,8 @@
   --accent-foreground: #0f172a;
   --destructive: #ef4444;
   --destructive-foreground: #f8fafc;
-  --border: #334155;
-  --input: #334155;
+  --border: #2c2c2c;
+  --input: #1e1e1e;
   --ring: #94a3b8;
   --radius: 0.625rem;
 }
