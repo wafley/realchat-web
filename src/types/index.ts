@@ -45,6 +45,26 @@ export interface GroupMember {
   joinedAt: Date;
 }
 
+export interface Conversation {
+  id: string;
+  name: string;
+  type: 'group' | 'dm';
+  avatarUrl?: string;
+  lastMessage?: string;
+  lastTime?: string;
+  unread?: number;
+  online?: boolean;
+  members?: number;
+}
+
+export interface FriendRequest {
+  id: string;
+  sender: User;
+  receiver: User;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: Date;
+}
+
 export interface AuthResponse {
   user: User;
   token: string;
