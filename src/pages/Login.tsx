@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
+import OAuthButtons from '@/components/common/OAuthButtons';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -68,6 +69,7 @@ export default function Login() {
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </Button>
+      <OAuthButtons />
     </form>
   );
 }
