@@ -47,7 +47,7 @@ export default function Groups() {
                 <AvatarFallback>{g.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-foreground">{g.name}</h3>
+                <h3 className="truncate font-semibold text-foreground">{g.name}</h3>
                 <p className="truncate text-sm text-muted-foreground">{g.description}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">

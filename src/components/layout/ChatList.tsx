@@ -105,21 +105,21 @@ export default function ChatList() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="truncate text-sm font-medium text-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                       {chat.name}
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {chat.lastTime}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="truncate text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                       {chat.lastMessage}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       {chat.members && (
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                           {chat.members} members
                         </span>
                       )}

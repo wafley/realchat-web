@@ -107,7 +107,7 @@ export default function ChatRoom() {
           <AvatarFallback>{name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h2 className="text-sm font-semibold text-foreground">{name}</h2>
+          <h2 className="truncate text-sm font-semibold text-foreground">{name}</h2>
           <p className="text-xs text-muted-foreground">{isDM ? 'Online' : 'Online'}</p>
         </div>
       </div>
