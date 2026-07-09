@@ -20,35 +20,42 @@ const groups: GroupItem[] = [
 export default function Groups() {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h1 className="text-xl font-bold text-foreground">Groups</h1>
-        <button className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80">
-          <Plus size={16} />
-          Create Group
-        </button>
+      {/* Top bar */}
+      <div className="border-b border-border bg-background pt-[env(safe-area-inset-top,0px)]">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-5 py-4">
+          <h1 className="text-xl font-bold text-foreground">Groups</h1>
+          <button className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm transition-colors hover:bg-accent/80">
+            <Plus size={22} />
+          </button>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="relative mb-4">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+
+      {/* Content area */}
+      <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
+        {/* Search input */}
+        <div className="relative">
+          <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search groups..."
-            className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-12 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
-        <div className="space-y-2">
+
+        {/* Group list - 16px below search */}
+        <div className="mt-4 space-y-3">
           {groups.map((g) => (
             <Link
               key={g.id}
               to={`/chat/${g.id}`}
-              className="flex items-center gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-accent/5"
+              className="flex min-h-[88px] items-center gap-4 rounded-2xl border border-border px-4 py-3.5 transition-colors hover:bg-accent/5"
             >
-              <Avatar className="h-12 w-12">
-                <AvatarFallback>{g.name.charAt(0)}</AvatarFallback>
+              <Avatar className="h-12 w-12 shrink-0">
+                <AvatarFallback className="font-bold">{g.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <h3 className="truncate font-semibold text-foreground">{g.name}</h3>
-                <p className="truncate text-sm text-muted-foreground">{g.description}</p>
+                <h3 className="truncate text-lg font-semibold text-foreground">{g.name}</h3>
+                <p className="line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
                 <Users size={14} />
