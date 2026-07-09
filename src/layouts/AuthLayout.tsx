@@ -21,14 +21,14 @@ export default function AuthLayout() {
             {isLogin ? (
               <>
                 Need an account?{' '}
-                <Link to="/register" className="font-medium text-primary hover:underline">
+                <Link to="/register" className="font-medium text-accent hover:underline">
                   Register
                 </Link>
               </>
             ) : (
               <>
                 Already have an account?{' '}
-                <Link to="/login" className="font-medium text-primary hover:underline">
+                <Link to="/login" className="font-medium text-accent hover:underline">
                   Sign In
                 </Link>
               </>
