@@ -8,7 +8,8 @@ export default function AuthLayout() {
   return (
     <>
       <MagicRings />
-      <div className="relative z-10 flex min-h-screen items-center justify-center bg-transparent p-4">
+      <div className="relative z-10 flex min-h-screen flex-col items-center bg-transparent px-4 pt-20">
+        <img src="/logo1.png" alt="Hallo Wok" className="h-48 -mb-8" />
         <div className="w-full max-w-md rounded-lg border border-border bg-card/90 p-8 shadow-2xl backdrop-blur-sm">
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold text-card-foreground">Hallo Wok</h1>
