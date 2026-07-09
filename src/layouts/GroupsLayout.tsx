@@ -36,6 +36,26 @@ export default function GroupsLayout() {
         </nav>
       </aside>
       <section className="flex flex-1 flex-col">
+        <div className="flex border-b border-border bg-background lg:hidden">
+          {menuItems.map(({ to, icon: Icon, label, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                cn(
+                  'flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-b-2 border-accent text-accent'
+                    : 'text-muted-foreground hover:text-foreground',
+                )
+              }
+            >
+              <Icon size={16} />
+              {label}
+            </NavLink>
+          ))}
+        </div>
         <Outlet />
       </section>
     </div>
