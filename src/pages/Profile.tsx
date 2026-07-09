@@ -1,6 +1,15 @@
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Pencil } from 'lucide-react';
+import { Pencil, Mail, Info, Calendar } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const infoItems = [
+  { label: 'Email', icon: Mail, value: (user: ReturnType<typeof useAuthStore.getState>['user']) => user?.email || 'email@example.com' },
+  { label: 'Bio', icon: Info, value: (user: ReturnType<typeof useAuthStore.getState>['user']) => user?.bio || 'No bio yet' },
+  { label: 'Member since', icon: Calendar, value: (user: ReturnType<typeof useAuthStore.getState>['user']) =>
+    user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+  },
+];
 
 export default function Profile() {
   const user = useAuthStore((s) => s.user);
@@ -10,9 +19,9 @@ export default function Profile() {
       <div className="border-b border-border px-6 py-4">
         <h1 className="text-xl font-bold text-foreground">Profile</h1>
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-md">
-          <div className="flex flex-col items-center">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl">
+          <div className="flex flex-col items-center px-6 pb-6 pt-8">
             <div className="relative">
               <Avatar className="h-24 w-24">
                 {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
@@ -36,25 +45,22 @@ export default function Profile() {
             </span>
           </div>
 
-          <div className="mt-8 space-y-4">
-            <div className="rounded-lg border border-border p-4">
-              <label className="text-xs font-medium text-muted-foreground">Email</label>
-              <p className="mt-1 text-sm text-foreground">{user?.email || 'email@example.com'}</p>
-            </div>
-            <div className="rounded-lg border border-border p-4">
-              <label className="text-xs font-medium text-muted-foreground">Bio</label>
-              <p className="mt-1 text-sm text-foreground">
-                {user?.bio || 'No bio yet'}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border p-4">
-              <label className="text-xs font-medium text-muted-foreground">Member Since</label>
-              <p className="mt-1 text-sm text-foreground">
-                {user?.createdAt
-                  ? new Date(user.createdAt).toLocaleDateString()
-                  : 'N/A'}
-              </p>
-            </div>
+          <div className="mx-6 mb-8 overflow-hidden rounded-xl bg-card">
+            {infoItems.map((item, i) => (
+              <div
+                key={item.label}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3.5',
+                  i < infoItems.length - 1 && 'border-b border-border/50',
+                )}
+              >
+                <item.icon size={18} className="text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className="truncate text-sm text-foreground">{item.value(user)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
