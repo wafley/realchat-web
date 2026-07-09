@@ -28,7 +28,6 @@
 | ⚙️ **Settings** | General, notifications, privacy, appearance (dark mode), account |
 | 📎 **File sharing** | Drag‑and‑drop uploads with react-dropzone |
 | 🎬 **Animations** | Framer Motion throughout — smooth as silk |
-| 🌓 **Theme** | Light / dark / system — your eyes, your rules |
 
 ---
 
