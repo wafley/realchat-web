@@ -1,14 +1,20 @@
 import { createBrowserRouter } from 'react-router-dom';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
+import AuthLayout from '@/layouts/AuthLayout';
 
 export const router = createBrowserRouter([
   {
-    path: '/login',
-    lazy: () => import('@/pages/Login').then((m) => ({ Component: m.default })),
-  },
-  {
-    path: '/register',
-    lazy: () => import('@/pages/Register').then((m) => ({ Component: m.default })),
+    element: <AuthLayout />,
+    children: [
+      {
+        path: '/login',
+        lazy: () => import('@/pages/Login').then((m) => ({ Component: m.default })),
+      },
+      {
+        path: '/register',
+        lazy: () => import('@/pages/Register').then((m) => ({ Component: m.default })),
+      },
+    ],
   },
   {
     path: '/',
