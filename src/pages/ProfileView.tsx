@@ -4,19 +4,19 @@ import { Pencil, Mail, Info, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const infoItems = [
-  { label: 'Email', icon: Mail, value: (user: ReturnType<typeof useAuthStore.getState>['user']) => user?.email || 'email@example.com' },
-  { label: 'Bio', icon: Info, value: (user: ReturnType<typeof useAuthStore.getState>['user']) => user?.bio || 'No bio yet' },
-  { label: 'Member since', icon: Calendar, value: (user: ReturnType<typeof useAuthStore.getState>['user']) =>
-    user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+  { label: 'Email', icon: Mail, value: (u: ReturnType<typeof useAuthStore.getState>['user']) => u?.email || 'email@example.com' },
+  { label: 'Bio', icon: Info, value: (u: ReturnType<typeof useAuthStore.getState>['user']) => u?.bio || 'No bio yet' },
+  { label: 'Member since', icon: Calendar, value: (u: ReturnType<typeof useAuthStore.getState>['user']) =>
+    u?.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A',
   },
 ];
 
-export default function Profile() {
+export default function ProfileView() {
   const user = useAuthStore((s) => s.user);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-6 py-4">
+      <div className="border-b border-border px-6 py-4 md:hidden">
         <h1 className="text-xl font-bold text-foreground">Profile</h1>
       </div>
       <div className="flex-1 overflow-y-auto">
