@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import {
   House,
   Users,
+  UserPlus,
   User,
   Settings,
   LogOut,
@@ -13,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const navItems = [
   { to: '/', icon: House, label: 'Home' },
   { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/friends', icon: UserPlus, label: 'Friends' },
   { to: '/profile', icon: User, label: 'Profile' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];

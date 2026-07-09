@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { House, Users, User, Settings } from 'lucide-react';
+import { House, Users, UserPlus, User, Settings } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: House, label: 'Home' },
   { to: '/groups', icon: Users, label: 'Groups' },
+  { to: '/friends', icon: UserPlus, label: 'Friends' },
   { to: '/profile', icon: User, label: 'Profile' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];

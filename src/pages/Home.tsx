@@ -9,10 +9,10 @@ export default function Home() {
           className="mx-auto text-muted-foreground/40"
         />
         <h2 className="mt-4 text-lg font-medium text-foreground">
-          Select a chat
+          Select a conversation
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Choose a conversation from the sidebar to start chatting
+          Pick a group or DM from the sidebar to start chatting
         </p>
       </div>
     </div>

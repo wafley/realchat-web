@@ -36,11 +36,19 @@ export const router = createBrowserRouter([
                 path: 'chat/:groupId',
                 lazy: () => import('@/pages/ChatRoom').then((m) => ({ Component: m.default })),
               },
+              {
+                path: 'dm/:userId',
+                lazy: () => import('@/pages/ChatRoom').then((m) => ({ Component: m.default })),
+              },
             ],
           },
           {
             path: 'groups',
             lazy: () => import('@/pages/Groups').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'friends',
+            lazy: () => import('@/pages/Friends').then((m) => ({ Component: m.default })),
           },
           {
             path: 'profile',
