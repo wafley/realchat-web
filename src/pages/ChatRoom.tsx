@@ -163,7 +163,7 @@ export default function ChatRoom() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto bg-[url('/wpp-default.png')] bg-repeat bg-black/60 bg-blend-multiply px-4 py-4">
+      <div className="flex-1 overflow-y-auto bg-[url('/wpp-deffault.png')] bg-repeat bg-black/60 bg-blend-multiply px-4 py-4">
         <div className="space-y-3">
           {filteredMessages.map((msg) => (
             <div
