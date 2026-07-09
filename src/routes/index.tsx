@@ -5,6 +5,8 @@ import AppLayout from '@/layouts/AppLayout';
 import ChatLayout from '@/layouts/ChatLayout';
 import SettingsLayout from '@/layouts/SettingsLayout';
 import ProfileLayout from '@/layouts/ProfileLayout';
+import GroupsLayout from '@/layouts/GroupsLayout';
+import FriendsLayout from '@/layouts/FriendsLayout';
 
 export const router = createBrowserRouter([
   {
@@ -45,12 +47,34 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: 'groups',
-            lazy: () => import('@/pages/Groups').then((m) => ({ Component: m.default })),
+            element: <GroupsLayout />,
+            children: [
+              {
+                path: 'groups',
+                lazy: () => import('@/pages/Groups').then((m) => ({ Component: m.default })),
+              },
+              {
+                path: 'groups/create',
+                lazy: () => import('@/pages/groups/CreateGroup').then((m) => ({ Component: m.default })),
+              },
+            ],
           },
           {
-            path: 'friends',
-            lazy: () => import('@/pages/Friends').then((m) => ({ Component: m.default })),
+            element: <FriendsLayout />,
+            children: [
+              {
+                path: 'friends',
+                lazy: () => import('@/pages/friends/AllFriends').then((m) => ({ Component: m.default })),
+              },
+              {
+                path: 'friends/add',
+                lazy: () => import('@/pages/friends/AddFriend').then((m) => ({ Component: m.default })),
+              },
+              {
+                path: 'friends/requests',
+                lazy: () => import('@/pages/friends/Requests').then((m) => ({ Component: m.default })),
+              },
+            ],
           },
           {
             element: <ProfileLayout />,
