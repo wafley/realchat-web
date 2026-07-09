@@ -20,7 +20,7 @@ export default function Profile() {
         <h1 className="text-xl font-bold text-foreground">Profile</h1>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl">
+        <div className="mx-auto max-w-4xl">
           <div className="flex flex-col items-center px-6 pb-6 pt-8">
             <div className="relative">
               <Avatar className="h-24 w-24">

@@ -44,7 +44,7 @@ export default function Settings() {
         <h1 className="text-xl font-bold text-foreground">Settings</h1>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl">
+        <div className="mx-auto max-w-4xl">
           <div className="px-6 pb-2 pt-6">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Appearance
