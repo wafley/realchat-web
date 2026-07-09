@@ -5,7 +5,7 @@ export default function AuthLayout() {
   const isLogin = pathname === '/login';
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 shadow-2xl">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-card-foreground">Hallo Wok</h1>

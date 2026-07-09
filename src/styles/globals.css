@@ -78,7 +78,10 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: #1e293b;
+    background-image: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);
+    background-attachment: fixed;
+    color: var(--foreground);
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 }
