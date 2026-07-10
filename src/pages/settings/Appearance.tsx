@@ -1,19 +1,17 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Moon, Sun, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useThemeStore } from '@/store/themeStore';
 
-const themes = [
-  { id: 'dark', label: 'Dark', icon: Moon },
-  { id: 'light', label: 'Light', icon: Sun },
-  { id: 'system', label: 'System', icon: Monitor },
-] as const;
-
-type Theme = (typeof themes)[number]['id'];
+const modes = [
+  { id: 'dark' as const, label: 'Dark', icon: Moon },
+  { id: 'light' as const, label: 'Light', icon: Sun },
+  { id: 'system' as const, label: 'System', icon: Monitor },
+];
 
 export default function SettingsAppearance() {
   const navigate = useNavigate();
-  const [theme, setTheme] = useState<Theme>('dark');
+  const { mode, setMode } = useThemeStore();
 
   return (
     <div className="flex h-full flex-col">
@@ -36,13 +34,13 @@ export default function SettingsAppearance() {
           </div>
 
           <div className="flex gap-2 rounded-xl bg-card p-2">
-            {themes.map(({ id, label, icon: Icon }) => (
+            {modes.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setTheme(id)}
+                onClick={() => setMode(id)}
                 className={cn(
                   'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors',
-                  theme === id
+                  mode === id
                     ? 'bg-accent text-accent-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
