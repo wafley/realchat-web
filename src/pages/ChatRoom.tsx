@@ -87,11 +87,11 @@ export default function ChatRoom() {
         >
           <ArrowLeft size={20} />
         </button>
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>{chatName.charAt(0)}</AvatarFallback>
+        <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
+          <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h2 className="truncate text-sm font-semibold text-foreground">{chatName}</h2>
+          <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
           <p className="text-xs text-muted-foreground">{isDM ? 'Online' : 'Online'}</p>
         </div>
         <button
@@ -99,9 +99,9 @@ export default function ChatRoom() {
             if (showSearch) { setSearchQuery(''); setShowSearch(false); }
             else { setShowSearch(true); }
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
         >
-          <Search size={18} />
+          <Search size={18} className="lg:size-5" />
         </button>
       </div>
 
@@ -140,23 +140,23 @@ export default function ChatRoom() {
             return (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}
+                className={`flex gap-3 lg:gap-4 ${isOwn ? 'flex-row-reverse' : ''}`}
               >
                 {!isOwn && (
-                  <Avatar className="mt-1 h-8 w-8 shrink-0">
-                    <AvatarFallback className="text-xs">
+                  <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
+                    <AvatarFallback className="text-xs lg:text-sm">
                       {name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                 )}
                 <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
                   {!isOwn && (
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
                       {name}
                     </p>
                   )}
                   <div
-                    className={`rounded-2xl px-4 py-2 text-sm ${
+                    className={`rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base ${
                       isOwn
                         ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
                         : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
@@ -164,14 +164,14 @@ export default function ChatRoom() {
                   >
                     <p>{msg.content}</p>
                   </div>
-                  <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground ${isOwn ? 'justify-end' : ''}`}>
-                    {isOwn && msg.status && (
-                      msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground" />
-                      : msg.status === 'sent' ? <Check size={12} />
-                      : msg.status === 'delivered' ? <CheckCheck size={12} />
-                      : <CheckCheck size={12} className="text-accent" />
-                    )}
+                  <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
                     {formatTime(msg.createdAt)}
+                    {isOwn && msg.status && (
+                      msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground lg:size-3.5" />
+                      : msg.status === 'sent' ? <Check size={12} className="lg:size-3.5" />
+                      : msg.status === 'delivered' ? <CheckCheck size={12} className="lg:size-3.5" />
+                      : <CheckCheck size={12} className="text-accent lg:size-3.5" />
+                    )}
                   </p>
                 </div>
               </div>
@@ -182,21 +182,21 @@ export default function ChatRoom() {
       </div>
 
       <div className="border-t border-border px-4 py-3">
-        <div className="flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5">
+        <div className="flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5 lg:px-4 lg:py-2.5">
           <input
             type="text"
             placeholder="Type a message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:text-base"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-40"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
           >
-            <Send size={18} />
+            <Send size={18} className="lg:size-5" />
           </button>
         </div>
       </div>
