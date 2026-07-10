@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
 import OAuthButtons from '@/components/common/OAuthButtons';
+import { parseAuthError } from '@/services/auth';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -43,12 +44,8 @@ export default function Register() {
         password: form.password,
       });
       navigate('/', { replace: true });
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response: { data: { message: string } } }).response.data.message
-          : 'Registration failed. Please try again.';
-      setError(msg);
+    } catch (err) {
+      setError(parseAuthError(err));
     } finally {
       setLoading(false);
     }

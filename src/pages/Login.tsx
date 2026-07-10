@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
+import { parseAuthError } from '@/services/auth';
 import OAuthButtons from '@/components/common/OAuthButtons';
 
 export default function Login() {
@@ -26,12 +27,8 @@ export default function Login() {
     try {
       await login({ email, password });
       navigate('/', { replace: true });
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response: { data: { message: string } } }).response.data.message
-          : 'Login failed. Please try again.';
-      setError(msg);
+    } catch (err) {
+      setError(parseAuthError(err));
     } finally {
       setLoading(false);
     }
