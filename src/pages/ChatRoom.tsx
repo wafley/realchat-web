@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Check, CheckCheck, Clock } from 'lucide-react';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
+import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { Message, MessageStatus } from '@/types';
+import type { Message, MessageStatus, PaginatedResponse } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { queryClient } from '@/lib/queryClient';
 import { getMessages, sendMessage } from '@/services/chat';
@@ -27,28 +28,62 @@ export default function ChatRoom() {
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const scrollTriggerRef = useRef<HTMLDivElement>(null);
+  const prevLastMsgIdRef = useRef<string | null>(null);
 
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
   const chatName = location.state?.name || 'Chat';
 
-  const { data: messages = [] } = useQuery({
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['messages', chatId, isDM],
-    queryFn: () => getMessages(chatId, isDM),
+    queryFn: ({ pageParam = 1 }) => getMessages(chatId, isDM, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page < lastPage.totalPages) return lastPage.page + 1;
+      return undefined;
+    },
     enabled: !!chatId,
   });
+
+  const messages = useMemo(
+    () => [...(data?.pages ?? [])].reverse().flatMap((p) => p.data),
+    [data],
+  );
 
   const sendMutation = useMutation({
     mutationFn: (content: string) => sendMessage(chatId, content, isDM),
     onSuccess: (newMsg) => {
-      queryClient.setQueryData<Message[]>(['messages', chatId, isDM], (prev) => [...(prev ?? []), newMsg]);
+      queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
+        if (!prev) return prev;
+        const [firstPage, ...rest] = prev.pages;
+        return {
+          ...prev,
+          pages: [
+            { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
+            ...rest,
+          ],
+        };
+      });
       if (import.meta.env.VITE_DEV_MODE === 'true') {
         const steps: MessageStatus[] = ['delivered', 'read'];
         steps.forEach((s, i) => {
           setTimeout(() => {
-            queryClient.setQueryData<Message[]>(['messages', chatId, isDM], (prev) =>
-              prev?.map((m) => (m.id === newMsg.id ? { ...m, status: s } : m)) ?? [],
-            );
+            queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                pages: prev.pages.map((page) => ({
+                  ...page,
+                  data: page.data.map((m) => (m.id === newMsg.id ? { ...m, status: s } : m)),
+                })),
+              };
+            });
           }, (i + 1) * 1000);
         });
       }
@@ -68,8 +103,28 @@ export default function ChatRoom() {
   }, [showSearch]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+    if (messages.length === 0) return;
+    const lastId = messages[messages.length - 1]?.id;
+    if (lastId && lastId !== prevLastMsgIdRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevLastMsgIdRef.current = lastId;
+  }, [messages]);
+
+  useEffect(() => {
+    const el = scrollTriggerRef.current;
+    if (!el || !hasNextPage || isFetchingNextPage) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleSend = () => {
     const text = input.trim();
@@ -134,6 +189,11 @@ export default function ChatRoom() {
 
       <div className="flex-1 overflow-y-auto bg-chat-tile-overlay px-4 py-4">
         <div className="space-y-3">
+          {hasNextPage && (
+            <div ref={scrollTriggerRef} className="flex justify-center py-2">
+              {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
+            </div>
+          )}
           {filteredMessages.map((msg) => {
             const isOwn = msg.sender?.id === currentUser?.id || msg.senderId === currentUser?.id;
             const name = isOwn ? 'You' : (msg.sender?.fullName ?? 'Unknown');
