@@ -43,13 +43,17 @@ export default function ChatList() {
           />
           <input
             type="text"
+            aria-label="Search chats"
             placeholder="Search chats..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+        <button
+          aria-label="New chat"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
           <Plus size={18} />
         </button>
       </div>
@@ -74,7 +78,7 @@ export default function ChatList() {
 
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground">
             <MessageSquareText size={32} className="mb-2 opacity-30" />
             <p>{tab === 'messages' ? 'No messages yet' : 'No groups yet'}</p>
           </div>
