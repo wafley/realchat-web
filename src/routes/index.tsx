@@ -12,14 +12,18 @@ export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [
-      {
-        path: '/login',
-        lazy: () => import('@/pages/Login').then((m) => ({ Component: m.default })),
-      },
-      {
-        path: '/register',
-        lazy: () => import('@/pages/Register').then((m) => ({ Component: m.default })),
-      },
+  {
+    path: '/login',
+    lazy: () => import('@/pages/Login').then((m) => ({ Component: m.default })),
+  },
+  {
+    path: '/register',
+    lazy: () => import('@/pages/Register').then((m) => ({ Component: m.default })),
+  },
+  {
+    path: '/auth/callback',
+    lazy: () => import('@/pages/OAuthCallback').then((m) => ({ Component: m.default })),
+  },
     ],
   },
   {
