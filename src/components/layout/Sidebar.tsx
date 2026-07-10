@@ -12,7 +12,7 @@ export default function Sidebar() {
   const { theme, toggle } = useThemeStore();
 
   return (
-    <aside className="hidden w-16 flex-col items-center border-r border-border bg-background py-3 lg:flex">
+    <aside className="hidden w-16 flex-col items-center border-r border-border bg-sidebar py-3 lg:flex">
       <nav role="navigation" aria-label="Main navigation" className="flex flex-col items-center gap-3">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink

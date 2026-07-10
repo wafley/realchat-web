@@ -13,7 +13,7 @@ const menuItems = [
 export default function SettingsLayout() {
   return (
     <div className="flex flex-1">
-      <aside className="hidden w-56 border-r border-border bg-background md:flex md:flex-col">
+      <aside className="hidden w-56 border-r border-border bg-sidebar md:flex md:flex-col">
         <div className="border-b border-border px-4 py-4">
           <h1 className="text-base font-bold text-foreground">Settings</h1>
         </div>
