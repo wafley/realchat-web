@@ -107,7 +107,7 @@ export default function ChatList() {
               <Link
                 key={chat.id}
                 to={linkTo}
-                state={{ name: chat.name }}
+                state={{ name: chat.name, online: chat.online }}
                 className={cn(
                   'flex items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
                   isActive
@@ -140,12 +140,12 @@ export default function ChatList() {
                       {chat.lastMessage}
                     </span>
                     <div className="flex shrink-0 items-center gap-2">
-                      {chat.members && (
+                      {(chat.members ?? 0) > 0 && (
                         <span className="whitespace-nowrap text-[10px] text-muted-foreground lg:text-xs">
                           {chat.members} members
                         </span>
                       )}
-                      {chat.unread && (
+                      {(chat.unread ?? 0) > 0 && (
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground lg:h-6 lg:w-6 lg:text-xs">
                           {chat.unread}
                         </span>
