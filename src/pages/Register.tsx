@@ -76,7 +76,7 @@ export default function Register() {
         </div>
       ))}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/80" disabled={loading}>
+      <Button type="submit" className="w-full bg-[#2a313b] text-white hover:bg-[#2a313b]/80" disabled={loading}>
         {loading ? 'Creating account...' : 'Create Account'}
       </Button>
     </form>
