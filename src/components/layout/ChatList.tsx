@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, Users } from 'lucide-react';
+import { Search, Plus, MessageSquareText, Users, UserPlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Modal from '@/components/ui/modal';
 import type { Conversation } from '@/types';
 
 const tabs = [
@@ -23,9 +24,11 @@ const conversations: Conversation[] = [
 ];
 
 export default function ChatList() {
+  const navigate = useNavigate();
   const { groupId, userId } = useParams();
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
 
   const filtered = conversations.filter((c) => {
     if (tab === 'messages' && c.type !== 'dm') return false;
@@ -51,12 +54,32 @@ export default function ChatList() {
           />
         </div>
         <button
+          onClick={() => setModalOpen(true)}
           aria-label="New chat"
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           <Plus size={18} />
         </button>
       </div>
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Chat">
+        <div className="space-y-1">
+          <button
+            onClick={() => { setModalOpen(false); navigate('/groups/create'); }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+          >
+            <MessageSquareText size={18} className="text-muted-foreground" />
+            New Group
+          </button>
+          <button
+            onClick={() => { setModalOpen(false); navigate('/friends'); }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+          >
+            <UserPlus size={18} className="text-muted-foreground" />
+            New Direct Message
+          </button>
+        </div>
+      </Modal>
 
       <div className="flex border-b border-border">
         {tabs.map(({ id, label, icon: Icon }) => (
