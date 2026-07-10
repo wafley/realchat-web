@@ -44,6 +44,17 @@ export async function logout(): Promise<void> {
   await api.post('/auth/logout');
 }
 
+export function parseAuthError(err: unknown): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response: { data: Record<string, unknown> } }).response?.data;
+    if (typeof data?.message === 'string') return data.message;
+    if (typeof data?.error === 'string') return data.error;
+    if (Array.isArray(data?.message)) return (data.message as string[]).join(', ');
+  }
+  if (err instanceof Error) return err.message;
+  return 'Something went wrong. Please try again.';
+}
+
 export function loginWithGoogle(): void {
   window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
 }
