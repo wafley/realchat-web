@@ -1,41 +1,47 @@
 import { create } from 'zustand';
 
-type Theme = 'dark' | 'light';
+type ThemeMode = 'dark' | 'light' | 'system';
 
 interface ThemeState {
-  theme: Theme;
-  toggle: () => void;
-  setTheme: (theme: Theme) => void;
+  mode: ThemeMode;
+  theme: 'dark' | 'light';
+  setMode: (mode: ThemeMode) => void;
 }
 
 const STORAGE_KEY = 'hallo-wok-theme';
 
-function getInitialTheme(): Theme {
+function getSystemTheme(): 'dark' | 'light' {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getInitialMode(): ThemeMode {
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === 'light' || stored === 'dark') return stored;
+  if (stored === 'dark' || stored === 'light' || stored === 'system') return stored;
   return 'dark';
 }
 
-function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle('light', theme === 'light');
-  localStorage.setItem(STORAGE_KEY, theme);
+function applyTheme(mode: ThemeMode) {
+  const resolved = mode === 'system' ? getSystemTheme() : mode;
+  document.documentElement.classList.toggle('light', resolved === 'light');
+  localStorage.setItem(STORAGE_KEY, mode);
 }
 
 export const useThemeStore = create<ThemeState>((set) => {
-  const initial = getInitialTheme();
+  const initial = getInitialMode();
   applyTheme(initial);
 
+  if (initial === 'system') {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      applyTheme('system');
+    });
+  }
+
   return {
-    theme: initial,
-    toggle: () =>
-      set((state) => {
-        const next = state.theme === 'dark' ? 'light' : 'dark';
-        applyTheme(next);
-        return { theme: next };
-      }),
-    setTheme: (theme) => {
-      applyTheme(theme);
-      set({ theme });
+    mode: initial,
+    theme: initial === 'system' ? getSystemTheme() : initial,
+    setMode: (mode) => {
+      applyTheme(mode);
+      set({ mode, theme: mode === 'system' ? getSystemTheme() : mode });
     },
   };
 });
