@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
@@ -61,6 +61,11 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
         />
+      </div>
+      <div className="flex items-center justify-end">
+        <Link to="/forgot-password" className="text-sm text-accent hover:underline">
+          Forgot Password?
+        </Link>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/80" disabled={loading}>
