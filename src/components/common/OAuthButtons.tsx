@@ -43,11 +43,11 @@ export default function OAuthButtons() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={loginWithGoogle} className="w-full">
+        <Button onClick={loginWithGoogle} className="w-full bg-[#2a313b] text-white hover:bg-[#2a313b]/80">
           <GoogleIcon />
           Google
         </Button>
-        <Button variant="outline" onClick={loginWithFacebook} className="w-full">
+        <Button onClick={loginWithFacebook} className="w-full bg-[#2a313b] text-white hover:bg-[#2a313b]/80">
           <FacebookIcon />
           Facebook
         </Button>
