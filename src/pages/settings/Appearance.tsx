@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Moon, Sun, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const themes = [
@@ -11,17 +12,28 @@ const themes = [
 type Theme = (typeof themes)[number]['id'];
 
 export default function SettingsAppearance() {
+  const navigate = useNavigate();
   const [theme, setTheme] = useState<Theme>('dark');
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-6 py-4 md:hidden">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
+        <button onClick={() => navigate(-1)} className="text-foreground transition-colors hover:text-accent">
+          <ArrowLeft size={20} />
+        </button>
         <h1 className="text-xl font-bold text-foreground">Appearance</h1>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl p-6">
-          <h2 className="mb-1 text-lg font-bold text-foreground">Appearance</h2>
-          <p className="mb-6 text-sm text-muted-foreground">Customize the look and feel</p>
+          <div className="mb-6 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="hidden text-muted-foreground transition-colors hover:text-accent md:flex">
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Appearance</h2>
+              <p className="text-sm text-muted-foreground">Customize the look and feel</p>
+            </div>
+          </div>
 
           <div className="flex gap-2 rounded-xl bg-card p-2">
             {themes.map(({ id, label, icon: Icon }) => (

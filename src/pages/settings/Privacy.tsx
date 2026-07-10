@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -8,6 +9,7 @@ const items = [
 ];
 
 export default function SettingsPrivacy() {
+  const navigate = useNavigate();
   const [toggles, setToggles] = useState(
     Object.fromEntries(items.map((i) => [i.label, i.enabled])),
   );
@@ -15,13 +17,23 @@ export default function SettingsPrivacy() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-6 py-4 md:hidden">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
+        <button onClick={() => navigate(-1)} className="text-foreground transition-colors hover:text-accent">
+          <ArrowLeft size={20} />
+        </button>
         <h1 className="text-xl font-bold text-foreground">Privacy</h1>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl p-6">
-          <h2 className="mb-1 text-lg font-bold text-foreground">Privacy</h2>
-          <p className="mb-6 text-sm text-muted-foreground">Control your privacy settings</p>
+          <div className="mb-6 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="hidden text-muted-foreground transition-colors hover:text-accent md:flex">
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Privacy</h2>
+              <p className="text-sm text-muted-foreground">Control your privacy settings</p>
+            </div>
+          </div>
 
           <div className="overflow-hidden rounded-xl bg-card">
             {items.map((item, i) => (
