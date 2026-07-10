@@ -6,7 +6,7 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen flex-col lg:flex-row">
       <Sidebar />
-      <main className="flex flex-1 overflow-hidden pt-[env(safe-area-inset-top,0px)] lg:pt-0">
+      <main id="main-content" className="flex flex-1 overflow-hidden pt-[env(safe-area-inset-top,0px)] lg:pt-0 animate-[fade-in-up_0.3s_ease-out]">
         <Outlet />
       </main>
       <MobileNav />
