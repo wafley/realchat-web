@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Search, Send, X } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { ArrowLeft, Search, Send, X, Check, CheckCheck, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { Message } from '@/types';
+import type { Message, MessageStatus } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { queryClient } from '@/lib/queryClient';
 import { getMessages, sendMessage } from '@/services/chat';
 
 function formatTime(date: Date) {
@@ -20,7 +22,6 @@ export default function ChatRoom() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = useAuthStore((s) => s.user);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,11 +32,28 @@ export default function ChatRoom() {
   const chatId = (isDM ? userId : groupId) || '';
   const chatName = location.state?.name || 'Chat';
 
-  useEffect(() => {
-    if (!chatId) return;
-    setMessages([]);
-    getMessages(chatId, isDM).then(setMessages);
-  }, [chatId, isDM]);
+  const { data: messages = [] } = useQuery({
+    queryKey: ['messages', chatId, isDM],
+    queryFn: () => getMessages(chatId, isDM),
+    enabled: !!chatId,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: (content: string) => sendMessage(chatId, content, isDM),
+    onSuccess: (newMsg) => {
+      queryClient.setQueryData<Message[]>(['messages', chatId, isDM], (prev) => [...(prev ?? []), newMsg]);
+      if (import.meta.env.VITE_DEV_MODE === 'true') {
+        const steps: MessageStatus[] = ['delivered', 'read'];
+        steps.forEach((s, i) => {
+          setTimeout(() => {
+            queryClient.setQueryData<Message[]>(['messages', chatId, isDM], (prev) =>
+              prev?.map((m) => (m.id === newMsg.id ? { ...m, status: s } : m)) ?? [],
+            );
+          }, (i + 1) * 1000);
+        });
+      }
+    },
+  });
 
   const filteredMessages = showSearch && searchQuery.trim()
     ? messages.filter((m) =>
@@ -53,13 +71,12 @@ export default function ChatRoom() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  const handleSend = useCallback(async () => {
+  const handleSend = () => {
     const text = input.trim();
     if (!text) return;
     setInput('');
-    const sent = await sendMessage(chatId, text, isDM);
-    setMessages((prev) => [...prev, sent]);
-  }, [input, chatId, isDM]);
+    sendMutation.mutate(text);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -147,7 +164,13 @@ export default function ChatRoom() {
                   >
                     <p>{msg.content}</p>
                   </div>
-                  <p className={`mt-0.5 text-[10px] text-muted-foreground ${isOwn ? 'text-right' : ''}`}>
+                  <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground ${isOwn ? 'justify-end' : ''}`}>
+                    {isOwn && msg.status && (
+                      msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground" />
+                      : msg.status === 'sent' ? <Check size={12} />
+                      : msg.status === 'delivered' ? <CheckCheck size={12} />
+                      : <CheckCheck size={12} className="text-accent" />
+                    )}
                     {formatTime(msg.createdAt)}
                   </p>
                 </div>

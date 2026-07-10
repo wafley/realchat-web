@@ -19,6 +19,7 @@ export interface Message {
   type: 'text' | 'image' | 'file' | 'system';
   fileUrl?: string;
   fileName?: string;
+  status?: MessageStatus;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -96,4 +97,5 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';
