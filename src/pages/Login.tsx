@@ -66,7 +66,7 @@ export default function Login() {
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/80" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </Button>
       <OAuthButtons />
