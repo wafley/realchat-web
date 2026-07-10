@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { loginWithGoogle, loginWithFacebook } from '@/services/auth';
 
@@ -32,6 +33,18 @@ const FacebookIcon = () => (
 );
 
 export default function OAuthButtons() {
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleGoogle = () => {
+    setLoading('google');
+    loginWithGoogle();
+  };
+
+  const handleFacebook = () => {
+    setLoading('facebook');
+    loginWithFacebook();
+  };
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -43,15 +56,32 @@ export default function OAuthButtons() {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={loginWithGoogle} className="w-full">
-          <GoogleIcon />
+        <Button
+          onClick={handleGoogle}
+          disabled={loading !== null}
+          className="w-full bg-[#2a313b] text-white hover:bg-[#2a313b]/80"
+        >
+          {loading === 'google' ? <Spinner /> : <GoogleIcon />}
           Google
         </Button>
-        <Button variant="outline" onClick={loginWithFacebook} className="w-full">
-          <FacebookIcon />
+        <Button
+          onClick={handleFacebook}
+          disabled={loading !== null}
+          className="w-full bg-[#2a313b] text-white hover:bg-[#2a313b]/80"
+        >
+          {loading === 'facebook' ? <Spinner /> : <FacebookIcon />}
           Facebook
         </Button>
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }
