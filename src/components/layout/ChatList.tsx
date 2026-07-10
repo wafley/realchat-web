@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { Search, Plus, MessageSquareText, Users, UserPlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
-import type { Conversation } from '@/types';
 import { getConversations } from '@/services/chat';
 
 const tabs = [
@@ -18,11 +18,11 @@ export default function ChatList() {
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
 
-  useEffect(() => {
-    getConversations().then(setConversations);
-  }, []);
+  const { data: conversations = [] } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: getConversations,
+  });
 
   const filtered = conversations.filter((c) => {
     if (tab === 'messages' && c.type !== 'dm') return false;

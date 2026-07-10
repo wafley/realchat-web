@@ -106,6 +106,7 @@ export async function getMessages(chatId: string, isDM: boolean): Promise<Messag
     if (!msgs) return [];
     return msgs.map((m) => ({
       ...m,
+      status: m.status ?? (m.senderId === DEV_USER_ID ? 'read' as const : undefined),
       sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
     }));
   }
@@ -125,6 +126,7 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       senderId: DEV_USER_ID,
       content,
       type: 'text',
+      status: 'sent',
       createdAt: new Date(),
       sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
     };
