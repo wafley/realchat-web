@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Pencil, Mail, Info, Calendar } from 'lucide-react';
@@ -12,6 +13,7 @@ const infoItems = [
 ];
 
 export default function ProfileView() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
   return (
@@ -29,7 +31,10 @@ export default function ProfileView() {
                   {user?.username?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <button className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80">
+              <button
+                onClick={() => navigate('/profile/edit')}
+                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80"
+              >
                 <Pencil size={14} />
               </button>
             </div>

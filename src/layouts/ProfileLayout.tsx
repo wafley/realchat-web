@@ -1,10 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { User, Pencil } from 'lucide-react';
+import { User } from 'lucide-react';
 
 const menuItems = [
   { to: '/profile', icon: User, label: 'Profile', end: true },
-  { to: '/profile/edit', icon: Pencil, label: 'Edit Profile' },
 ];
 
 export default function ProfileLayout() {
