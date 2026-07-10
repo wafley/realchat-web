@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import type { User, LoginPayload, RegisterPayload } from '@/types';
 import * as authService from '@/services/auth';
 
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
+
+const MOCK_USER: User = {
+  id: 'dev-user-1',
+  email: 'dev@hallowok.com',
+  username: 'devuser',
+  fullName: 'Dev User',
+  status: 'online',
+  createdAt: new Date('2026-01-01'),
+};
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -13,24 +24,32 @@ interface AuthState {
   checkAuth: () => Promise<void>;
 }
 
+function devLogin(set: (partial: Partial<AuthState>) => void) {
+  const token = 'dev-token';
+  localStorage.setItem('token', token);
+  set({ user: MOCK_USER, token, isAuthenticated: true, isLoading: false });
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('token'),
   isLoading: true,
   isAuthenticated: false,
   login: async (payload) => {
+    if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
     localStorage.setItem('token', res.token);
     set({ user: res.user, token: res.token, isAuthenticated: true });
   },
   register: async (payload) => {
+    if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.register(payload);
     localStorage.setItem('token', res.token);
     set({ user: res.user, token: res.token, isAuthenticated: true });
   },
   logout: async () => {
     try {
-      await authService.logout();
+      if (!DEV_MODE) await authService.logout();
     } finally {
       localStorage.removeItem('token');
       set({ user: null, token: null, isAuthenticated: false });
@@ -40,6 +59,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     const token = localStorage.getItem('token');
     if (!token) {
       set({ isLoading: false, isAuthenticated: false });
+      return;
+    }
+    if (DEV_MODE) {
+      set({ user: MOCK_USER, token, isAuthenticated: true, isLoading: false });
       return;
     }
     try {
