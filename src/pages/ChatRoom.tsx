@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock } from 'lucide-react';
+import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message, MessageStatus, PaginatedResponse } from '@/types';
 import { useAuthStore } from '@/store/authStore';
@@ -41,6 +41,10 @@ export default function ChatRoom() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isPending,
+    isError,
+    error,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ['messages', chatId, isDM],
     queryFn: ({ pageParam = 1 }) => getMessages(chatId, isDM, pageParam),
@@ -106,6 +110,18 @@ export default function ChatRoom() {
       )
     : messages;
 
+  const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
+    if (e.key === 'Escape' && showSearch) {
+      setShowSearch(false);
+      setSearchQuery('');
+    }
+  }, [showSearch]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   useEffect(() => {
     if (showSearch) {
       searchInputRef.current?.focus();
@@ -157,6 +173,7 @@ export default function ChatRoom() {
       <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
         <button
           onClick={() => navigate(-1)}
+          aria-label="Back to chats"
           className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/10 hover:text-foreground lg:hidden"
         >
           <ArrowLeft size={20} />
@@ -207,57 +224,87 @@ export default function ChatRoom() {
       )}
 
       <div className="flex-1 overflow-y-auto bg-chat-tile-overlay px-4 py-4">
-        <div className="space-y-3">
-          {hasNextPage && (
-            <div ref={scrollTriggerRef} className="flex justify-center py-2">
-              {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
-            </div>
-          )}
-          {filteredMessages.map((msg) => {
-            const isOwn = msg.sender?.id === currentUser?.id || msg.senderId === currentUser?.id;
-            const name = isOwn ? 'You' : (msg.sender?.fullName ?? 'Unknown');
-            return (
-              <div
-                key={msg.id}
-                className={`flex gap-3 lg:gap-4 ${isOwn ? 'flex-row-reverse' : ''}`}
-              >
-                {!isOwn && (
-                  <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
-                    <AvatarFallback className="text-xs lg:text-sm">
-                      {name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
-                  {!isOwn && (
-                    <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
-                      {name}
-                    </p>
-                  )}
-                  <div
-                    className={`rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base ${
-                      isOwn
-                        ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
-                        : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
-                    }`}
-                  >
-                    <p>{msg.content}</p>
-                  </div>
-                  <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
-                    {formatTime(msg.createdAt)}
-                    {isOwn && msg.status && (
-                      msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground lg:size-3.5" />
-                      : msg.status === 'sent' ? <Check size={12} className="lg:size-3.5" />
-                      : msg.status === 'delivered' ? <CheckCheck size={12} className="lg:size-3.5" />
-                      : <CheckCheck size={12} className="text-accent lg:size-3.5" />
-                    )}
-                  </p>
-                </div>
+        {isPending ? (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : isError ? (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <AlertCircle size={48} className="mb-3 text-destructive/60" />
+            <p className="text-sm font-medium text-foreground lg:text-base">Failed to load messages</p>
+            <p className="mt-1 text-xs text-muted-foreground lg:text-sm">{error?.message || 'Something went wrong'}</p>
+            <button
+              onClick={() => refetch()}
+              className="mt-4 flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              <RefreshCw size={14} />
+              Retry
+            </button>
+          </div>
+        ) : filteredMessages.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <MessageSquareText size={48} className="mb-3 text-muted-foreground/30" />
+            <p className="text-sm font-medium text-foreground lg:text-base">
+              {showSearch && searchQuery ? 'No messages found' : 'No messages yet'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground lg:text-sm">
+              {showSearch && searchQuery ? `No results for "${searchQuery}"` : 'Start a conversation!'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {hasNextPage && (
+              <div ref={scrollTriggerRef} className="flex justify-center py-2">
+                {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
               </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
+            )}
+            {filteredMessages.map((msg, idx) => {
+              const isOwn = msg.sender?.id === currentUser?.id || msg.senderId === currentUser?.id;
+              const name = isOwn ? 'You' : (msg.sender?.fullName ?? 'Unknown');
+              const isNew = idx >= filteredMessages.length - (sendMutation.isPending ? 1 : 0);
+              return (
+                <div
+                  key={msg.id}
+                  className={`flex gap-3 lg:gap-4 ${isOwn ? 'flex-row-reverse' : ''} ${isNew ? 'animate-[fade-in-up_0.3s_ease-out]' : ''}`}
+                >
+                  {!isOwn && (
+                    <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
+                      <AvatarFallback className="text-xs lg:text-sm">
+                        {name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
+                    {!isOwn && (
+                      <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
+                        {name}
+                      </p>
+                    )}
+                    <div
+                      className={`rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base ${
+                        isOwn
+                          ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
+                          : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
+                      }`}
+                    >
+                      <p>{msg.content}</p>
+                    </div>
+                    <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
+                      {formatTime(msg.createdAt)}
+                      {isOwn && msg.status && (
+                        msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground lg:size-3.5" />
+                        : msg.status === 'sent' ? <Check size={12} className="lg:size-3.5" />
+                        : msg.status === 'delivered' ? <CheckCheck size={12} className="lg:size-3.5" />
+                        : <CheckCheck size={12} className="text-accent lg:size-3.5" />
+                      )}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
       <div className="border-t border-border px-4 py-3">
