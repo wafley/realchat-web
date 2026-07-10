@@ -136,12 +136,27 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       MOCK_MESSAGES[chatId] = [];
     }
     MOCK_MESSAGES[chatId].push(msg);
+    const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+    if (conv) {
+      conv.lastMessage = content;
+      conv.lastTime = 'now';
+    }
     return msg;
   }
   const { default: axios } = await import('axios');
   const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
   const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, { content });
   return data;
+}
+
+export async function markConversationAsRead(chatId: string): Promise<void> {
+  if (DEV_MODE) {
+    const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+    if (conv) conv.unread = 0;
+    return;
+  }
+  const { default: axios } = await import('axios');
+  await axios.post(`${import.meta.env.VITE_API_URL}/conversations/${chatId}/read`);
 }
 
 export async function getConversations(): Promise<ChatConversation[]> {

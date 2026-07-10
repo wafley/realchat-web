@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message, MessageStatus, PaginatedResponse } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage } from '@/services/chat';
+import { getMessages, sendMessage, markConversationAsRead } from '@/services/chat';
 
 function formatTime(date: Date) {
   const now = new Date();
@@ -34,6 +34,7 @@ export default function ChatRoom() {
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
   const chatName = location.state?.name || 'Chat';
+  const chatOnline = location.state?.online ?? true;
 
   const {
     data,
@@ -70,6 +71,15 @@ export default function ChatRoom() {
           ],
         };
       });
+      queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(['conversations'], (prev) => {
+        if (!prev) return prev;
+        const updated = prev.map((c) =>
+          c.id === chatId ? { ...c, lastMessage: newMsg.content, lastTime: 'now' } : c,
+        );
+        const idx = updated.findIndex((c) => c.id === chatId);
+        if (idx <= 0) return updated;
+        return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
+      });
       if (import.meta.env.VITE_DEV_MODE === 'true') {
         const steps: MessageStatus[] = ['delivered', 'read'];
         steps.forEach((s, i) => {
@@ -101,6 +111,15 @@ export default function ChatRoom() {
       searchInputRef.current?.focus();
     }
   }, [showSearch]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    markConversationAsRead(chatId);
+    queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
+      if (!prev) return prev;
+      return prev.map((c) => (c.id === chatId ? { ...c, unread: 0 } : c));
+    });
+  }, [chatId]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -137,7 +156,7 @@ export default function ChatRoom() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
         <button
-          onClick={() => navigate(isDM ? '/' : '/')}
+          onClick={() => navigate(-1)}
           className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/10 hover:text-foreground lg:hidden"
         >
           <ArrowLeft size={20} />
@@ -147,7 +166,7 @@ export default function ChatRoom() {
         </Avatar>
         <div className="flex-1">
           <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
-          <p className="text-xs text-muted-foreground">{isDM ? 'Online' : 'Online'}</p>
+          <p className="text-xs text-muted-foreground">{chatOnline ? 'Online' : 'Offline'}</p>
         </div>
         <button
           onClick={() => {
