@@ -24,6 +24,10 @@ export const router = createBrowserRouter([
     path: '/auth/callback',
     lazy: () => import('@/pages/OAuthCallback').then((m) => ({ Component: m.default })),
   },
+  {
+    path: '/forgot-password',
+    lazy: () => import('@/pages/ForgotPassword').then((m) => ({ Component: m.default })),
+  },
     ],
   },
   {
