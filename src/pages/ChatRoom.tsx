@@ -163,7 +163,7 @@ export default function ChatRoom() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto bg-[url('/wpp-deffault.png')] bg-repeat bg-black/60 bg-blend-multiply px-4 py-4">
+      <div className="flex-1 overflow-y-auto bg-[url('/wpp-deffault.png')] bg-repeat bg-chat-tile-overlay bg-blend-multiply px-4 py-4">
         <div className="space-y-3">
           {filteredMessages.map((msg) => (
             <div
@@ -186,8 +186,8 @@ export default function ChatRoom() {
                 <div
                   className={`rounded-2xl px-4 py-2 text-sm ${
                     msg.isOwn
-                      ? 'bg-accent/15 text-foreground rounded-br-md'
-                      : 'bg-secondary text-foreground rounded-bl-md'
+                      ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
+                      : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
                   }`}
                 >
                   <p>{msg.content}</p>
