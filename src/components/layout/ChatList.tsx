@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, Users, UserPlus } from 'lucide-react';
+import { Search, Plus, MessageSquareText, Users, UserPlus, AlertCircle, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import { getConversations } from '@/services/chat';
 
@@ -19,7 +20,7 @@ export default function ChatList() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [], isPending, isError, error, refetch } = useQuery({
     queryKey: ['conversations'],
     queryFn: getConversations,
   });
@@ -94,13 +95,35 @@ export default function ChatList() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {isPending ? (
+          <ListSkeleton count={6} />
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <AlertCircle size={40} className="mb-2 text-destructive/60" />
+            <p className="text-sm font-medium text-foreground lg:text-base">Failed to load conversations</p>
+            <p className="mt-1 text-xs text-muted-foreground lg:text-sm">{error?.message || 'Something went wrong'}</p>
+            <button
+              onClick={() => refetch()}
+              className="mt-4 flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              <RefreshCw size={14} />
+              Retry
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground lg:text-base">
             <MessageSquareText size={40} className="mb-2 opacity-30" />
-            <p>{tab === 'messages' ? 'No messages yet' : 'No groups yet'}</p>
+            <p>
+              {search
+                ? `No ${tab === 'messages' ? 'chats' : 'groups'} matching "${search}"`
+                : tab === 'messages'
+                  ? 'No messages yet'
+                  : 'No groups yet'}
+            </p>
           </div>
         ) : (
-          filtered.map((chat) => {
+          <div role="list">
+            {filtered.map((chat) => {
             const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
             const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
             return (
@@ -108,6 +131,8 @@ export default function ChatList() {
                 key={chat.id}
                 to={linkTo}
                 state={{ name: chat.name, online: chat.online }}
+                role="listitem"
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
                   isActive
@@ -155,7 +180,8 @@ export default function ChatList() {
                 </div>
               </Link>
             );
-          })
+          })}
+          </div>
         )}
       </div>
     </div>
