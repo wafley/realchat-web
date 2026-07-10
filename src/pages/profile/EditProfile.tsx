@@ -1,16 +1,28 @@
-import { Camera } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Camera } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function EditProfile() {
+  const navigate = useNavigate();
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-6 py-4 md:hidden">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
+        <button onClick={() => navigate(-1)} className="text-foreground transition-colors hover:text-accent">
+          <ArrowLeft size={20} />
+        </button>
         <h1 className="text-xl font-bold text-foreground">Edit Profile</h1>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl p-6">
-          <h2 className="mb-1 text-lg font-bold text-foreground">Edit Profile</h2>
-          <p className="mb-6 text-sm text-muted-foreground">Update your personal information</p>
+          <div className="mb-6 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="hidden text-muted-foreground transition-colors hover:text-accent md:flex">
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Edit Profile</h2>
+              <p className="text-sm text-muted-foreground">Update your personal information</p>
+            </div>
+          </div>
 
           <div className="overflow-hidden rounded-xl bg-card">
             <div className="flex items-center gap-4 border-b border-border/50 px-4 py-4">
