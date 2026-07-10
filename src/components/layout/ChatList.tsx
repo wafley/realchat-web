@@ -1,27 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Search, Plus, MessageSquareText, Users, UserPlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Conversation } from '@/types';
+import { getConversations } from '@/services/chat';
 
 const tabs = [
   { id: 'messages', label: 'Messages', icon: MessageSquareText },
   { id: 'groups', label: 'Groups', icon: Users },
 ] as const;
-
-const conversations: Conversation[] = [
-  { id: 'dm1', name: 'Alice Johnson', type: 'dm', lastMessage: 'Sure, let me check that', lastTime: '2m', unread: 2, online: true },
-  { id: 'dm2', name: 'Bob Smith', type: 'dm', lastMessage: 'Thanks for the update!', lastTime: '1h', online: true },
-  { id: 'dm3', name: 'Charlie Brown', type: 'dm', lastMessage: 'See you tomorrow', lastTime: '3h', online: false },
-  { id: 'dm4', name: 'Diana Prince', type: 'dm', lastMessage: 'Got it 👍', lastTime: 'Yesterday', online: false },
-  { id: 'dm5', name: 'Eve Adams', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: 'Yesterday', unread: 1, online: true },
-  { id: '1', name: 'General', type: 'group', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12 },
-  { id: '2', name: 'Random', type: 'group', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: false, members: 10 },
-  { id: '3', name: 'Project Alpha', type: 'group', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6 },
-  { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, members: 5 },
-];
 
 export default function ChatList() {
   const navigate = useNavigate();
@@ -29,6 +18,11 @@ export default function ChatList() {
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  useEffect(() => {
+    getConversations().then(setConversations);
+  }, []);
 
   const filtered = conversations.filter((c) => {
     if (tab === 'messages' && c.type !== 'dm') return false;
@@ -113,6 +107,7 @@ export default function ChatList() {
               <Link
                 key={chat.id}
                 to={linkTo}
+                state={{ name: chat.name }}
                 className={cn(
                   'flex items-center gap-3 border-b border-border px-4 py-3 transition-colors',
                   isActive
