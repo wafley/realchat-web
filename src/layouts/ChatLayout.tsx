@@ -3,14 +3,15 @@ import ChatList from '@/components/layout/ChatList';
 import { cn } from '@/lib/utils';
 
 export default function ChatLayout() {
-  const { groupId } = useParams();
+  const { groupId, userId } = useParams();
+  const hasChat = !!(groupId || userId);
 
   return (
     <div className="flex flex-1">
       <aside
         className={cn(
-          'w-full border-r border-border bg-background lg:w-96',
-          groupId && 'hidden lg:flex lg:flex-col',
+          'w-full border-r border-border bg-sidebar lg:w-96',
+          hasChat && 'hidden lg:flex lg:flex-col',
         )}
       >
         <ChatList />
@@ -18,7 +19,7 @@ export default function ChatLayout() {
       <section
         className={cn(
           'flex flex-1 flex-col',
-          !groupId && 'hidden lg:flex',
+          !hasChat && 'hidden lg:flex',
         )}
       >
         <Outlet />

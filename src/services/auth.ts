@@ -14,6 +14,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(err);
+  },
+);
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   const { data } = await api.post<AuthResponse>('/auth/login', payload);
   return data;
@@ -31,6 +42,17 @@ export async function getMe(): Promise<User> {
 
 export async function logout(): Promise<void> {
   await api.post('/auth/logout');
+}
+
+export function parseAuthError(err: unknown): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response: { data: Record<string, unknown> } }).response?.data;
+    if (typeof data?.message === 'string') return data.message;
+    if (typeof data?.error === 'string') return data.error;
+    if (Array.isArray(data?.message)) return (data.message as string[]).join(', ');
+  }
+  if (err instanceof Error) return err.message;
+  return 'Something went wrong. Please try again.';
 }
 
 export function loginWithGoogle(): void {
