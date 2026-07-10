@@ -1,13 +1,15 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { LogOut } from 'lucide-react';
+import { useThemeStore } from '@/store/themeStore';
+import { LogOut, Moon, Sun } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const { theme, toggle } = useThemeStore();
 
   return (
     <aside className="hidden w-16 flex-col items-center border-r border-border bg-background py-3 lg:flex">
@@ -41,6 +43,14 @@ export default function Sidebar() {
             {user?.username?.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
+        <button
+          onClick={toggle}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:scale-110 hover:bg-accent/10 hover:text-accent active:scale-95"
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        >
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
         <button
           onClick={logout}
           aria-label="Logout"
