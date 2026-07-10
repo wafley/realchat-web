@@ -10,7 +10,7 @@ export default function ChatLayout() {
     <div className="flex flex-1">
       <aside
         className={cn(
-          'w-full border-r border-border bg-sidebar lg:w-96',
+          'w-full border-r border-border bg-sidebar lg:w-[30rem]',
           hasChat && 'hidden lg:flex lg:flex-col',
         )}
       >
