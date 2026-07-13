@@ -21,7 +21,7 @@ export default function CreateGroup() {
 
   const createMutation = useMutation({
     mutationFn: () => createGroup(name, description, selectedIds),
-    onSuccess: (group) => navigate(`/chat/${group.id}`),
+    onSuccess: (group) => navigate(`/chat/${group.id}`, { state: { name: group.name, online: true } }),
   });
 
   const handleSearch = (q: string) => {

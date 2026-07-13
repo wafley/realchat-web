@@ -98,7 +98,7 @@ export function senderName(senderId: string): string {
 
 const GROUP_MEMBER_IDS = ['aang', 'bambang', 'cici', 'dewi', 'eko'];
 
-const DM_USER_MAP: Record<string, string> = {
+export const DM_USER_MAP: Record<string, string> = {
   'dm1': 'aang',
   'dm2': 'bambang',
   'dm3': 'cici',

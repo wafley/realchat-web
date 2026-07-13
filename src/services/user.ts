@@ -1,0 +1,26 @@
+import type { User } from '@/types';
+import axios from 'axios';
+
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
+
+const DEV_USER_ID = 'dev-user-1';
+
+const MOCK_USERS: User[] = [
+  { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: 'aang@example.com', status: 'online', createdAt: new Date('2026-07-01') },
+  { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: 'bambang@example.com', status: 'online', createdAt: new Date('2026-07-01') },
+  { id: 'cici', username: 'cici', fullName: 'Cici', email: 'cici@example.com', status: 'online', createdAt: new Date('2026-07-01') },
+  { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: 'dewi@example.com', status: 'offline', createdAt: new Date('2026-07-01') },
+  { id: 'eko', username: 'eko', fullName: 'Eko', email: 'eko@example.com', status: 'offline', createdAt: new Date('2026-07-01') },
+  { id: DEV_USER_ID, username: 'devuser', fullName: 'Dev User', email: 'dev@hallowok.com', status: 'online', createdAt: new Date('2026-01-01') },
+];
+
+export async function getUser(userId: string): Promise<User> {
+  if (DEV_MODE) {
+    await new Promise((r) => setTimeout(r, 200));
+    const user = MOCK_USERS.find((u) => u.id === userId);
+    if (!user) throw new Error('User not found');
+    return user;
+  }
+  const { data } = await axios.get<User>(`${import.meta.env.VITE_API_URL}/users/${userId}`);
+  return data;
+}

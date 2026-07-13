@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -8,6 +9,7 @@ interface ChatHeaderProps {
   otherTyping: boolean;
   isDM: boolean;
   muted: boolean;
+  userId?: string;
   onBack: () => void;
   onSearchToggle: () => void;
   onToggleMute: () => void;
@@ -23,6 +25,7 @@ export default function ChatHeader({
   otherTyping,
   isDM,
   muted,
+  userId,
   onBack,
   onSearchToggle,
   onToggleMute,
@@ -31,6 +34,7 @@ export default function ChatHeader({
   onGroupInfoClick,
   onClearChat,
 }: ChatHeaderProps) {
+  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +61,11 @@ export default function ChatHeader({
         <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
-        <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
+        {isDM && userId ? (
+          <button onClick={() => navigate(`/profile/${userId}`)} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
+        ) : (
+          <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
+        )}
         {otherTyping ? (
           <p className="flex items-center gap-1 text-xs text-accent">
             <span className="flex gap-0.5">

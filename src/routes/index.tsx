@@ -95,6 +95,10 @@ export const router = createBrowserRouter([
                 path: 'profile/edit',
                 lazy: () => import('@/pages/profile/EditProfile').then((m) => ({ Component: m.default })),
               },
+              {
+                path: 'profile/:userId',
+                lazy: () => import('@/pages/profile/UserProfile').then((m) => ({ Component: m.default })),
+              },
             ],
           },
           {

@@ -49,7 +49,10 @@ export default function AllFriends() {
               key={friend.id}
               className="flex items-center gap-4 rounded-2xl border border-border px-4 py-3.5"
             >
-              <div className="relative shrink-0">
+              <Link
+                to={`/profile/${friend.id}`}
+                className="relative shrink-0"
+              >
                 <Avatar className="h-12 w-12">
                   {friend.avatarUrl && <AvatarImage src={friend.avatarUrl} />}
                   <AvatarFallback className="font-bold">{friend.name.charAt(0)}</AvatarFallback>
@@ -57,13 +60,14 @@ export default function AllFriends() {
                 {friend.online && (
                   <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
                 )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{friend.name}</p>
+              </Link>
+              <Link to={`/profile/${friend.id}`} className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground hover:text-accent">{friend.name}</p>
                 <p className="text-xs text-muted-foreground">@{friend.username}</p>
-              </div>
+              </Link>
               <Link
                 to={`/dm/${friend.id}`}
+                state={{ name: friend.name, online: friend.online }}
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent"
               >
                 <MessageSquareText size={18} />

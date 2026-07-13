@@ -7,7 +7,7 @@ import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, editMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole, clearChat } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, editMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole, clearChat, DM_USER_MAP } from '@/services/chat';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -74,6 +74,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const chatId = (isDM ? userId : groupId) || '';
   const chatName = location.state?.name || 'Chat';
   const chatOnline = location.state?.online ?? true;
+  const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? userId) : undefined;
 
   const {
     data,
@@ -778,6 +779,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
         chatOnline={chatOnline}
         isDM={isDM}
         muted={muted}
+        userId={otherUserId}
         onBack={() => navigate(-1)}
         onSearchToggle={() => {
           if (showSearch) { setSearchQuery(''); setShowSearch(false); }
