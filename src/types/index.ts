@@ -107,6 +107,13 @@ export interface RegisterPayload {
   password: string;
 }
 
+export interface UpdateProfilePayload {
+  fullName?: string;
+  username?: string;
+  bio?: string;
+  avatarUrl?: string;
+}
+
 export interface ApiError {
   message: string;
   statusCode: number;

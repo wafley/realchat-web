@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AuthResponse, LoginPayload, RegisterPayload, User } from '@/types';
+import type { AuthResponse, LoginPayload, RegisterPayload, UpdateProfilePayload, User } from '@/types';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -61,4 +61,9 @@ export function loginWithGoogle(): void {
 
 export function loginWithFacebook(): void {
   window.location.href = `${import.meta.env.VITE_API_URL}/auth/facebook`;
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  const { data } = await api.patch<User>('/auth/me', payload);
+  return data;
 }

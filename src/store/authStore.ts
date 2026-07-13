@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { User, LoginPayload, RegisterPayload } from '@/types';
+import type { User, LoginPayload, RegisterPayload, UpdateProfilePayload } from '@/types';
 import * as authService from '@/services/auth';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -22,6 +22,7 @@ interface AuthState {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
 }
 
 function devLogin(set: (partial: Partial<AuthState>) => void) {
@@ -72,5 +73,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem('token');
       set({ user: null, token: null, isAuthenticated: false, isLoading: false });
     }
+  },
+  updateProfile: async (payload: UpdateProfilePayload) => {
+    if (DEV_MODE) {
+      set((state) => ({
+        user: state.user ? { ...state.user, ...payload } : null,
+      }));
+      return;
+    }
+    const updated = await authService.updateProfile(payload);
+    set({ user: updated });
   },
 }));
