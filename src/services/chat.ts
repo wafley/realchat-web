@@ -29,6 +29,8 @@ const MOCK_CONVERSATIONS: ChatConversation[] = [
   { id: 'dm5', name: 'Eko', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: '11:06', online: false, muted: false },
 ];
 
+const MOCK_GROUP_OVERRIDES = new Map<string, { name?: string; description?: string; avatarUrl?: string }>();
+
 const MOCK_MESSAGES: Record<string, Message[]> = {
   '1': [
     { id: 'm1', groupId: '1', senderId: 'aang', content: 'Hey everyone!', type: 'text', isPinned: true, createdAt: new Date('2026-07-10T10:30') },
@@ -533,11 +535,12 @@ export async function getGroup(groupId: string): Promise<Group> {
         { id: 'gm6', userId: DEV_USER_ID, groupId, role: 'admin', joinedAt: new Date(), user: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=0891b2', status: 'online', createdAt: new Date() } },
       ];
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
+      const override = MOCK_GROUP_OVERRIDES.get(groupId);
       return {
         id: groupId,
-        name: conv?.name ?? 'Group',
-        description: 'A great group for discussion',
-        avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(conv?.name ?? 'Group') + '&backgroundColor=2563eb',
+        name: override?.name ?? conv?.name ?? 'Group',
+        description: override?.description ?? 'A great group for discussion',
+        avatarUrl: override?.avatarUrl ?? 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(conv?.name ?? 'Group') + '&backgroundColor=2563eb',
         members,
         creatorId: DEV_USER_ID,
         isPrivate: false,
@@ -597,9 +600,12 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
   try {
     if (DEV_MODE) {
       await delay(200);
+      const existing = MOCK_GROUP_OVERRIDES.get(groupId) ?? {};
+      MOCK_GROUP_OVERRIDES.set(groupId, { ...existing, ...data });
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
       if (conv) {
         if (data.name) conv.name = data.name;
+        if (data.avatarUrl) conv.avatarUrl = data.avatarUrl;
       }
       return;
     }
@@ -618,7 +624,7 @@ export async function updateMemberRole(groupId: string, userId: string, role: 'a
       if (!user) return;
       MOCK_MESSAGES[groupId] = [
         ...(MOCK_MESSAGES[groupId] ?? []),
-        { id: `sys-role-${++msgCounter}`, groupId, senderId: 'system', content: `${user.fullName} menjadi admin`, type: 'system', createdAt: new Date() },
+        { id: `sys-role-${++msgCounter}`, groupId, senderId: 'system', content: role === 'admin' ? `${user.fullName} menjadi admin` : `${user.fullName} tidak lagi admin`, type: 'system', createdAt: new Date() },
       ];
       return;
     }
