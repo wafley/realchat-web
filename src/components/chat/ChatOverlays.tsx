@@ -1,7 +1,8 @@
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare } from 'lucide-react';
+import { useState } from 'react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
-import type { Message, Group, GroupMember } from '@/types';
+import type { Message, Group, GroupMember, User } from '@/types';
 
 interface ContextMenuData {
   msg: Message;
@@ -39,6 +40,12 @@ interface ChatOverlaysProps {
   onReport: () => void;
   onCloseGroupInfo: () => void;
   onCloseReadReceipts: () => void;
+  onUpdateGroup: (data: { name?: string; description?: string }) => Promise<void>;
+  onAddMember: (userId: string) => Promise<void>;
+  onRemoveMember: (userId: string) => Promise<void>;
+  onLeaveGroup: () => Promise<void>;
+  onDeleteGroup: () => Promise<void>;
+  searchUsers: (query: string) => Promise<User[]>;
 }
 
 export default function ChatOverlays({
@@ -55,6 +62,7 @@ export default function ChatOverlays({
   readReceiptTarget,
   group,
   chatName,
+  chatId: _chatId,
   currentUserId,
   onCloseDelete,
   onDeleteMessage,
@@ -70,7 +78,90 @@ export default function ChatOverlays({
   onReport,
   onCloseGroupInfo,
   onCloseReadReceipts,
+  onUpdateGroup,
+  onAddMember,
+  onRemoveMember,
+  onLeaveGroup,
+  onDeleteGroup,
+  searchUsers,
 }: ChatOverlaysProps) {
+  const isAdmin = group?.members?.some((m) => m.userId === currentUserId && m.role === 'admin');
+  const isCreator = group?.creatorId === currentUserId;
+
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editing, setEditing] = useState(false);
+
+  const [addQuery, setAddQuery] = useState('');
+  const [addResults, setAddResults] = useState<User[]>([]);
+  const [addSearching, setAddSearching] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const [removeTarget, setRemoveTarget] = useState<{ userId: string; userName: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
+
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(false);
+
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleStartEdit = () => {
+    setEditName(group?.name ?? '');
+    setEditDesc(group?.description ?? '');
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) return;
+    setSavingEdit(true);
+    await onUpdateGroup({ name: editName.trim(), description: editDesc.trim() });
+    setSavingEdit(false);
+    setEditing(false);
+  };
+
+  const handleAddSearch = async (q: string) => {
+    setAddQuery(q);
+    if (!q.trim()) { setAddResults([]); return; }
+    setAddSearching(true);
+    const users = await searchUsers(q.trim());
+    setAddResults(users.filter((u) => u.id !== currentUserId && !group?.members?.some((m) => m.userId === u.id)));
+    setAddSearching(false);
+  };
+
+  const handleAddUser = async (userId: string) => {
+    setAddSearching(true);
+    await onAddMember(userId);
+    setAddQuery('');
+    setAddResults([]);
+    setAddSearching(false);
+    setAddOpen(false);
+  };
+
+  const handleRemove = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    await onRemoveMember(removeTarget.userId);
+    setRemoving(false);
+    setRemoveTarget(null);
+  };
+
+  const handleLeave = async () => {
+    setLeaving(true);
+    await onLeaveGroup();
+    setLeaving(false);
+    setLeaveConfirmOpen(false);
+  };
+
+  const handleDeleteGroup = async () => {
+    setDeletingGroup(true);
+    await onDeleteGroup();
+    setDeletingGroup(false);
+    setDeleteConfirmOpen(false);
+  };
+
   return (
     <>
       {deleteTarget && (
@@ -200,7 +291,7 @@ export default function ChatOverlays({
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={c.avatarUrl} />
+                    {c.avatarUrl && <AvatarImage src={c.avatarUrl} />}
                     <AvatarFallback className="text-xs">{c.name[0]}</AvatarFallback>
                   </Avatar>
                   <span className="font-medium">{c.name}</span>
@@ -280,33 +371,257 @@ export default function ChatOverlays({
         </Modal>
       )}
 
-      {groupInfoOpen && group && (
-        <Modal open={groupInfoOpen} onClose={onCloseGroupInfo} title={group.name}>
+      {groupInfoOpen && group && !editing && !addOpen && (
+        <Modal open={groupInfoOpen && !editing && !addOpen} onClose={onCloseGroupInfo} title={group.name}>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={group.avatarUrl} />
+                {group.avatarUrl && <AvatarImage src={group.avatarUrl} />}
                 <AvatarFallback className="text-lg">{group.name[0]}</AvatarFallback>
               </Avatar>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="text-lg font-semibold text-foreground">{group.name}</h3>
+                {group.description && (
+                  <p className="text-xs text-muted-foreground">{group.description}</p>
+                )}
                 <p className="text-sm text-muted-foreground">{group.members?.length ?? 0} members</p>
               </div>
             </div>
+
             <div>
-              <h4 className="mb-2 text-sm font-semibold text-foreground">Members</h4>
-              <div className="space-y-2">
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-foreground">Members</h4>
+                {isAdmin && (
+                  <button
+                    onClick={() => setAddOpen(true)}
+                    className="flex items-center gap-1 text-xs font-medium text-accent hover:text-accent/80"
+                  >
+                    <UserPlus size={14} />
+                    Add
+                  </button>
+                )}
+              </div>
+              <div className="max-h-48 space-y-1 overflow-y-auto">
                 {group.members?.map((m: GroupMember) => (
-                  <div key={m.id} className="flex items-center gap-3">
+                  <div key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={m.user?.avatarUrl} />
+                      {m.user?.avatarUrl && <AvatarImage src={m.user.avatarUrl} />}
                       <AvatarFallback className="text-xs">{(m.user?.fullName ?? m.userId)[0]}</AvatarFallback>
                     </Avatar>
-                    <span className="text-sm text-foreground">{m.user?.fullName ?? m.userId}</span>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm text-foreground">{m.user?.fullName ?? m.userId}</span>
+                      {m.role === 'admin' && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                          <Shield size={10} />
+                          Admin
+                        </span>
+                      )}
+                      {m.role === 'member' && m.userId === group.creatorId && (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
+                          <Crown size={10} />
+                          Creator
+                        </span>
+                      )}
+                    </div>
+                    {isAdmin && m.userId !== currentUserId && (
+                      <button
+                        onClick={() => setRemoveTarget({ userId: m.userId, userName: m.user?.fullName ?? m.userId })}
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <UserMinus size={14} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
+
+            <div className="flex flex-col gap-2">
+              {isAdmin && (
+                <button
+                  onClick={handleStartEdit}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                >
+                  <Edit3 size={15} />
+                  Edit Group
+                </button>
+              )}
+              {!isCreator && (
+                <button
+                  onClick={() => setLeaveConfirmOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <LogOut size={15} />
+                  Leave Group
+                </button>
+              )}
+              {isCreator && (
+                <button
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <Trash2 size={15} />
+                  Delete Group
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {groupInfoOpen && editing && (
+        <Modal open={editing} onClose={() => setEditing(false)} title="Edit Group">
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Group Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-11 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Description</label>
+              <textarea
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={!editName.trim() || savingEdit}
+                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {savingEdit && <Loader2 size={14} className="animate-spin" />}
+                Save
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {groupInfoOpen && addOpen && (
+        <Modal open={addOpen} onClose={() => { setAddOpen(false); setAddQuery(''); setAddResults([]); }} title="Add Member">
+          <div className="space-y-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={addQuery}
+                onChange={(e) => handleAddSearch(e.target.value)}
+                className="h-11 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            {addSearching && (
+              <div className="flex justify-center py-3">
+                <Loader2 size={18} className="animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {addResults.length > 0 && (
+              <div className="max-h-48 space-y-1 overflow-y-auto">
+                {addResults.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleAddUser(u.id)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent/10"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs">{u.fullName[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{u.fullName}</p>
+                      <p className="text-xs text-muted-foreground">@{u.username}</p>
+                    </div>
+                    <UserPlus size={16} className="text-accent" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {addQuery.trim() && !addSearching && addResults.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">No users found</p>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {removeTarget && (
+        <Modal open={!!removeTarget} onClose={() => setRemoveTarget(null)} title="Remove member">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Are you sure you want to remove <span className="font-medium text-foreground">{removeTarget.userName}</span> from the group?
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setRemoveTarget(null)}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRemove}
+              disabled={removing}
+              className="flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {removing && <Loader2 size={14} className="animate-spin" />}
+              Remove
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {leaveConfirmOpen && (
+        <Modal open={leaveConfirmOpen} onClose={() => setLeaveConfirmOpen(false)} title="Leave group">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Are you sure you want to leave <span className="font-medium text-foreground">{group?.name}</span>? You will need to be invited back to rejoin.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setLeaveConfirmOpen(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleLeave}
+              disabled={leaving}
+              className="flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {leaving && <Loader2 size={14} className="animate-spin" />}
+              Leave
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {deleteConfirmOpen && (
+        <Modal open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} title="Delete group">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Are you sure you want to permanently delete <span className="font-medium text-foreground">{group?.name}</span>? This action cannot be undone. All messages will be lost.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setDeleteConfirmOpen(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteGroup}
+              disabled={deletingGroup}
+              className="flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {deletingGroup && <Loader2 size={14} className="animate-spin" />}
+              Delete
+            </button>
           </div>
         </Modal>
       )}

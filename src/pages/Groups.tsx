@@ -1,38 +1,49 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Users } from 'lucide-react';
+import { Search, Users, Loader2, AlertCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-interface GroupItem {
-  id: string;
-  name: string;
-  description: string;
-  members: number;
-  online: number;
-}
-
-const groups: GroupItem[] = [
-  { id: '1', name: 'General', description: 'Team-wide announcements and general chat', members: 12, online: 4 },
-  { id: '2', name: 'Random', description: 'Off-topic conversations and water cooler talk', members: 10, online: 2 },
-  { id: '3', name: 'Project Alpha', description: 'Alpha project coordination and updates', members: 6, online: 3 },
-  { id: '4', name: 'Design Team', description: 'Design discussions, feedback, and mockups', members: 5, online: 1 },
-];
+import { getGroups } from '@/services/chat';
 
 export default function Groups() {
+  const [search, setSearch] = useState('');
+  const { data: groups = [], isPending, isError } = useQuery({
+    queryKey: ['groups'],
+    queryFn: getGroups,
+  });
+
+  const filtered = search.trim()
+    ? groups.filter((g) => g.name.toLowerCase().includes(search.toLowerCase()))
+    : groups;
+
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
-      {/* Search input */}
       <div className="relative">
         <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           placeholder="Search groups..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           className="h-12 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
 
-      {/* Group list */}
       <div className="mt-4 space-y-3">
-        {groups.map((g) => (
+        {isPending ? (
+          <div className="flex justify-center py-10">
+            <Loader2 size={24} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <AlertCircle size={32} className="mb-2 text-destructive/60" />
+            <p className="text-sm text-muted-foreground">Failed to load groups</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex justify-center py-10">
+            <p className="text-sm text-muted-foreground">{search ? 'No groups found' : 'No groups yet'}</p>
+          </div>
+        ) : filtered.map((g) => (
           <Link
             key={g.id}
             to={`/chat/${g.id}`}
@@ -43,12 +54,11 @@ export default function Groups() {
             </Avatar>
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-lg font-semibold text-foreground">{g.name}</h3>
-              <p className="line-clamp-2 text-sm text-muted-foreground">{g.description}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Users size={14} />
-              <span>{g.members}</span>
-              <span className="ml-1 text-green-500">● {g.online}</span>
+              <span>{g.members ?? 0}</span>
+              {g.online && <span className="ml-1 text-green-500">● {g.online}</span>}
             </div>
           </Link>
         ))}

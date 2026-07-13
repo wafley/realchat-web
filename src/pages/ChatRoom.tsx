@@ -7,7 +7,7 @@ import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup } from '@/services/chat';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -615,6 +615,59 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
     toggleReactionMutation.mutate({ msgId, emoji });
   }, [toggleReactionMutation]);
 
+  const updateGroupMutation = useMutation({
+    mutationFn: (data: { name?: string; description?: string }) => updateGroup(chatId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      setGroupInfoOpen(false);
+      toast.success('Group updated');
+    },
+    onError: () => toast.error('Failed to update group'),
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: (userId: string) => addGroupMember(chatId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
+      toast.success('Member added');
+    },
+    onError: () => toast.error('Failed to add member'),
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: string) => removeGroupMember(chatId, userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
+      toast.success('Member removed');
+    },
+    onError: () => toast.error('Failed to remove member'),
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: () => leaveGroup(chatId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast.success('Left the group');
+      navigate('/');
+    },
+    onError: () => toast.error('Failed to leave group'),
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: () => deleteGroup(chatId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast.success('Group deleted');
+      navigate('/');
+    },
+    onError: () => toast.error('Failed to delete group'),
+  });
+
+  const handleSearchUsers = useCallback(async (query: string) => {
+    return searchUsers(query);
+  }, []);
+
   const handleReactionPickerOpen = useCallback((msgId: string, rect: DOMRect) => {
     setReactingMsgId(msgId);
     setReactionPickerRect(rect);
@@ -828,6 +881,12 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
         onReport={handleReport}
         onCloseGroupInfo={() => setGroupInfoOpen(false)}
         onCloseReadReceipts={() => setReadReceiptTarget(null)}
+        onUpdateGroup={(data) => updateGroupMutation.mutateAsync(data)}
+        onAddMember={(userId) => addMemberMutation.mutateAsync(userId)}
+        onRemoveMember={(userId) => removeMemberMutation.mutateAsync(userId)}
+        onLeaveGroup={() => leaveGroupMutation.mutateAsync()}
+        onDeleteGroup={() => deleteGroupMutation.mutateAsync()}
+        searchUsers={handleSearchUsers}
       />
     </div>
   );
