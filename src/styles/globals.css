@@ -59,8 +59,8 @@
   --chat-outgoing-bg: #0084ff;
   --chat-outgoing-foreground: #ffffff;
   --chat-tile-overlay: rgba(245, 247, 251, 0.85);
-  --scrollbar-track: #e2e8f0;
-  --scrollbar-thumb: #c0c8d4;
+  --scrollbar-track: #eaeff5;
+  --scrollbar-thumb: #c5cdd8;
 }
 
 @theme inline {
