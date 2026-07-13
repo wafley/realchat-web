@@ -118,7 +118,7 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
   return data;
 }
 
-export async function sendImageMessage(chatId: string, file: File, isDM: boolean): Promise<Message> {
+export async function sendImageMessage(chatId: string, file: File, isDM: boolean, caption?: string): Promise<Message> {
   if (DEV_MODE) {
     await delay(500);
     msgCounter++;
@@ -127,7 +127,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
       id: `msg-${msgCounter}`,
       groupId: chatId,
       senderId: DEV_USER_ID,
-      content: file.name,
+      content: caption ?? '',
       type: 'image',
       fileUrl: url,
       fileName: file.name,
@@ -141,7 +141,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
     MOCK_MESSAGES[chatId].push(msg);
     const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
     if (conv) {
-      conv.lastMessage = `📷 Photo`;
+      conv.lastMessage = caption ? `📷 ${caption}` : '📷 Photo';
       conv.lastTime = 'now';
     }
     return msg;
@@ -150,6 +150,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
   const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
   const form = new FormData();
   form.append('file', file);
+  if (caption) form.append('caption', caption);
   const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
   return data;
 }

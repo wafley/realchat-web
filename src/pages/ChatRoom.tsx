@@ -112,7 +112,7 @@ export default function ChatRoom() {
   });
 
   const sendImageMutation = useMutation({
-    mutationFn: (file: File) => sendImageMessage(chatId, file, isDM),
+    mutationFn: ({ file, caption }: { file: File; caption: string }) => sendImageMessage(chatId, file, isDM, caption || undefined),
     onSuccess: onMessageSent,
   });
 
@@ -184,9 +184,11 @@ export default function ChatRoom() {
   const handleSendImage = () => {
     if (!selectedImage) return;
     const file = selectedImage;
+    const caption = input.trim();
     setSelectedImage(null);
     setImagePreview(null);
-    sendImageMutation.mutate(file);
+    setInput('');
+    sendImageMutation.mutate({ file, caption });
   };
 
   const handleCancelImage = () => {
@@ -317,18 +319,31 @@ export default function ChatRoom() {
                       className={`overflow-hidden ${
                         msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base'
                       } ${isOwn
-                        ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
-                        : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
+                        ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
+                        : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
                       }`}
                     >
                       {msg.type === 'image' && msg.fileUrl ? (
-                        <img
-                          src={msg.fileUrl}
-                          alt={msg.content}
-                          className="max-w-full cursor-pointer object-cover transition-transform hover:scale-[1.02]"
-                          style={{ maxHeight: '300px' }}
-                          onClick={() => window.open(msg.fileUrl, '_blank')}
-                        />
+                        <div className="flex flex-col">
+                          <div className="overflow-hidden">
+                            <img
+                              src={msg.fileUrl}
+                              alt={msg.content || 'Image'}
+                              className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                              style={{ maxHeight: '300px' }}
+                              onClick={() => window.open(msg.fileUrl, '_blank')}
+                              loading="lazy"
+                            />
+                          </div>
+                          {msg.content && (
+                            <>
+                              <div className="mx-4 h-px bg-black/10" />
+                              <p className="px-4 pb-3 pt-2 text-sm lg:px-5 lg:pb-3 lg:pt-2.5 lg:text-base">
+                                {msg.content}
+                              </p>
+                            </>
+                          )}
+                        </div>
                       ) : (
                         <p>{msg.content}</p>
                       )}
@@ -353,16 +368,22 @@ export default function ChatRoom() {
 
       <div className="border-t border-border px-4 py-3">
         {imagePreview && (
-          <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-card p-2">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="h-12 w-12 rounded-lg object-cover"
-            />
-            <span className="flex-1 truncate text-sm text-foreground">{selectedImage?.name}</span>
+          <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
+            <div className="relative shrink-0">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-14 w-14 rounded-lg object-cover ring-1 ring-border lg:h-16 lg:w-16"
+              />
+              <div className="absolute inset-0 rounded-lg ring-1 ring-black/10" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">Image</p>
+              <p className="truncate text-xs text-muted-foreground">{selectedImage?.name}</p>
+            </div>
             <button
               onClick={handleCancelImage}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-9 lg:w-9"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10"
             >
               <X size={16} />
             </button>
@@ -385,7 +406,7 @@ export default function ChatRoom() {
           />
           <input
             type="text"
-            placeholder="Type a message..."
+            placeholder={selectedImage ? 'Add a caption...' : 'Type a message...'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
