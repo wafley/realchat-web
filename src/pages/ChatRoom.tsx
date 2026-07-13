@@ -7,7 +7,7 @@ import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole } from '@/services/chat';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -664,6 +664,16 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
     onError: () => toast.error('Failed to delete group'),
   });
 
+  const updateMemberRoleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'member' }) => updateMemberRole(chatId, userId, role),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
+      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
+      toast.success('Member role updated');
+    },
+    onError: () => toast.error('Failed to update member role'),
+  });
+
   const handleSearchUsers = useCallback(async (query: string) => {
     return searchUsers(query);
   }, []);
@@ -886,6 +896,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
         onRemoveMember={(userId) => removeMemberMutation.mutateAsync(userId)}
         onLeaveGroup={() => leaveGroupMutation.mutateAsync()}
         onDeleteGroup={() => deleteGroupMutation.mutateAsync()}
+        onUpdateMemberRole={(userId, role) => updateMemberRoleMutation.mutateAsync({ userId, role })}
         searchUsers={handleSearchUsers}
       />
     </div>
