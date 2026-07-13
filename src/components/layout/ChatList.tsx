@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useRef, useEffect, type ElementType } from 'react';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, Users, UserPlus, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Plus, MessageSquareText, Users, UserPlus, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import { useTypingStore } from '@/store/typingStore';
-import { getConversations } from '@/services/chat';
+import { getConversations, bulkDeleteConversations } from '@/services/chat';
+import type { Conversation } from '@/types';
 
 const tabs = [
   { id: 'messages', label: 'Messages', icon: MessageSquareText },
@@ -17,11 +18,52 @@ const tabs = [
 export default function ChatList() {
   const navigate = useNavigate();
   const { groupId, userId } = useParams();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const longPressTriggered = useRef(false);
+  const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [alsoDeleteMedia, setAlsoDeleteMedia] = useState(true);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const typingMap = useTypingStore((s) => s.typingMap);
+
+  const deleteMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteConversations(ids),
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ['conversations'] });
+      const prev = queryClient.getQueryData<Conversation[]>(['conversations']);
+      queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
+        if (!old) return old;
+        return old.filter((c) => !ids.includes(c.id));
+      });
+      return { prev };
+    },
+    onError: (_err, _ids, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(['conversations'], context.prev);
+      }
+      setToast({ message: 'Failed to delete chats. Please try again.' });
+    },
+    onSettled: () => {
+      setDeleteConfirmOpen(false);
+      setDeleteLoading(false);
+      setAlsoDeleteMedia(true);
+      exitSelectionMode();
+    },
+  });
 
   const { data: conversations = [], isPending, isError, error, refetch } = useQuery({
     queryKey: ['conversations'],
@@ -34,8 +76,143 @@ export default function ChatList() {
     return c.name.toLowerCase().includes(search.toLowerCase());
   });
 
+  const handleLongPressStart = (chatId: string, e: React.MouseEvent) => {
+    longPressStartPos.current = { x: e.clientX, y: e.clientY };
+    longPressTriggered.current = false;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      setIsSelectionMode(true);
+      setSelectedChatIds((prev) => {
+        const next = new Set(prev);
+        next.add(chatId);
+        return next;
+      });
+    }, 500);
+  };
+  const handleLongPressEnd = () => {
+    clearTimeout(longPressTimer.current);
+  };
+  const handleLongPressMove = (e: React.MouseEvent) => {
+    if (!longPressStartPos.current) return;
+    const dx = e.clientX - longPressStartPos.current.x;
+    const dy = e.clientY - longPressStartPos.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) {
+      clearTimeout(longPressTimer.current);
+      longPressStartPos.current = null;
+    }
+  };
+
+  const handleTouchStart = (chatId: string, e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    longPressStartPos.current = { x: touch.clientX, y: touch.clientY };
+    longPressTriggered.current = false;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      setIsSelectionMode(true);
+      setSelectedChatIds((prev) => {
+        const next = new Set(prev);
+        next.add(chatId);
+        return next;
+      });
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!longPressStartPos.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - longPressStartPos.current.x;
+    const dy = touch.clientY - longPressStartPos.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) {
+      clearTimeout(longPressTimer.current);
+      longPressStartPos.current = null;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    clearTimeout(longPressTimer.current);
+    longPressStartPos.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current);
+      longPressStartPos.current = null;
+    };
+  }, []);
+
+  const handleSelectToggle = (chatId: string) => {
+    setSelectedChatIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) {
+        next.delete(chatId);
+      } else {
+        next.add(chatId);
+      }
+      if (next.size === 0) setIsSelectionMode(false);
+      return next;
+    });
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedChatIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    const ids = pendingDeleteIds;
+    setDeleteLoading(true);
+
+    const activeChatId = location.pathname.startsWith('/dm/') ? userId : groupId;
+    if (activeChatId && ids.includes(activeChatId)) {
+      navigate('/');
+    }
+
+    deleteMutation.mutate(ids);
+  };
+
+  const openBulkDeleteConfirm = () => {
+    setPendingDeleteIds(Array.from(selectedChatIds));
+    setDeleteConfirmOpen(true);
+  };
+
+  const openSingleDeleteConfirm = (chatId: string) => {
+    setPendingDeleteIds([chatId]);
+    setDeleteConfirmOpen(true);
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+  }, [toast]);
+
   return (
     <div className="flex h-full flex-col">
+      {isSelectionMode ? (
+        <div className="flex items-center gap-3 border-b border-border px-3 py-2 lg:px-4 lg:py-3">
+          <button
+            onClick={exitSelectionMode}
+            aria-label="Cancel selection"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-10 lg:w-10"
+          >
+            <X size={20} />
+          </button>
+          <span className="flex-1 text-sm font-medium text-foreground lg:text-base">
+            {selectedChatIds.size} selected
+          </span>
+          <button
+            onClick={openBulkDeleteConfirm}
+            disabled={selectedChatIds.size === 0}
+            aria-label="Delete selected chats"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-30 lg:h-10 lg:w-10"
+          >
+            <Trash2 size={20} />
+          </button>
+        </div>
+      ) : (
         <div className="flex items-center gap-2 border-b border-border p-4 lg:px-5 lg:py-4">
           <div className="relative flex-1">
             <Search
@@ -58,7 +235,8 @@ export default function ChatList() {
           >
             <Plus size={20} />
           </button>
-      </div>
+        </div>
+      )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Chat">
         <div className="space-y-1">
@@ -127,70 +305,169 @@ export default function ChatList() {
         ) : (
           <div role="list">
             {filtered.map((chat) => {
-            const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
-            const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
-            return (
-              <Link
-                key={chat.id}
-                to={linkTo}
-                state={{ name: chat.name, online: chat.online }}
-                role="listitem"
-                aria-current={isActive ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
-                  isActive
-                    ? 'bg-accent/10'
-                    : 'hover:bg-accent/5',
-                )}
-              >
-                <div className="relative shrink-0">
-                  <Avatar className="lg:h-12 lg:w-12">
-                    {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
-                    <AvatarFallback className="lg:text-base">
-                      {chat.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {chat.online && (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 lg:h-3.5 lg:w-3.5" />
+              const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
+              const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
+              const isSelected = selectedChatIds.has(chat.id);
+              const ItemTag = (isSelectionMode ? 'div' : Link) as ElementType;
+              return (
+                <ItemTag
+                  key={chat.id}
+                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online } } : {})}
+                  role="listitem"
+                  aria-current={isActive && !isSelectionMode ? 'page' : undefined}
+                  onMouseDown={(e) => {
+                    if (e.button !== 0) return;
+                    handleLongPressStart(chat.id, e);
+                  }}
+                  onMouseUp={handleLongPressEnd}
+                  onMouseMove={handleLongPressMove}
+                  onMouseLeave={handleLongPressEnd}
+                  onTouchStart={(e) => handleTouchStart(chat.id, e)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    handleLongPressEnd();
+                    setContextMenu({ chatId: chat.id, x: e.clientX, y: e.clientY });
+                  }}
+                  onClick={(e) => {
+                    handleLongPressEnd();
+                    if (longPressTriggered.current) {
+                      longPressTriggered.current = false;
+                      e.preventDefault();
+                      return;
+                    }
+                    if (isSelectionMode) {
+                      e.preventDefault();
+                      handleSelectToggle(chat.id);
+                    }
+                  }}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
+                    isActive && !isSelectionMode
+                      ? 'bg-accent/10'
+                      : 'hover:bg-accent/5',
+                    isSelected && 'bg-accent/10',
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">
-                      {chat.name}
-                    </span>
-                    <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">
-                      {chat.lastTime}
-                    </span>
+                >
+                  <div className="relative shrink-0">
+                    <Avatar className="lg:h-12 lg:w-12">
+                      {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
+                      <AvatarFallback className="lg:text-base">
+                        {chat.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {chat.online && !isSelectionMode && (
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 lg:h-3.5 lg:w-3.5" />
+                    )}
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-accent/60">
+                        <Check size={16} className="text-white" />
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
-                      {typingMap[chat.id] ? (
-                        <span className="text-accent">typing...</span>
-                      ) : (
-                        chat.lastMessage
-                      )}
-                    </span>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {(chat.members ?? 0) > 0 && (
-                        <span className="whitespace-nowrap text-[10px] text-muted-foreground lg:text-xs">
-                          {chat.members} members
-                        </span>
-                      )}
-                      {(chat.unread ?? 0) > 0 && (
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground lg:h-6 lg:w-6 lg:text-xs">
-                          {chat.unread}
-                        </span>
-                      )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">
+                        {chat.name}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">
+                        {chat.lastTime}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
+                        {typingMap[chat.id] ? (
+                          <span className="text-accent">typing...</span>
+                        ) : (
+                          chat.lastMessage
+                        )}
+                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {(chat.members ?? 0) > 0 && (
+                          <span className="whitespace-nowrap text-[10px] text-muted-foreground lg:text-xs">
+                            {chat.members} members
+                          </span>
+                        )}
+                        {(chat.unread ?? 0) > 0 && !isSelectionMode && (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground lg:h-6 lg:w-6 lg:text-xs">
+                            {chat.unread}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            );
-          })}
+                </ItemTag>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {contextMenu && (
+        <div className="fixed inset-0 z-50" onMouseDown={() => setContextMenu(null)}>
+          <div
+            className="absolute w-48 rounded-lg border border-border bg-popover py-1 shadow-lg"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                openSingleDeleteConfirm(contextMenu.chatId);
+                setContextMenu(null);
+              }}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              <Trash2 size={16} className="text-muted-foreground" />
+              Delete Chat
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }} title="Delete Chat">
+        <p className="mb-4 text-sm text-muted-foreground">
+          {pendingDeleteIds.length === 1
+            ? 'This chat will be deleted from your chat list. This action cannot be undone.'
+            : `${pendingDeleteIds.length} chats will be deleted from your chat list. This action cannot be undone.`}
+        </p>
+        <label className="mb-4 flex items-start gap-3 rounded-lg bg-accent/5 px-3 py-3">
+          <input
+            type="checkbox"
+            checked={alsoDeleteMedia}
+            onChange={(e) => setAlsoDeleteMedia(e.target.checked)}
+            className="mt-0.5 shrink-0 accent-accent"
+          />
+          <span className="text-sm text-foreground">
+            Also delete media received in {pendingDeleteIds.length === 1 ? 'this chat' : 'these chats'} from the device gallery
+          </span>
+        </label>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }}
+            className="rounded-lg border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleBulkDelete}
+            disabled={deleteLoading}
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {deleteLoading && <Loader2 size={14} className="animate-spin" />}
+            {pendingDeleteIds.length === 1 ? 'Delete Chat' : `Delete ${pendingDeleteIds.length} Chats`}
+          </button>
+        </div>
+      </Modal>
+
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 z-[200] -translate-x-1/2 animate-fade-in-up" role="alert" aria-live="polite">
+          <div className="flex items-center gap-3 rounded-xl bg-foreground/90 px-5 py-3 text-sm font-medium text-background shadow-xl backdrop-blur-sm">
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

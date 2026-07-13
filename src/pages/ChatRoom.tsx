@@ -2,14 +2,15 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile, Ellipsis } from 'lucide-react';
+import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile, Clipboard, Forward, Trash2, Reply } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import Modal from '@/components/ui/modal';
 import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, markConversationAsRead } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead } from '@/services/chat';
 import EmojiPicker from 'emoji-picker-react';
 
 function formatTime(date: Date) {
@@ -50,6 +51,8 @@ export default function ChatRoom() {
   const [otherTyping, setOtherTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ msg: Message; x: number; y: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const setTyping = useTypingStore((s) => s.setTyping);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,6 +63,9 @@ export default function ChatRoom() {
   const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const scrollTriggerRef = useRef<HTMLDivElement>(null);
   const prevLastMsgIdRef = useRef<string | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
@@ -135,11 +141,65 @@ export default function ChatRoom() {
   const sendMutation = useMutation({
     mutationFn: ({ content, replyTo: rp }: { content: string; replyTo?: ReplyTo }) => sendMessage(chatId, content, isDM, rp),
     onSuccess(r) { onMessageSent(r); },
+    onError() { setToast({ message: 'Failed to send message. Please try again.' }); },
   });
 
   const sendImageMutation = useMutation({
     mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) => sendImageMessage(chatId, file, isDM, caption || undefined, rp),
     onSuccess(r) { onMessageSent(r); },
+    onError() { setToast({ message: 'Failed to send image. Please try again.' }); },
+  });
+
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [toast, setToast] = useState<{ message: string; action?: { label: string; onClick: () => void } } | null>(null);
+  const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ msgId, delForAll }: { msgId: string; delForAll: boolean }) => deleteMessage(chatId, msgId, delForAll),
+    onMutate: async ({ msgId, delForAll }) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', chatId, isDM] });
+      const prev = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM]);
+      queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            data: !delForAll
+              ? page.data.filter((m) => m.id !== msgId)
+              : page.data.map((m) =>
+                  m.id === msgId ? { ...m, content: 'You deleted this message', type: 'text' as const, fileUrl: undefined, fileName: undefined, replyTo: undefined } : m,
+                ),
+            total: !delForAll ? page.total - 1 : page.total,
+          })),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(['messages', chatId, isDM], context.prev);
+      }
+      setToast({ message: 'Failed to delete message. Please try again.' });
+    },
+    onSuccess: (_data, { delForAll }) => {
+      if (!delForAll) {
+        queryClient.setQueryData<{ id: string; lastMessage?: string }[]>(['conversations'], (prev) => {
+          if (!prev) return prev;
+          return prev.map((c) =>
+            c.id === chatId && c.lastMessage === deleteTarget?.content
+              ? { ...c, lastMessage: 'You deleted this message' }
+              : c,
+          );
+        });
+      }
+      setToast({ message: 'Message deleted' });
+    },
+    onSettled: () => {
+      setDeleteTarget(null);
+      setDeleteLoading(false);
+    },
   });
 
   const filteredMessages = showSearch && searchQuery.trim()
@@ -154,8 +214,10 @@ export default function ChatRoom() {
       if (showEmojiPicker) setShowEmojiPicker(false);
       if (replyingTo) setReplyingTo(null);
       if (lightboxUrl) setLightboxUrl(null);
+      if (contextMenu) setContextMenu(null);
+      if (deleteTarget) setDeleteTarget(null);
     }
-  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl]);
+  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -182,6 +244,17 @@ export default function ChatRoom() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEmojiPicker]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [contextMenu]);
 
   const handleEmojiClick = (emojiData: { emoji: string }) => {
     setInput((prev) => prev + emojiData.emoji);
@@ -241,17 +314,30 @@ export default function ChatRoom() {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  useEffect(() => {
+    if (!toast) return;
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+  }, [toast]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
+      longPressStartPosRef.current = null;
+      if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
+      if (typingDoneTimerRef.current) { clearTimeout(typingDoneTimerRef.current); typingDoneTimerRef.current = null; }
+      if (toastTimerRef.current) { clearTimeout(toastTimerRef.current); toastTimerRef.current = null; }
+    };
+  }, []);
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setSelectedImage(file);
     setImagePreview(URL.createObjectURL(file));
     e.target.value = '';
-  };
-
-  const handleReplyClick = (msg: Message) => {
-    if (showEmojiPicker) setShowEmojiPicker(false);
-    setReplyingTo(msg);
   };
 
   const handleCancelReply = () => {
@@ -263,6 +349,7 @@ export default function ChatRoom() {
     const file = selectedImage;
     const caption = input.trim();
     const rp = replyingTo ? { id: replyingTo.id, senderId: replyingTo.senderId, senderName: replyingTo.sender?.fullName ?? 'Unknown', content: replyingTo.content, type: replyingTo.type as 'text' | 'image', fileUrl: replyingTo.fileUrl, fileName: replyingTo.fileName } : undefined;
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setSelectedImage(null);
     setImagePreview(null);
     setInput('');
@@ -271,8 +358,105 @@ export default function ChatRoom() {
   };
 
   const handleCancelImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setSelectedImage(null);
     setImagePreview(null);
+  };
+
+  const handleLongPressStart = (msg: Message, e: React.PointerEvent) => {
+    longPressStartPosRef.current = { x: e.clientX, y: e.clientY };
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      longPressStartPosRef.current = null;
+      if (navigator.vibrate) navigator.vibrate(50);
+      let x = e.clientX;
+      let y = e.clientY;
+      const menuW = 180;
+      const menuH = 200;
+      if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
+      if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+      if (x < 8) x = 8;
+      if (y < 8) y = 8;
+      setContextMenu({ msg, x, y });
+      e.preventDefault();
+    }, 500);
+  };
+
+  const handleLongPressMove = (e: React.PointerEvent) => {
+    if (!longPressStartPosRef.current) return;
+    const dx = e.clientX - longPressStartPosRef.current.x;
+    const dy = e.clientY - longPressStartPosRef.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) {
+      handleLongPressEnd();
+    }
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartPosRef.current = null;
+  };
+
+  const handleTouchStart = (msg: Message, e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    longPressStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      longPressStartPosRef.current = null;
+      if (navigator.vibrate) navigator.vibrate(50);
+      let x = touch.clientX;
+      let y = touch.clientY;
+      const menuW = 180;
+      const menuH = 200;
+      if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
+      if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+      if (x < 8) x = 8;
+      if (y < 8) y = 8;
+      setContextMenu({ msg, x, y });
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!longPressStartPosRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - longPressStartPosRef.current.x;
+    const dy = touch.clientY - longPressStartPosRef.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) {
+      handleLongPressEnd();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    handleLongPressEnd();
+  };
+
+  const handleContextMenuAction = (action: string) => {
+    if (!contextMenu) return;
+    const msg = contextMenu.msg;
+    setContextMenu(null);
+    switch (action) {
+      case 'copy':
+        navigator.clipboard.writeText(msg.content);
+        setToast({ message: 'Copied to clipboard' });
+        break;
+      case 'reply':
+        setReplyingTo(msg);
+        break;
+      case 'forward':
+        setForwardTarget(msg);
+        break;
+      case 'delete':
+        setDeleteTarget(msg);
+        break;
+    }
+  };
+
+  const handleDeleteMessage = (deleteForAll: boolean) => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    deleteMutation.mutate({ msgId: deleteTarget.id, delForAll: deleteForAll });
   };
 
   const handleSend = () => {
@@ -418,18 +602,37 @@ export default function ChatRoom() {
                       </p>
                     )}
                   <div
-                    onClick={() => handleReplyClick(msg)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      let x = e.clientX;
+                      let y = e.clientY;
+                      const menuW = 180;
+                      const menuH = 200;
+                      if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
+                      if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
+                      if (x < 8) x = 8;
+                      if (y < 8) y = 8;
+                      setContextMenu({ msg, x, y });
+                    }}
+                    onPointerDown={(e) => handleLongPressStart(msg, e)}
+                    onPointerMove={handleLongPressMove}
+                    onPointerUp={handleLongPressEnd}
+                    onPointerCancel={handleLongPressEnd}
+                    onTouchStart={(e) => handleTouchStart(msg, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                     className={`cursor-pointer overflow-hidden ${
-                      msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-3 py-1.5 text-sm lg:px-4 lg:py-2 lg:text-base'
+                      msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-2.5 py-1 text-sm lg:px-3 lg:py-1.5 lg:text-base'
                     } ${isOwn
                       ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
                       : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
                     }`}
                   >
                     {msg.replyTo && (
-                      <div className={`mb-2 rounded-lg border-l-4 px-3 py-2 text-xs ${isOwn ? 'border-white/30 bg-white/5' : 'border-black/20 bg-black/5'}`}>
-                        <p className="text-[11px] font-semibold text-muted-foreground lg:text-xs">{msg.replyTo.senderName}</p>
-                        <p className="truncate text-muted-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
+                      <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${isOwn ? 'border-white/40 bg-white/10' : 'border-black/30 bg-black/8'}`}>
+                        <p className="text-[11px] font-semibold text-foreground/90 lg:text-xs">{msg.replyTo.senderName}</p>
+                        <p className="truncate text-foreground/70">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
                       </div>
                     )}
                     {msg.type === 'image' && msg.fileUrl ? (
@@ -447,7 +650,7 @@ export default function ChatRoom() {
                         {msg.content && (
                           <>
                             <div className="mx-4 h-px bg-black/10" />
-                            <p className="px-4 pb-3 pt-2 text-sm lg:px-5 lg:pb-3 lg:pt-2.5 lg:text-base">
+                            <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-2 lg:pt-2 lg:text-base">
                               {msg.content}
                             </p>
                           </>
@@ -494,8 +697,8 @@ export default function ChatRoom() {
             <div className="flex min-w-0 flex-1 items-start gap-2">
               <div className="mt-0.5 h-full w-0.5 shrink-0 self-stretch rounded-full bg-accent/60" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-accent lg:text-sm">Replying to {replyingTo.sender?.fullName ?? 'Unknown'}</p>
-                <p className="truncate text-xs text-muted-foreground lg:text-sm">{replyingTo.type === 'image' ? '📷 Photo' : replyingTo.content}</p>
+                <p className="truncate text-xs font-semibold text-foreground/90 lg:text-sm">Replying to {replyingTo.sender?.fullName ?? 'Unknown'}</p>
+                <p className="truncate text-xs text-foreground/70 lg:text-sm">{replyingTo.type === 'image' ? '📷 Photo' : replyingTo.content}</p>
               </div>
             </div>
             <button
@@ -583,6 +786,111 @@ export default function ChatRoom() {
           </button>
         </div>
       </div>
+
+      {deleteTarget && (
+        <Modal open={!!deleteTarget} onClose={() => { if (!deleteLoading) setDeleteTarget(null); }} title="Delete message?">
+          <div className="space-y-2" role="dialog" aria-modal="true" aria-label="Delete message options">
+            <button
+              onClick={() => handleDeleteMessage(false)}
+              disabled={deleteLoading}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
+            >
+              {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} className="text-muted-foreground" />}
+              Delete for me
+            </button>
+            {deleteTarget.senderId === currentUser?.id && (
+              <button
+                onClick={() => handleDeleteMessage(true)}
+                disabled={deleteLoading}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+              >
+                {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Delete for all
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {contextMenu && (
+        <div className="fixed inset-0 z-[90]" onClick={() => setContextMenu(null)}>
+          <div
+            ref={contextMenuRef}
+            className="absolute w-44 origin-top-left animate-scale-in overflow-hidden rounded-xl border border-border bg-card py-1 shadow-2xl"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+            role="menu"
+            aria-label="Message actions"
+          >
+            <button
+              onClick={() => handleContextMenuAction('reply')}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+              role="menuitem"
+            >
+              <Reply size={15} className="text-muted-foreground" />
+              Reply
+            </button>
+            <button
+              onClick={() => handleContextMenuAction('copy')}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+              role="menuitem"
+            >
+              <Clipboard size={15} className="text-muted-foreground" />
+              Copy
+            </button>
+            <button
+              onClick={() => handleContextMenuAction('forward')}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed opacity-50"
+              role="menuitem"
+              disabled
+              title="Coming soon"
+            >
+              <Forward size={15} className="text-muted-foreground" />
+              Forward
+              <span className="ml-auto text-[10px] text-muted-foreground/60">Soon</span>
+            </button>
+            <div className="my-1 border-t border-border" />
+            <button
+              onClick={() => handleContextMenuAction('delete')}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+              role="menuitem"
+            >
+              <Trash2 size={15} />
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {forwardTarget && (
+        <Modal open={!!forwardTarget} onClose={() => setForwardTarget(null)} title="Forward message">
+          <p className="mb-4 text-sm text-muted-foreground">This message will be forwarded. This feature is coming soon.</p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => { setToast({ message: 'Message forwarded' }); setForwardTarget(null); }}
+              className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            >
+              Forward
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 z-[200] -translate-x-1/2 animate-fade-in-up" role="alert" aria-live="polite">
+          <div className="flex items-center gap-3 rounded-xl bg-foreground/90 px-5 py-3 text-sm font-medium text-background shadow-xl backdrop-blur-sm">
+            <span>{toast.message}</span>
+            {toast.action && (
+              <button
+                onClick={() => { toast.action?.onClick(); setToast(null); }}
+                className="shrink-0 font-semibold text-accent transition-colors hover:opacity-80"
+              >
+                {toast.action.label}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {lightboxUrl && (
         <div

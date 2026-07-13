@@ -96,117 +96,184 @@ function senderName(senderId: string): string {
 let msgCounter = 100;
 
 export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 30): Promise<PaginatedResponse<Message>> {
-  if (DEV_MODE) {
-    await delay(300);
-    const all = MOCK_MESSAGES[chatId] ?? [];
-    const total = all.length;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const start = Math.max(0, total - page * limit);
-    const end = total - (page - 1) * limit;
-    const data = all.slice(start, end).map((m) => ({
-      ...m,
-      status: m.status ?? (m.senderId === DEV_USER_ID ? 'read' as const : undefined),
-      sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
-    }));
-    return { data, total, page, limit, totalPages };
+  try {
+    if (DEV_MODE) {
+      await delay(300);
+      const all = MOCK_MESSAGES[chatId] ?? [];
+      const total = all.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const start = Math.max(0, total - page * limit);
+      const end = total - (page - 1) * limit;
+      const data = all.slice(start, end).map((m) => ({
+        ...m,
+        status: m.status ?? (m.senderId === DEV_USER_ID ? 'read' as const : undefined),
+        sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
+      }));
+      return { data, total, page, limit, totalPages };
+    }
+    const { default: axios } = await import('axios');
+    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
+    const { data } = await axios.get<PaginatedResponse<Message>>(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+      params: { page, limit },
+    });
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to fetch messages');
   }
-  const { default: axios } = await import('axios');
-  const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-  const { data } = await axios.get<PaginatedResponse<Message>>(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-    params: { page, limit },
-  });
-  return data;
 }
 
 export async function sendImageMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
-  if (DEV_MODE) {
-    await delay(500);
-    msgCounter++;
-    const url = URL.createObjectURL(file);
-    const msg: Message = {
-      id: `msg-${msgCounter}`,
-      groupId: chatId,
-      senderId: DEV_USER_ID,
-      content: caption ?? '',
-      type: 'image',
-      fileUrl: url,
-      fileName: file.name,
-      status: 'sent',
-      replyTo,
-      createdAt: new Date(),
-      sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
-    };
-    if (!MOCK_MESSAGES[chatId]) {
-      MOCK_MESSAGES[chatId] = [];
+  try {
+    if (DEV_MODE) {
+      await delay(500);
+      msgCounter++;
+      const url = URL.createObjectURL(file);
+      const msg: Message = {
+        id: `msg-${msgCounter}`,
+        groupId: chatId,
+        senderId: DEV_USER_ID,
+        content: caption ?? '',
+        type: 'image',
+        fileUrl: url,
+        fileName: file.name,
+        status: 'sent',
+        replyTo,
+        createdAt: new Date(),
+        sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
+      };
+      if (!MOCK_MESSAGES[chatId]) {
+        MOCK_MESSAGES[chatId] = [];
+      }
+      MOCK_MESSAGES[chatId].push(msg);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (conv) {
+        conv.lastMessage = caption ? `📷 ${caption}` : '📷 Photo';
+        conv.lastTime = 'now';
+      }
+      return msg;
     }
-    MOCK_MESSAGES[chatId].push(msg);
-    const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-    if (conv) {
-      conv.lastMessage = caption ? `📷 ${caption}` : '📷 Photo';
-      conv.lastTime = 'now';
-    }
-    return msg;
+    const { default: axios } = await import('axios');
+    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
+    const form = new FormData();
+    form.append('file', file);
+    if (caption) form.append('caption', caption);
+    if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
+    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to send image');
   }
-  const { default: axios } = await import('axios');
-  const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-  const form = new FormData();
-  form.append('file', file);
-  if (caption) form.append('caption', caption);
-  if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
-  const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
-  return data;
 }
 
 export async function sendMessage(chatId: string, content: string, isDM: boolean, replyTo?: ReplyTo): Promise<Message> {
-  if (DEV_MODE) {
-    await delay(200);
-    msgCounter++;
-    const msg: Message = {
-      id: `msg-${msgCounter}`,
-      groupId: chatId,
-      senderId: DEV_USER_ID,
-      content,
-      type: 'text',
-      status: 'sent',
-      replyTo,
-      createdAt: new Date(),
-      sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
-    };
-    if (!MOCK_MESSAGES[chatId]) {
-      MOCK_MESSAGES[chatId] = [];
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      msgCounter++;
+      const msg: Message = {
+        id: `msg-${msgCounter}`,
+        groupId: chatId,
+        senderId: DEV_USER_ID,
+        content,
+        type: 'text',
+        status: 'sent',
+        replyTo,
+        createdAt: new Date(),
+        sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
+      };
+      if (!MOCK_MESSAGES[chatId]) {
+        MOCK_MESSAGES[chatId] = [];
+      }
+      MOCK_MESSAGES[chatId].push(msg);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (conv) {
+        conv.lastMessage = content;
+        conv.lastTime = 'now';
+      }
+      return msg;
     }
-    MOCK_MESSAGES[chatId].push(msg);
-    const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-    if (conv) {
-      conv.lastMessage = content;
-      conv.lastTime = 'now';
-    }
-    return msg;
+    const { default: axios } = await import('axios');
+    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
+    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, { content, replyTo });
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to send message');
   }
-  const { default: axios } = await import('axios');
-  const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-  const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, { content, replyTo });
-  return data;
+}
+
+export async function deleteMessage(chatId: string, messageId: string, deleteForAll: boolean): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(150);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      if (deleteForAll) {
+        msgs[idx] = {
+          ...msgs[idx],
+          content: 'You deleted this message',
+          type: 'text',
+          fileUrl: undefined,
+          fileName: undefined,
+          replyTo: undefined,
+        };
+      }
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, {
+      data: { deleteForAll },
+    });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to delete message');
+  }
 }
 
 export async function markConversationAsRead(chatId: string): Promise<void> {
-  if (DEV_MODE) {
-    const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-    if (conv) conv.unread = 0;
-    return;
+  try {
+    if (DEV_MODE) {
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (conv) conv.unread = 0;
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.post(`${import.meta.env.VITE_API_URL}/conversations/${chatId}/read`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to mark as read');
   }
-  const { default: axios } = await import('axios');
-  await axios.post(`${import.meta.env.VITE_API_URL}/conversations/${chatId}/read`);
 }
 
 export async function getConversations(): Promise<ChatConversation[]> {
-  if (DEV_MODE) {
-    await delay(200);
-    return [...MOCK_CONVERSATIONS];
-  }
-  const { default: axios } = await import('axios');
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return [...MOCK_CONVERSATIONS];
+    }
+    const { default: axios } = await import('axios');
     const { data } = await axios.get<ChatConversation[]>(`${import.meta.env.VITE_API_URL}/conversations`);
-  return data;
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to fetch conversations');
+  }
+}
+
+export async function bulkDeleteConversations(ids: string[]): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      ids.forEach((id) => {
+        const idx = MOCK_CONVERSATIONS.findIndex((c) => c.id === id);
+        if (idx !== -1) MOCK_CONVERSATIONS.splice(idx, 1);
+        delete MOCK_MESSAGES[id];
+      });
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.post(`${import.meta.env.VITE_API_URL}/conversations/bulk-delete`, { ids });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to delete conversations');
+  }
 }
 
 function delay(ms: number) {
