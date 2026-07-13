@@ -214,6 +214,27 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
   }
 }
 
+export async function editMessage(chatId: string, messageId: string, content: string): Promise<Message> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) throw new Error('Chat not found');
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) throw new Error('Message not found');
+      msgs[idx] = { ...msgs[idx], content, edited: true, updatedAt: new Date() };
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (conv) { conv.lastMessage = content; conv.lastTime = 'now'; }
+      return { ...msgs[idx] };
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.patch<Message>(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, { content });
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to edit message');
+  }
+}
+
 export async function deleteMessage(chatId: string, messageId: string, deleteForAll: boolean): Promise<void> {
   try {
     if (DEV_MODE) {

@@ -41,6 +41,7 @@ export interface Message {
   replyTo?: ReplyTo;
   isPinned?: boolean;
   readBy?: string[];
+  edited?: boolean;
   reactions?: Reaction[];
   createdAt: Date;
   updatedAt?: Date;

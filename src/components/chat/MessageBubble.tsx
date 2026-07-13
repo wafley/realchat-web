@@ -223,6 +223,7 @@ function MessageBubbleComp({
           </div>
         )}
         <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
+          {msg.edited && <span className="italic">edited</span>}
           {formatTime(msg.createdAt)}
           {isOwn && msg.status && (
             msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground lg:size-3.5" />
