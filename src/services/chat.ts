@@ -83,7 +83,7 @@ const MOCK_MESSAGES: Record<string, Message[]> = {
   ],
 };
 
-function senderName(senderId: string): string {
+export function senderName(senderId: string): string {
   const map: Record<string, string> = {
     [DEV_USER_ID]: 'You',
     'aang': 'Aang Gacor',
@@ -94,6 +94,27 @@ function senderName(senderId: string): string {
     'deploy-bot': 'Deploy Bot',
   };
   return map[senderId] ?? 'Unknown';
+}
+
+const GROUP_MEMBER_IDS = ['aang', 'bambang', 'cici', 'dewi', 'eko'];
+
+const DM_USER_MAP: Record<string, string> = {
+  'dm1': 'aang',
+  'dm2': 'bambang',
+  'dm3': 'cici',
+  'dm4': 'dewi',
+  'dm5': 'eko',
+};
+
+function populateReadBy(msg: Message, chatId: string, isDM: boolean): string[] | undefined {
+  if (msg.type === 'system') return undefined;
+  if (isDM) {
+    const otherId = DM_USER_MAP[chatId];
+    if (!otherId) return undefined;
+    return msg.senderId === DEV_USER_ID ? [otherId] : [DEV_USER_ID];
+  }
+  if (msg.senderId === DEV_USER_ID) return [...GROUP_MEMBER_IDS];
+  return [DEV_USER_ID];
 }
 
 let groupIdCounter = 10;
@@ -120,6 +141,7 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
       const data = all.slice(start, end).map((m) => ({
         ...m,
         status: m.status ?? (m.senderId === DEV_USER_ID ? 'read' as const : undefined),
+        readBy: m.readBy ?? populateReadBy(m, chatId, isDM),
         sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
       }));
       return { data, total, page, limit, totalPages };
@@ -269,6 +291,14 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
     if (DEV_MODE) {
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       if (conv) conv.unread = 0;
+      const msgs = MOCK_MESSAGES[chatId];
+      if (msgs) {
+        msgs.forEach((m) => {
+          if (m.senderId !== DEV_USER_ID && !m.readBy?.includes(DEV_USER_ID)) {
+            m.readBy = [...(m.readBy ?? []), DEV_USER_ID];
+          }
+        });
+      }
       return;
     }
     const { default: axios } = await import('axios');
