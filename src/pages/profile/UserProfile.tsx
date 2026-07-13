@@ -1,19 +1,37 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { getUser } from '@/services/user';
+import { blockUser as blockUserService, DM_USER_MAP } from '@/services/chat';
+import { toast } from 'sonner';
+
+const USER_DM_REVERSE: Record<string, string> = {};
+for (const [dmId, uId] of Object.entries(DM_USER_MAP)) {
+  USER_DM_REVERSE[uId] = dmId;
+}
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
 
+  const queryClient = useQueryClient();
+
   const { data: user, isPending, isError } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => getUser(userId!),
     enabled: !!userId,
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: () => blockUserService(userId!),
+    onSuccess: () => {
+      toast.success('User blocked');
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: () => toast.error('Failed to block user'),
   });
 
   const infoItems = user
@@ -101,15 +119,26 @@ export default function UserProfile() {
 
               <div className="mx-6 mb-8 flex flex-col gap-2">
                 <button
-                  onClick={() => navigate(`/dm/${user.id}`, { state: { name: user.fullName, online: user.status === 'online' } })}
+                  onClick={() => {
+                    const dmId = USER_DM_REVERSE[user.id];
+                    if (dmId) {
+                      navigate(`/dm/${dmId}`, { state: { name: user.fullName, online: user.status === 'online' } });
+                    } else {
+                      toast.error('No conversation with this user');
+                    }
+                  }}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
                 >
                   <MessageSquareText size={16} />
                   Send Message
                 </button>
-                <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
-                  <Ban size={16} />
-                  Block User
+                <button
+                  onClick={() => blockMutation.mutate()}
+                  disabled={blockMutation.isPending}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
+                >
+                  {blockMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
+                  {blockMutation.isPending ? 'Blocking...' : 'Block User'}
                 </button>
               </div>
             </>
