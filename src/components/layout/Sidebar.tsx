@@ -19,9 +19,9 @@ export default function Sidebar() {
             end={to === '/'}
             className={({ isActive }) =>
               cn(
-              'flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:scale-110 active:scale-95 lg:h-12 lg:w-12',
+              'flex h-10 w-10 items-center justify-center rounded-lg transition-colors lg:h-12 lg:w-12',
               isActive
-                ? 'bg-accent/20 text-accent'
+                ? 'bg-accent/15 text-accent'
                 : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground',
               )
             }
