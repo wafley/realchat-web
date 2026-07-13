@@ -26,11 +26,15 @@ export interface Message {
   senderId: string;
   sender?: User;
   content: string;
-  type: 'text' | 'image' | 'file' | 'system';
+  type: 'text' | 'image' | 'file' | 'system' | 'video';
   fileUrl?: string;
   fileName?: string;
+  fileSize?: number;
+  duration?: number;
   status?: MessageStatus;
   replyTo?: ReplyTo;
+  isPinned?: boolean;
+  readBy?: string[];
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -67,6 +71,7 @@ export interface Conversation {
   unread?: number;
   online?: boolean;
   members?: number;
+  muted?: boolean;
 }
 
 export interface FriendRequest {

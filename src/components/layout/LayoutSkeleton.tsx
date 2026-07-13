@@ -1,5 +1,3 @@
-import { cn } from '@/lib/utils';
-
 export function ListSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="flex-1 overflow-y-auto">
