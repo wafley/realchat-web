@@ -28,6 +28,8 @@ interface MessageListProps {
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
   onClickImage: (url: string) => void;
+  onToggleReaction: (msgId: string, emoji: string) => void;
+  onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
 }
 
 export default function MessageList({
@@ -54,6 +56,8 @@ export default function MessageList({
   onTouchMove,
   onTouchEnd,
   onClickImage,
+  onToggleReaction,
+  onReactionPickerOpen,
 }: MessageListProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-chat-tile-overlay px-4 py-4">
@@ -122,6 +126,9 @@ export default function MessageList({
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                   onClickImage={onClickImage}
+                  currentUserId={currentUserId}
+                  onToggleReaction={onToggleReaction}
+                  onReactionPickerOpen={onReactionPickerOpen}
                 />
               </div>
             );

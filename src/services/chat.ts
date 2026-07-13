@@ -1,4 +1,4 @@
-import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember } from '@/types';
+import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction } from '@/types';
 
 interface ChatConversation {
   id: string;
@@ -514,6 +514,32 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
     await axios.patch(`${import.meta.env.VITE_API_URL}/groups/${groupId}`, data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to update group');
+  }
+}
+
+export async function toggleReaction(chatId: string, messageId: string, emoji: string): Promise<Reaction[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return [];
+      const msg = msgs.find((m) => m.id === messageId);
+      if (!msg) return [];
+      const current = msg.reactions ?? [];
+      const existingIdx = current.findIndex((r) => r.userId === DEV_USER_ID && r.emoji === emoji);
+      if (existingIdx !== -1) {
+        current.splice(existingIdx, 1);
+      } else {
+        current.push({ emoji, userId: DEV_USER_ID, userName: 'You' });
+      }
+      msg.reactions = current;
+      return [...current];
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.post<{ reactions: Reaction[] }>(`${import.meta.env.VITE_API_URL}/messages/${messageId}/reactions`, { emoji });
+    return data.reactions;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to toggle reaction');
   }
 }
 

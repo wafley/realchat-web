@@ -1,5 +1,5 @@
 import { memo, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Check, CheckCheck, Clock, FileText } from 'lucide-react';
+import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
@@ -12,6 +12,7 @@ interface MessageBubbleProps {
   hasActiveSearch: boolean;
   searchMatchIds: string[];
   activeMatchIndex: number;
+  currentUserId: string | undefined;
   onContextMenu: (msg: Message, x: number, y: number) => void;
   onLongPressStart: (msg: Message, e: PointerEvent) => void;
   onLongPressMove: (e: PointerEvent) => void;
@@ -20,6 +21,8 @@ interface MessageBubbleProps {
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
   onClickImage: (url: string) => void;
+  onToggleReaction: (msgId: string, emoji: string) => void;
+  onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
 }
 
 function MessageBubbleComp({
@@ -30,6 +33,7 @@ function MessageBubbleComp({
   hasActiveSearch,
   searchMatchIds,
   activeMatchIndex,
+  currentUserId,
   onContextMenu,
   onLongPressStart,
   onLongPressMove,
@@ -38,7 +42,19 @@ function MessageBubbleComp({
   onTouchMove,
   onTouchEnd,
   onClickImage,
+  onToggleReaction,
+  onReactionPickerOpen,
 }: MessageBubbleProps) {
+  const reactionMap = new Map<string, { count: number; hasMine: boolean }>();
+  if (msg.reactions) {
+    for (const r of msg.reactions) {
+      const entry = reactionMap.get(r.emoji) ?? { count: 0, hasMine: false };
+      entry.count++;
+      if (r.userId === currentUserId) entry.hasMine = true;
+      reactionMap.set(r.emoji, entry);
+    }
+  }
+
   return (
     <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
       {!isOwn && (
@@ -152,6 +168,33 @@ function MessageBubbleComp({
             </span>
           )}
         </div>
+        {(
+          <div className={`-mb-1 mt-1 flex flex-wrap gap-1 ${isOwn ? 'justify-end' : ''}`}>
+            {Array.from(reactionMap.entries()).map(([emoji, { count, hasMine }]) => (
+              <button
+                key={emoji}
+                onClick={() => onToggleReaction(msg.id, emoji)}
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                  hasMine
+                    ? 'border-accent/40 bg-accent/10 text-accent'
+                    : 'border-border bg-card/50 text-muted-foreground hover:bg-accent/5'
+                }`}
+              >
+                <span className="text-sm">{emoji}</span>
+                <span>{count}</span>
+              </button>
+            ))}
+            <button
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                onReactionPickerOpen(msg.id, rect);
+              }}
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:bg-accent/5"
+            >
+              <SmilePlus size={12} />
+            </button>
+          </div>
+        )}
         <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
           {formatTime(msg.createdAt)}
           {isOwn && msg.status && (

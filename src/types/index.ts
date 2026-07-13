@@ -10,6 +10,12 @@ export interface User {
   createdAt: Date;
 }
 
+export interface Reaction {
+  emoji: string;
+  userId: string;
+  userName: string;
+}
+
 export interface ReplyTo {
   id: string;
   senderId: string;
@@ -35,6 +41,7 @@ export interface Message {
   replyTo?: ReplyTo;
   isPinned?: boolean;
   readBy?: string[];
+  reactions?: Reaction[];
   createdAt: Date;
   updatedAt?: Date;
 }
