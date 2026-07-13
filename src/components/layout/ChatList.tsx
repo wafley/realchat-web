@@ -26,7 +26,7 @@ export default function ChatList() {
 
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
-  const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
 
@@ -36,7 +36,7 @@ export default function ChatList() {
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const typingMap = useTypingStore((s) => s.typingMap);
 
@@ -91,14 +91,14 @@ export default function ChatList() {
     }, 500);
   };
   const handleLongPressEnd = () => {
-    clearTimeout(longPressTimer.current);
+    clearTimeout(longPressTimer.current ?? undefined);
   };
   const handleLongPressMove = (e: React.MouseEvent) => {
     if (!longPressStartPos.current) return;
     const dx = e.clientX - longPressStartPos.current.x;
     const dy = e.clientY - longPressStartPos.current.y;
     if (Math.sqrt(dx * dx + dy * dy) > 10) {
-      clearTimeout(longPressTimer.current);
+      clearTimeout(longPressTimer.current ?? undefined);
       longPressStartPos.current = null;
     }
   };
@@ -125,19 +125,19 @@ export default function ChatList() {
     const dx = touch.clientX - longPressStartPos.current.x;
     const dy = touch.clientY - longPressStartPos.current.y;
     if (Math.sqrt(dx * dx + dy * dy) > 10) {
-      clearTimeout(longPressTimer.current);
+      clearTimeout(longPressTimer.current ?? undefined);
       longPressStartPos.current = null;
     }
   };
 
   const handleTouchEnd = () => {
-    clearTimeout(longPressTimer.current);
+    clearTimeout(longPressTimer.current ?? undefined);
     longPressStartPos.current = null;
   };
 
   useEffect(() => {
     return () => {
-      clearTimeout(longPressTimer.current);
+      clearTimeout(longPressTimer.current ?? undefined);
       longPressStartPos.current = null;
     };
   }, []);
@@ -315,23 +315,23 @@ export default function ChatList() {
                   {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online } } : {})}
                   role="listitem"
                   aria-current={isActive && !isSelectionMode ? 'page' : undefined}
-                  onMouseDown={(e) => {
+                  onMouseDown={(e: React.MouseEvent) => {
                     if (e.button !== 0) return;
                     handleLongPressStart(chat.id, e);
                   }}
                   onMouseUp={handleLongPressEnd}
                   onMouseMove={handleLongPressMove}
                   onMouseLeave={handleLongPressEnd}
-                  onTouchStart={(e) => handleTouchStart(chat.id, e)}
-                  onTouchMove={handleTouchMove}
+                  onTouchStart={(e: React.TouchEvent) => handleTouchStart(chat.id, e)}
+                  onTouchMove={(e: React.TouchEvent) => handleTouchMove(e)}
                   onTouchEnd={handleTouchEnd}
                   onTouchCancel={handleTouchEnd}
-                  onContextMenu={(e) => {
+                  onContextMenu={(e: React.MouseEvent) => {
                     e.preventDefault();
                     handleLongPressEnd();
                     setContextMenu({ chatId: chat.id, x: e.clientX, y: e.clientY });
                   }}
-                  onClick={(e) => {
+                  onClick={(e: React.MouseEvent) => {
                     handleLongPressEnd();
                     if (longPressTriggered.current) {
                       longPressTriggered.current = false;

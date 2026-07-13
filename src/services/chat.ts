@@ -1,4 +1,4 @@
-import type { Message, PaginatedResponse, ReplyTo } from '@/types';
+import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember } from '@/types';
 
 interface ChatConversation {
   id: string;
@@ -10,6 +10,7 @@ interface ChatConversation {
   unread?: number;
   online?: boolean;
   members?: number;
+  muted?: boolean;
 }
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -17,15 +18,15 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 const DEV_USER_ID = 'dev-user-1';
 
 const MOCK_CONVERSATIONS: ChatConversation[] = [
-  { id: '1', name: 'General', type: 'group', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12 },
-  { id: '2', name: 'Random', type: 'group', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: true, members: 10 },
-  { id: '3', name: 'Project Alpha', type: 'group', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6 },
-  { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, members: 5 },
-  { id: 'dm1', name: 'Aang Gacor', type: 'dm', lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2, online: true },
-  { id: 'dm2', name: 'Bambang', type: 'dm', lastMessage: 'The server migration is complete', lastTime: '09:00', online: true },
-  { id: 'dm3', name: 'Cici', type: 'dm', lastMessage: "I'll be out tomorrow", lastTime: '16:00', online: false },
-  { id: 'dm4', name: 'Dewi', type: 'dm', lastMessage: 'The deadline has been extended', lastTime: '14:00', online: true },
-  { id: 'dm5', name: 'Eko', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: '11:06', online: false },
+  { id: '1', name: 'General', type: 'group', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12, muted: false },
+  { id: '2', name: 'Random', type: 'group', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: true, members: 10, muted: false },
+  { id: '3', name: 'Project Alpha', type: 'group', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6, muted: false },
+  { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, members: 5, muted: false },
+  { id: 'dm1', name: 'Aang Gacor', type: 'dm', lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2, online: true, muted: false },
+  { id: 'dm2', name: 'Bambang', type: 'dm', lastMessage: 'The server migration is complete', lastTime: '09:00', online: true, muted: false },
+  { id: 'dm3', name: 'Cici', type: 'dm', lastMessage: "I'll be out tomorrow", lastTime: '16:00', online: false, muted: false },
+  { id: 'dm4', name: 'Dewi', type: 'dm', lastMessage: 'The deadline has been extended', lastTime: '14:00', online: true, muted: false },
+  { id: 'dm5', name: 'Eko', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: '11:06', online: false, muted: false },
 ];
 
 const MOCK_MESSAGES: Record<string, Message[]> = {
@@ -273,6 +274,246 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
     await axios.post(`${import.meta.env.VITE_API_URL}/conversations/bulk-delete`, { ids });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete conversations');
+  }
+}
+
+export async function forwardMessage(targetChatId: string, msg: Message, sourceChatId: string): Promise<Message> {
+  try {
+    if (DEV_MODE) {
+      await delay(300);
+      msgCounter++;
+      const forwarded: Message = {
+        id: `msg-${msgCounter}`,
+        groupId: targetChatId,
+        senderId: DEV_USER_ID,
+        content: msg.content,
+        type: msg.type,
+        fileUrl: msg.fileUrl,
+        fileName: msg.fileName,
+        status: 'sent',
+        createdAt: new Date(),
+        sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
+      };
+      if (!MOCK_MESSAGES[targetChatId]) MOCK_MESSAGES[targetChatId] = [];
+      MOCK_MESSAGES[targetChatId].push(forwarded);
+      return forwarded;
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}/messages/forward`, {
+      targetChatId, messageId: msg.id, sourceChatId,
+    });
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to forward message');
+  }
+}
+
+export async function pinMessage(chatId: string, messageId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      msgs[idx] = { ...msgs[idx], isPinned: true };
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.post(`${import.meta.env.VITE_API_URL}/messages/${messageId}/pin`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to pin message');
+  }
+}
+
+export async function unpinMessage(chatId: string, messageId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      msgs[idx] = { ...msgs[idx], isPinned: false };
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/messages/${messageId}/pin`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to unpin message');
+  }
+}
+
+export async function getPinnedMessages(chatId: string): Promise<Message[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId] ?? [];
+      return msgs.filter((m) => m.isPinned);
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.get<Message[]>(`${import.meta.env.VITE_API_URL}/messages/${chatId}/pinned`);
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get pinned messages');
+  }
+}
+
+export async function sendFileMessage(chatId: string, file: File, isDM: boolean, caption?: string): Promise<Message> {
+  try {
+    if (DEV_MODE) {
+      await delay(500);
+      msgCounter++;
+      const url = URL.createObjectURL(file);
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+      const isVideo = ['mp4', 'webm', 'mov', 'avi'].includes(ext);
+      const msg: Message = {
+        id: `msg-${msgCounter}`,
+        groupId: chatId,
+        senderId: DEV_USER_ID,
+        content: caption ?? '',
+        type: isVideo ? 'video' : 'file',
+        fileUrl: url,
+        fileName: file.name,
+        fileSize: file.size,
+        duration: isVideo ? 0 : undefined,
+        status: 'sent',
+        createdAt: new Date(),
+        sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
+      };
+      if (!MOCK_MESSAGES[chatId]) MOCK_MESSAGES[chatId] = [];
+      MOCK_MESSAGES[chatId].push(msg);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (conv) {
+        conv.lastMessage = isVideo ? '🎬 Video' : `📎 ${file.name}`;
+        conv.lastTime = 'now';
+      }
+      return msg;
+    }
+    const { default: axios } = await import('axios');
+    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
+    const form = new FormData();
+    form.append('file', file);
+    if (caption) form.append('caption', caption);
+    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to send file');
+  }
+}
+
+export async function toggleMuteConversation(chatId: string): Promise<boolean> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (!conv) return false;
+      conv.muted = !conv.muted;
+      return conv.muted;
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.post<{ muted: boolean }>(`${import.meta.env.VITE_API_URL}/conversations/${chatId}/toggle-mute`);
+    return data.muted;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to toggle mute');
+  }
+}
+
+export async function blockUser(userId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.post(`${import.meta.env.VITE_API_URL}/users/${userId}/block`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to block user');
+  }
+}
+
+export async function reportUser(userId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.post(`${import.meta.env.VITE_API_URL}/users/${userId}/report`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to report user');
+  }
+}
+
+export async function getGroup(groupId: string): Promise<Group> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const members: GroupMember[] = [
+        { id: 'gm1', userId: 'aang', groupId, role: 'admin', joinedAt: new Date(), user: { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: '', status: 'online', createdAt: new Date() } },
+        { id: 'gm2', userId: 'bambang', groupId, role: 'member', joinedAt: new Date(), user: { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: '', status: 'online', createdAt: new Date() } },
+        { id: 'gm3', userId: 'cici', groupId, role: 'admin', joinedAt: new Date(), user: { id: 'cici', username: 'cici', fullName: 'Cici', email: '', status: 'online', createdAt: new Date() } },
+        { id: 'gm4', userId: 'dewi', groupId, role: 'member', joinedAt: new Date(), user: { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: '', status: 'offline', createdAt: new Date() } },
+        { id: 'gm5', userId: 'eko', groupId, role: 'member', joinedAt: new Date(), user: { id: 'eko', username: 'eko', fullName: 'Eko', email: '', status: 'offline', createdAt: new Date() } },
+        { id: 'gm6', userId: DEV_USER_ID, groupId, role: 'admin', joinedAt: new Date(), user: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: '', status: 'online', createdAt: new Date() } },
+      ];
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
+      return {
+        id: groupId,
+        name: conv?.name ?? 'Group',
+        description: 'A great group for discussion',
+        members,
+        creatorId: 'aang',
+        isPrivate: false,
+        createdAt: new Date(),
+      };
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.get<Group>(`${import.meta.env.VITE_API_URL}/groups/${groupId}`);
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get group');
+  }
+}
+
+export async function addGroupMember(groupId: string, userId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.post(`${import.meta.env.VITE_API_URL}/groups/${groupId}/members`, { userId });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to add member');
+  }
+}
+
+export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/groups/${groupId}/members/${userId}`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to remove member');
+  }
+}
+
+export async function updateGroup(groupId: string, data: { name?: string; description?: string; avatarUrl?: string }): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
+      if (conv && data.name) conv.name = data.name;
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.patch(`${import.meta.env.VITE_API_URL}/groups/${groupId}`, data);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to update group');
   }
 }
 

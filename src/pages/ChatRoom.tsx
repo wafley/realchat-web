@@ -1,47 +1,26 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile, Clipboard, Forward, Trash2, Reply } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import Modal from '@/components/ui/modal';
+import { toast } from 'sonner';
 import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types';
 import { useAuthStore } from '@/store/authStore';
-import { useThemeStore } from '@/store/themeStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead } from '@/services/chat';
-import EmojiPicker from 'emoji-picker-react';
+import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup } from '@/services/chat';
 
-function formatTime(date: Date) {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (days === 1) return 'Yesterday';
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
-
-function formatDateSeparator(date: Date): string {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diff = Math.floor((today.getTime() - target.getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  return date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
-}
-
-function getDateKey(date: Date): string {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatSearchBar from '@/components/chat/ChatSearchBar';
+import PinnedBanner from '@/components/chat/PinnedBanner';
+import MessageList from '@/components/chat/MessageList';
+import ChatInput from '@/components/chat/ChatInput';
+import ChatOverlays from '@/components/chat/ChatOverlays';
 
 export default function ChatRoom() {
   const { groupId, userId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = useAuthStore((s) => s.user);
-  const theme = useThemeStore((s) => s.theme);
   const [input, setInput] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +44,26 @@ export default function ChatRoom() {
   const prevLastMsgIdRef = useRef<string | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  const [searchMatches, setSearchMatches] = useState<string[]>([]);
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+
+  const [forwardSearch, setForwardSearch] = useState('');
+
+  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+  const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
+
+  const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
+
+  const [muted, setMuted] = useState(false);
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
@@ -141,19 +139,17 @@ export default function ChatRoom() {
   const sendMutation = useMutation({
     mutationFn: ({ content, replyTo: rp }: { content: string; replyTo?: ReplyTo }) => sendMessage(chatId, content, isDM, rp),
     onSuccess(r) { onMessageSent(r); },
-    onError() { setToast({ message: 'Failed to send message. Please try again.' }); },
+    onError() { toast.error('Failed to send message. Please try again.'); },
   });
 
   const sendImageMutation = useMutation({
     mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) => sendImageMessage(chatId, file, isDM, caption || undefined, rp),
     onSuccess(r) { onMessageSent(r); },
-    onError() { setToast({ message: 'Failed to send image. Please try again.' }); },
+    onError() { toast.error('Failed to send image. Please try again.'); },
   });
 
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; action?: { label: string; onClick: () => void } } | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const deleteMutation = useMutation({
     mutationFn: ({ msgId, delForAll }: { msgId: string; delForAll: boolean }) => deleteMessage(chatId, msgId, delForAll),
@@ -181,7 +177,7 @@ export default function ChatRoom() {
       if (context?.prev) {
         queryClient.setQueryData(['messages', chatId, isDM], context.prev);
       }
-      setToast({ message: 'Failed to delete message. Please try again.' });
+      toast.error('Failed to delete message. Please try again.');
     },
     onSuccess: (_data, { delForAll }) => {
       if (!delForAll) {
@@ -194,7 +190,7 @@ export default function ChatRoom() {
           );
         });
       }
-      setToast({ message: 'Message deleted' });
+      toast.success('Message deleted');
     },
     onSettled: () => {
       setDeleteTarget(null);
@@ -202,22 +198,99 @@ export default function ChatRoom() {
     },
   });
 
-  const filteredMessages = showSearch && searchQuery.trim()
-    ? messages.filter((m) =>
-        m.content.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : messages;
+  const { data: allConversations = [] } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: getConversations,
+  });
+
+  const forwardableConversations = useMemo(
+    () => allConversations.filter((c) => c.id !== chatId),
+    [allConversations, chatId],
+  );
+
+  const forwardMutation = useMutation({
+    mutationFn: ({ targetChatId, msg }: { targetChatId: string; msg: Message }) => {
+      return forwardMessage(targetChatId, msg, chatId);
+    },
+    onSuccess: () => {
+      toast.success('Message forwarded');
+      setForwardTarget(null);
+      setForwardSearch('');
+    },
+    onError: () => toast.error('Failed to forward message. Please try again.'),
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: (msgId: string) => pinMessage(chatId, msgId),
+    onSuccess: () => {
+      toast.success('Message pinned');
+      refetchPinned();
+    },
+    onError: () => toast.error('Failed to pin message'),
+  });
+
+  const unpinMutation = useMutation({
+    mutationFn: (msgId: string) => unpinMessage(chatId, msgId),
+    onSuccess: () => {
+      toast.success('Message unpinned');
+      refetchPinned();
+    },
+    onError: () => toast.error('Failed to unpin message'),
+  });
+
+  const { refetch: refetchPinned } = useQuery({
+    queryKey: ['pinned', chatId],
+    queryFn: () => getPinnedMessages(chatId),
+    enabled: false,
+  });
+
+
+  const sendFileMutation = useMutation({
+    mutationFn: ({ file, caption }: { file: File; caption: string }) => sendFileMessage(chatId, file, isDM, caption || undefined),
+    onSuccess(r) { onMessageSent(r); },
+    onError() { toast.error('Failed to send file. Please try again.'); },
+  });
+
+  const { data: group } = useQuery({
+    queryKey: ['group', chatId],
+    queryFn: () => getGroup(chatId),
+    enabled: !isDM && !!chatId,
+  });
+
+  const filteredMessages = useMemo(() => {
+    if (!showSearch || !searchQuery.trim()) return messages;
+    const q = searchQuery.toLowerCase();
+    return messages.filter((m) => m.content.toLowerCase().includes(q));
+  }, [messages, showSearch, searchQuery]);
+
+  const searchMatchIds = useMemo(() => filteredMessages.map((m) => m.id), [filteredMessages]);
+  const hasActiveSearch = showSearch && searchQuery.trim().length > 0;
+  useEffect(() => {
+    if (!hasActiveSearch) { setSearchMatches([]); setActiveMatchIndex(0); return; }
+    setSearchMatches(searchMatchIds);
+    if (activeMatchIndex >= searchMatchIds.length) setActiveMatchIndex(0);
+  }, [searchMatchIds, activeMatchIndex, hasActiveSearch]);
+
+  const scrollToMatch = useCallback((index: number) => {
+    const el = document.getElementById(`msg-${searchMatchIds[index]}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [searchMatchIds]);
 
   const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      if (showSearch) { setShowSearch(false); setSearchQuery(''); }
+      if (showSearch) { setShowSearch(false); setSearchQuery(''); setSearchMatches([]); setActiveMatchIndex(0); }
       if (showEmojiPicker) setShowEmojiPicker(false);
       if (replyingTo) setReplyingTo(null);
       if (lightboxUrl) setLightboxUrl(null);
       if (contextMenu) setContextMenu(null);
       if (deleteTarget) setDeleteTarget(null);
+      if (forwardTarget) { setForwardTarget(null); setForwardSearch(''); }
+      if (groupInfoOpen) setGroupInfoOpen(false);
+      if (blockConfirmOpen) setBlockConfirmOpen(false);
+      if (reportConfirmOpen) setReportConfirmOpen(false);
+      if (readReceiptTarget) setReadReceiptTarget(null);
     }
-  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget]);
+  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget, forwardTarget, groupInfoOpen, blockConfirmOpen, reportConfirmOpen, readReceiptTarget]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -245,19 +318,8 @@ export default function ChatRoom() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEmojiPicker]);
 
-  useEffect(() => {
-    if (!contextMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [contextMenu]);
-
-  const handleEmojiClick = (emojiData: { emoji: string }) => {
-    setInput((prev) => prev + emojiData.emoji);
+  const handleEmojiClick = (emoji: string) => {
+    setInput((prev) => prev + emoji);
   };
 
   useEffect(() => {
@@ -315,28 +377,37 @@ export default function ChatRoom() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    if (!toast) return;
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
-    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
-  }, [toast]);
-
-  useEffect(() => {
     return () => {
       if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
       longPressStartPosRef.current = null;
       if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null; }
       if (typingDoneTimerRef.current) { clearTimeout(typingDoneTimerRef.current); typingDoneTimerRef.current = null; }
-      if (toastTimerRef.current) { clearTimeout(toastTimerRef.current); toastTimerRef.current = null; }
     };
   }, []);
+
+  useEffect(() => {
+    if (chatId) refetchPinned().then((r) => { if (r.data) setPinnedMessages(r.data); });
+  }, [chatId, refetchPinned]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.type.startsWith('image/')) {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setSelectedFile(file);
+    }
+    e.target.value = '';
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setSelectedImage(file);
-    setImagePreview(URL.createObjectURL(file));
+    setSelectedFile(file);
+    setImagePreview(null);
     e.target.value = '';
   };
 
@@ -345,22 +416,31 @@ export default function ChatRoom() {
   };
 
   const handleSendImage = () => {
-    if (!selectedImage) return;
-    const file = selectedImage;
-    const caption = input.trim();
-    const rp = replyingTo ? { id: replyingTo.id, senderId: replyingTo.senderId, senderName: replyingTo.sender?.fullName ?? 'Unknown', content: replyingTo.content, type: replyingTo.type as 'text' | 'image', fileUrl: replyingTo.fileUrl, fileName: replyingTo.fileName } : undefined;
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setSelectedImage(null);
-    setImagePreview(null);
-    setInput('');
-    setReplyingTo(null);
-    sendImageMutation.mutate({ file, caption, replyTo: rp });
+    if (selectedImage) {
+      const file = selectedImage;
+      const caption = input.trim();
+      const rp = replyingTo ? { id: replyingTo.id, senderId: replyingTo.senderId, senderName: replyingTo.sender?.fullName ?? 'Unknown', content: replyingTo.content, type: replyingTo.type as 'text' | 'image', fileUrl: replyingTo.fileUrl, fileName: replyingTo.fileName } : undefined;
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      setSelectedImage(null);
+      setImagePreview(null);
+      setInput('');
+      setReplyingTo(null);
+      sendImageMutation.mutate({ file, caption, replyTo: rp });
+    } else if (selectedFile) {
+      const file = selectedFile;
+      const caption = input.trim();
+      setSelectedFile(null);
+      setInput('');
+      setReplyingTo(null);
+      sendFileMutation.mutate({ file, caption });
+    }
   };
 
   const handleCancelImage = () => {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setSelectedImage(null);
     setImagePreview(null);
+    setSelectedFile(null);
   };
 
   const handleLongPressStart = (msg: Message, e: React.PointerEvent) => {
@@ -439,13 +519,28 @@ export default function ChatRoom() {
     switch (action) {
       case 'copy':
         navigator.clipboard.writeText(msg.content);
-        setToast({ message: 'Copied to clipboard' });
+        toast.success('Copied to clipboard');
         break;
       case 'reply':
         setReplyingTo(msg);
         break;
       case 'forward':
         setForwardTarget(msg);
+        break;
+      case 'pin':
+        pinMutation.mutate(msg.id);
+        break;
+      case 'unpin':
+        unpinMutation.mutate(msg.id);
+        break;
+      case 'read-receipts':
+        setReadReceiptTarget(msg);
+        break;
+      case 'block':
+        setBlockConfirmOpen(true);
+        break;
+      case 'report':
+        setReportConfirmOpen(true);
         break;
       case 'delete':
         setDeleteTarget(msg);
@@ -459,7 +554,34 @@ export default function ChatRoom() {
     deleteMutation.mutate({ msgId: deleteTarget.id, delForAll: deleteForAll });
   };
 
+  const handleForward = useCallback((targetChatId: string, msg: Message) => {
+    forwardMutation.mutate({ targetChatId, msg });
+  }, [forwardMutation]);
+
+  const handleBlock = useCallback(() => {
+    blockUser(chatId);
+    setBlockConfirmOpen(false);
+    toast.success(`${chatName} has been blocked`);
+  }, [chatId, chatName]);
+
+  const handleReport = useCallback(() => {
+    reportUser(chatId);
+    setReportConfirmOpen(false);
+    toast.success('Report submitted');
+  }, [chatId]);
+
+  const handleToggleMute = useCallback(() => {
+    const n = !muted;
+    setMuted(n);
+    toggleMuteConversation(chatId);
+    toast(n ? 'Notifications muted' : 'Notifications unmuted');
+  }, [muted, chatId]);
+
   const handleSend = () => {
+    if (selectedImage || selectedFile) {
+      handleSendImage();
+      return;
+    }
     const text = input.trim();
     if (!text) return;
     const rp = replyingTo ? { id: replyingTo.id, senderId: replyingTo.senderId, senderName: replyingTo.sender?.fullName ?? 'Unknown', content: replyingTo.content, type: replyingTo.type as 'text' | 'image', fileUrl: replyingTo.fileUrl, fileName: replyingTo.fileName } : undefined;
@@ -470,447 +592,125 @@ export default function ChatRoom() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="Back to chats"
-          className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/10 hover:text-foreground lg:hidden"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
-          <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
-        </Avatar>
-          <div className="flex-1">
-            <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
-            {otherTyping ? (
-              <p className="flex items-center gap-1 text-xs text-accent">
-                <span className="flex gap-0.5">
-                  <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:0ms]" />
-                  <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:150ms]" />
-                  <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:300ms]" />
-                </span>
-                typing
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">{chatOnline ? 'Online' : 'Offline'}</p>
-            )}
-          </div>
-        <button
-          onClick={() => {
-            if (showSearch) { setSearchQuery(''); setShowSearch(false); }
-            else { setShowSearch(true); }
-          }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
-        >
-          <Search size={18} className="lg:size-5" />
-        </button>
-      </div>
+      <ChatHeader
+        chatName={chatName}
+        otherTyping={otherTyping}
+        chatOnline={chatOnline}
+        isDM={isDM}
+        muted={muted}
+        onBack={() => navigate(-1)}
+        onSearchToggle={() => {
+          if (showSearch) { setSearchQuery(''); setShowSearch(false); }
+          else { setShowSearch(true); }
+        }}
+        onToggleMute={handleToggleMute}
+        onBlockClick={() => setBlockConfirmOpen(true)}
+        onReportClick={() => setReportConfirmOpen(true)}
+        onGroupInfoClick={() => setGroupInfoOpen(true)}
+      />
 
       {showSearch && (
-        <div className="border-b border-border bg-sidebar px-4 py-2">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search messages..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-input bg-input py-2 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
+        <ChatSearchBar
+          searchQuery={searchQuery}
+          searchMatches={searchMatches}
+          activeMatchIndex={activeMatchIndex}
+          inputRef={searchInputRef as React.RefObject<HTMLInputElement>}
+          onSearchChange={setSearchQuery}
+          onPreviousMatch={() => {
+            const next = (activeMatchIndex - 1 + searchMatches.length) % Math.max(searchMatches.length, 1);
+            setActiveMatchIndex(next);
+            scrollToMatch(next);
+          }}
+          onNextMatch={() => {
+            const next = (activeMatchIndex + 1) % Math.max(searchMatches.length, 1);
+            setActiveMatchIndex(next);
+            scrollToMatch(next);
+          }}
+          onClear={() => { setSearchQuery(''); setSearchMatches([]); setActiveMatchIndex(0); }}
+        />
       )}
 
-      <div className="flex-1 overflow-y-auto bg-chat-tile-overlay px-4 py-4">
-        {isPending ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 size={24} className="animate-spin text-muted-foreground" />
-          </div>
-        ) : isError ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <AlertCircle size={48} className="mb-3 text-destructive/60" />
-            <p className="text-sm font-medium text-foreground lg:text-base">Failed to load messages</p>
-            <p className="mt-1 text-xs text-muted-foreground lg:text-sm">{error?.message || 'Something went wrong'}</p>
-            <button
-              onClick={() => refetch()}
-              className="mt-4 flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
-            >
-              <RefreshCw size={14} />
-              Retry
-            </button>
-          </div>
-        ) : filteredMessages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
-            <MessageSquareText size={48} className="mb-3 text-muted-foreground/30" />
-            <p className="text-sm font-medium text-foreground lg:text-base">
-              {showSearch && searchQuery ? 'No messages found' : 'No messages yet'}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground lg:text-sm">
-              {showSearch && searchQuery ? `No results for "${searchQuery}"` : 'Start a conversation!'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {hasNextPage && (
-              <div ref={scrollTriggerRef} className="flex justify-center py-2">
-                {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
-              </div>
-            )}
-            {filteredMessages.map((msg, idx) => {
-              const isOwn = msg.sender?.id === currentUser?.id || msg.senderId === currentUser?.id;
-              const name = isOwn ? 'You' : (msg.sender?.fullName ?? 'Unknown');
-              const isNew = idx >= filteredMessages.length - (sendMutation.isPending ? 1 : 0);
-              const prevDateKey = idx > 0 ? getDateKey(filteredMessages[idx - 1].createdAt) : null;
-              const currDateKey = getDateKey(msg.createdAt);
-              const showDateSeparator = prevDateKey !== currDateKey;
-              return (
-                <div key={msg.id}>
-                  {showDateSeparator && (
-                    <div className="flex justify-center py-1">
-                      <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
-                        {formatDateSeparator(msg.createdAt)}
-                      </span>
-                    </div>
-                  )}
-                  <div
-                    className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''} ${isNew ? 'animate-[fade-in-up_0.3s_ease-out]' : ''}`}
-                  >
-                  {!isOwn && (
-                    <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
-                      <AvatarFallback className="text-xs lg:text-sm">
-                        {name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
-                    {!isOwn && (
-                      <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
-                        {name}
-                      </p>
-                    )}
-                  <div
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      let x = e.clientX;
-                      let y = e.clientY;
-                      const menuW = 180;
-                      const menuH = 200;
-                      if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
-                      if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
-                      if (x < 8) x = 8;
-                      if (y < 8) y = 8;
-                      setContextMenu({ msg, x, y });
-                    }}
-                    onPointerDown={(e) => handleLongPressStart(msg, e)}
-                    onPointerMove={handleLongPressMove}
-                    onPointerUp={handleLongPressEnd}
-                    onPointerCancel={handleLongPressEnd}
-                    onTouchStart={(e) => handleTouchStart(msg, e)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    onTouchCancel={handleTouchEnd}
-                    className={`cursor-pointer overflow-hidden ${
-                      msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-2.5 py-1 text-sm lg:px-3 lg:py-1.5 lg:text-base'
-                    } ${isOwn
-                      ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
-                      : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
-                    }`}
-                  >
-                    {msg.replyTo && (
-                      <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${isOwn ? 'border-white/40 bg-white/10' : 'border-black/30 bg-black/8'}`}>
-                        <p className="text-[11px] font-semibold text-foreground/90 lg:text-xs">{msg.replyTo.senderName}</p>
-                        <p className="truncate text-foreground/70">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
-                      </div>
-                    )}
-                    {msg.type === 'image' && msg.fileUrl ? (
-                      <div className="flex flex-col">
-                        <div className="overflow-hidden">
-                          <img
-                            src={msg.fileUrl}
-                            alt={msg.content || 'Image'}
-                            className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                            style={{ maxHeight: '300px' }}
-                            onClick={(e) => { e.stopPropagation(); setLightboxUrl(msg.fileUrl!); }}
-                            loading="lazy"
-                          />
-                        </div>
-                        {msg.content && (
-                          <>
-                            <div className="mx-4 h-px bg-black/10" />
-                            <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-2 lg:pt-2 lg:text-base">
-                              {msg.content}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <p>{msg.content}</p>
-                    )}
-                  </div>
-                    <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
-                      {formatTime(msg.createdAt)}
-                      {isOwn && msg.status && (
-                        msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground lg:size-3.5" />
-                        : msg.status === 'sent' ? <Check size={12} className="lg:size-3.5" />
-                        : msg.status === 'delivered' ? <CheckCheck size={12} className="lg:size-3.5" />
-                        : <CheckCheck size={12} className="text-accent lg:size-3.5" />
-                      )}
-                    </p>
-                </div>
-              </div>
-            </div>
-            );
-          })}
-              <div ref={messagesEndRef} />
-            {otherTyping && (
-              <div className="flex items-center gap-2 px-1 py-1">
-                <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-chat-incoming-bg px-4 py-3">
-                  <div className="flex gap-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
-                  </div>
-                  <span className="text-xs text-muted-foreground">typing</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <PinnedBanner pinnedMessages={pinnedMessages} />
 
-      <div className="relative border-t border-border">
-        {replyingTo && (
-          <div className="mx-4 mb-2 mt-3 flex items-start gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
-            <div className="flex min-w-0 flex-1 items-start gap-2">
-              <div className="mt-0.5 h-full w-0.5 shrink-0 self-stretch rounded-full bg-accent/60" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-foreground/90 lg:text-sm">Replying to {replyingTo.sender?.fullName ?? 'Unknown'}</p>
-                <p className="truncate text-xs text-foreground/70 lg:text-sm">{replyingTo.type === 'image' ? '📷 Photo' : replyingTo.content}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleCancelReply}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-8 lg:w-8"
-            >
-              <X size={14} className="lg:size-4" />
-            </button>
-          </div>
-        )}
-        {imagePreview && (
-          <div className="mx-4 mb-2 mt-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
-            <div className="relative shrink-0">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="h-14 w-14 rounded-lg object-cover ring-1 ring-border lg:h-16 lg:w-16"
-              />
-              <div className="absolute inset-0 rounded-lg ring-1 ring-black/10" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">Image</p>
-              <p className="truncate text-xs text-muted-foreground">{selectedImage?.name}</p>
-            </div>
-            <button
-              onClick={handleCancelImage}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
-        {showEmojiPicker && (
-          <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 z-50 mx-4 mb-1">
-            <div className="overflow-hidden rounded-xl shadow-lg">
-              <EmojiPicker onEmojiClick={handleEmojiClick} theme={theme as 'dark' | 'light'} />
-            </div>
-          </div>
-        )}
-        <div className="mx-4 mb-3 mt-3 flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5 lg:px-4 lg:py-2.5">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-10 lg:w-10"
-            type="button"
-          >
-            <ImagePlus size={18} className="lg:size-5" />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-            className="hidden"
-          />
-          <button
-            ref={emojiToggleRef}
-            onClick={() => setShowEmojiPicker((v) => !v)}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors lg:h-10 lg:w-10 ${showEmojiPicker ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}`}
-            type="button"
-          >
-            <Smile size={18} className="lg:size-5" />
-          </button>
-          <input
-            type="text"
-            placeholder={selectedImage ? 'Add a caption...' : 'Type a message...'}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                if (selectedImage) handleSendImage();
-                else handleSend();
-              }
-            }}
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:text-base"
-          />
-          <button
-            onClick={() => {
-              if (selectedImage) handleSendImage();
-              else handleSend();
-            }}
-            disabled={!input.trim() && !selectedImage}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
-          >
-            <Send size={18} className="lg:size-5" />
-          </button>
-        </div>
-      </div>
+      <MessageList
+        filteredMessages={filteredMessages}
+        searchQuery={searchQuery}
+        isPending={isPending}
+        isError={isError}
+        error={error}
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        hasActiveSearch={hasActiveSearch}
+        searchMatchIds={searchMatchIds}
+        activeMatchIndex={activeMatchIndex}
+        otherTyping={otherTyping}
+        currentUserId={currentUser?.id}
+        onRetry={() => refetch()}
+        scrollTriggerRef={scrollTriggerRef as React.RefObject<HTMLDivElement>}
+        messagesEndRef={messagesEndRef as React.RefObject<HTMLDivElement>}
+        onContextMenu={(msg, x, y) => setContextMenu({ msg, x, y })}
+        onLongPressStart={handleLongPressStart}
+        onLongPressMove={handleLongPressMove}
+        onLongPressEnd={handleLongPressEnd}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClickImage={(url) => setLightboxUrl(url)}
+      />
 
-      {deleteTarget && (
-        <Modal open={!!deleteTarget} onClose={() => { if (!deleteLoading) setDeleteTarget(null); }} title="Delete message?">
-          <div className="space-y-2" role="dialog" aria-modal="true" aria-label="Delete message options">
-            <button
-              onClick={() => handleDeleteMessage(false)}
-              disabled={deleteLoading}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
-            >
-              {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} className="text-muted-foreground" />}
-              Delete for me
-            </button>
-            {deleteTarget.senderId === currentUser?.id && (
-              <button
-                onClick={() => handleDeleteMessage(true)}
-                disabled={deleteLoading}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-              >
-                {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                Delete for all
-              </button>
-            )}
-          </div>
-        </Modal>
-      )}
+      <ChatInput
+        input={input}
+        replyingTo={replyingTo}
+        imagePreview={imagePreview}
+        selectedImage={selectedImage}
+        selectedFile={selectedFile}
+        showEmojiPicker={showEmojiPicker}
+        onInputChange={setInput}
+        onSend={handleSend}
+        onSendImage={handleSendImage}
+        onCancelReply={handleCancelReply}
+        onCancelImage={handleCancelImage}
+        onImageSelect={handleImageSelect}
+        onFileSelect={handleFileSelect}
+        onEmojiToggle={() => setShowEmojiPicker((v) => !v)}
+        onEmojiClick={handleEmojiClick}
+        emojiPickerRef={emojiPickerRef as React.RefObject<HTMLDivElement>}
+        emojiToggleRef={emojiToggleRef as React.RefObject<HTMLButtonElement>}
+        fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
+        imageInputRef={imageInputRef as React.RefObject<HTMLInputElement>}
+      />
 
-      {contextMenu && (
-        <div className="fixed inset-0 z-[90]" onClick={() => setContextMenu(null)}>
-          <div
-            ref={contextMenuRef}
-            className="absolute w-44 origin-top-left animate-scale-in overflow-hidden rounded-xl border border-border bg-card py-1 shadow-2xl"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onClick={(e) => e.stopPropagation()}
-            role="menu"
-            aria-label="Message actions"
-          >
-            <button
-              onClick={() => handleContextMenuAction('reply')}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-              role="menuitem"
-            >
-              <Reply size={15} className="text-muted-foreground" />
-              Reply
-            </button>
-            <button
-              onClick={() => handleContextMenuAction('copy')}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-              role="menuitem"
-            >
-              <Clipboard size={15} className="text-muted-foreground" />
-              Copy
-            </button>
-            <button
-              onClick={() => handleContextMenuAction('forward')}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed opacity-50"
-              role="menuitem"
-              disabled
-              title="Coming soon"
-            >
-              <Forward size={15} className="text-muted-foreground" />
-              Forward
-              <span className="ml-auto text-[10px] text-muted-foreground/60">Soon</span>
-            </button>
-            <div className="my-1 border-t border-border" />
-            <button
-              onClick={() => handleContextMenuAction('delete')}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
-              role="menuitem"
-            >
-              <Trash2 size={15} />
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
-
-      {forwardTarget && (
-        <Modal open={!!forwardTarget} onClose={() => setForwardTarget(null)} title="Forward message">
-          <p className="mb-4 text-sm text-muted-foreground">This message will be forwarded. This feature is coming soon.</p>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => { setToast({ message: 'Message forwarded' }); setForwardTarget(null); }}
-              className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
-            >
-              Forward
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {toast && (
-        <div className="fixed bottom-20 left-1/2 z-[200] -translate-x-1/2 animate-fade-in-up" role="alert" aria-live="polite">
-          <div className="flex items-center gap-3 rounded-xl bg-foreground/90 px-5 py-3 text-sm font-medium text-background shadow-xl backdrop-blur-sm">
-            <span>{toast.message}</span>
-            {toast.action && (
-              <button
-                onClick={() => { toast.action?.onClick(); setToast(null); }}
-                className="shrink-0 font-semibold text-accent transition-colors hover:opacity-80"
-              >
-                {toast.action.label}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {lightboxUrl && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setLightboxUrl(null)}
-        >
-          <button
-            onClick={() => setLightboxUrl(null)}
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-          >
-            <X size={22} />
-          </button>
-          <img
-            src={lightboxUrl}
-            alt="Full size"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <ChatOverlays
+        deleteTarget={deleteTarget}
+        deleteLoading={deleteLoading}
+        contextMenu={contextMenu}
+        forwardTarget={forwardTarget}
+        forwardSearch={forwardSearch}
+        forwardableConversations={forwardableConversations}
+        lightboxUrl={lightboxUrl}
+        blockConfirmOpen={blockConfirmOpen}
+        reportConfirmOpen={reportConfirmOpen}
+        groupInfoOpen={groupInfoOpen}
+        readReceiptTarget={readReceiptTarget}
+        group={group ?? null}
+        chatName={chatName}
+        chatId={chatId}
+        currentUserId={currentUser?.id}
+        onCloseDelete={() => { if (!deleteLoading) setDeleteTarget(null); }}
+        onDeleteMessage={handleDeleteMessage}
+        onCloseContextMenu={() => setContextMenu(null)}
+        onContextMenuAction={handleContextMenuAction}
+        onCloseForward={() => { setForwardTarget(null); setForwardSearch(''); }}
+        onForwardSearchChange={setForwardSearch}
+        onForward={handleForward}
+        onCloseLightbox={() => setLightboxUrl(null)}
+        onCloseBlock={() => setBlockConfirmOpen(false)}
+        onBlock={handleBlock}
+        onCloseReport={() => setReportConfirmOpen(false)}
+        onReport={handleReport}
+        onCloseGroupInfo={() => setGroupInfoOpen(false)}
+        onCloseReadReceipts={() => setReadReceiptTarget(null)}
+      />
     </div>
   );
 }
