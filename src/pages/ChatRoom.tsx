@@ -21,6 +21,20 @@ function formatTime(date: Date) {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+function formatDateSeparator(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diff = Math.floor((today.getTime() - target.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  return date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
+
+function getDateKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 export default function ChatRoom() {
   const { groupId, userId } = useParams();
   const navigate = useNavigate();
@@ -358,11 +372,21 @@ export default function ChatRoom() {
               const isOwn = msg.sender?.id === currentUser?.id || msg.senderId === currentUser?.id;
               const name = isOwn ? 'You' : (msg.sender?.fullName ?? 'Unknown');
               const isNew = idx >= filteredMessages.length - (sendMutation.isPending ? 1 : 0);
+              const prevDateKey = idx > 0 ? getDateKey(filteredMessages[idx - 1].createdAt) : null;
+              const currDateKey = getDateKey(msg.createdAt);
+              const showDateSeparator = prevDateKey !== currDateKey;
               return (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 lg:gap-4 ${isOwn ? 'flex-row-reverse' : ''} ${isNew ? 'animate-[fade-in-up_0.3s_ease-out]' : ''}`}
-                >
+                <div key={msg.id}>
+                  {showDateSeparator && (
+                    <div className="flex justify-center py-1">
+                      <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
+                        {formatDateSeparator(msg.createdAt)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className={`flex gap-3 lg:gap-4 ${isOwn ? 'flex-row-reverse' : ''} ${isNew ? 'animate-[fade-in-up_0.3s_ease-out]' : ''}`}
+                  >
                   {!isOwn && (
                     <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
                       <AvatarFallback className="text-xs lg:text-sm">
@@ -418,11 +442,12 @@ export default function ChatRoom() {
                         : <CheckCheck size={12} className="text-accent lg:size-3.5" />
                       )}
                     </p>
-                  </div>
                 </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
+              </div>
+            </div>
+            );
+          })}
+              <div ref={messagesEndRef} />
             {otherTyping && (
               <div className="flex items-center gap-2 px-1 py-1">
                 <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-chat-incoming-bg px-4 py-3">
