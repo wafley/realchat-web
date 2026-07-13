@@ -118,6 +118,42 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
   return data;
 }
 
+export async function sendImageMessage(chatId: string, file: File, isDM: boolean): Promise<Message> {
+  if (DEV_MODE) {
+    await delay(500);
+    msgCounter++;
+    const url = URL.createObjectURL(file);
+    const msg: Message = {
+      id: `msg-${msgCounter}`,
+      groupId: chatId,
+      senderId: DEV_USER_ID,
+      content: file.name,
+      type: 'image',
+      fileUrl: url,
+      fileName: file.name,
+      status: 'sent',
+      createdAt: new Date(),
+      sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
+    };
+    if (!MOCK_MESSAGES[chatId]) {
+      MOCK_MESSAGES[chatId] = [];
+    }
+    MOCK_MESSAGES[chatId].push(msg);
+    const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+    if (conv) {
+      conv.lastMessage = `📷 Photo`;
+      conv.lastTime = 'now';
+    }
+    return msg;
+  }
+  const { default: axios } = await import('axios');
+  const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
+  return data;
+}
+
 export async function sendMessage(chatId: string, content: string, isDM: boolean): Promise<Message> {
   if (DEV_MODE) {
     await delay(200);
