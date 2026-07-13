@@ -1,19 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Shield } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Eye, UserPlus, MessageSquare, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePrivacyStore } from '@/store/privacyStore';
+import { useQuery } from '@tanstack/react-query';
+import { getBlockedUsers } from '@/services/chat';
 
-const items = [
-  { label: 'Show online status', enabled: true },
-  { label: 'Read receipts', enabled: true },
+const LAST_SEEN_OPTIONS = [
+  { value: 'everyone' as const, label: 'Everyone' },
+  { value: 'contacts' as const, label: 'My Contacts' },
+  { value: 'nobody' as const, label: 'Nobody' },
+];
+
+const GROUP_ADD_OPTIONS = [
+  { value: 'everyone' as const, label: 'Everyone' },
+  { value: 'contacts' as const, label: 'My Contacts' },
 ];
 
 export default function SettingsPrivacy() {
   const navigate = useNavigate();
-  const [toggles, setToggles] = useState(
-    Object.fromEntries(items.map((i) => [i.label, i.enabled])),
-  );
-  const toggle = (label: string) => setToggles((p) => ({ ...p, [label]: !p[label] }));
+  const { lastSeen, addToGroups, readReceipts, setLastSeen, setAddToGroups, setReadReceipts } = usePrivacyStore();
+
+  const { data: blockedUsers = [] } = useQuery({
+    queryKey: ['blockedUsers'],
+    queryFn: getBlockedUsers,
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -35,35 +45,93 @@ export default function SettingsPrivacy() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl bg-card">
-            {items.map((item, i) => (
-              <div
-                key={item.label}
-                className={cn(
-                  'flex items-center justify-between px-4 py-3.5',
-                  i < items.length - 1 && 'border-b border-border/50',
-                )}
-              >
+          <div className="space-y-4">
+            <section className="overflow-hidden rounded-xl bg-card">
+              <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+                <Eye size={18} className="text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Who can see my personal info</span>
+              </div>
+              <div className="px-4 py-3">
+                <p className="mb-2 text-sm text-foreground">Last Seen & Online</p>
+                <div className="flex gap-1.5">
+                  {LAST_SEEN_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setLastSeen(opt.value)}
+                      className={cn(
+                        'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                        lastSeen === opt.value
+                          ? 'bg-accent text-accent-foreground shadow-sm'
+                          : 'bg-muted text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-xl bg-card">
+              <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+                <UserPlus size={18} className="text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Who can contact me</span>
+              </div>
+              <div className="px-4 py-3">
+                <p className="mb-2 text-sm text-foreground">Who can add me to groups</p>
+                <div className="flex gap-1.5">
+                  {GROUP_ADD_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setAddToGroups(opt.value)}
+                      className={cn(
+                        'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                        addToGroups === opt.value
+                          ? 'bg-accent text-accent-foreground shadow-sm'
+                          : 'bg-muted text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-xl bg-card">
+              <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex items-center gap-3">
-                  <Shield size={18} className="text-muted-foreground" />
-                  <span className="text-sm text-foreground">{item.label}</span>
+                  <MessageSquare size={18} className="text-muted-foreground" />
+                  <span className="text-sm text-foreground">Read receipts</span>
                 </div>
                 <button
-                  onClick={() => toggle(item.label)}
+                  onClick={() => setReadReceipts(!readReceipts)}
                   className={cn(
                     'relative h-6 w-10 shrink-0 rounded-full transition-colors',
-                    toggles[item.label] ? 'bg-accent' : 'bg-muted',
+                    readReceipts ? 'bg-accent' : 'bg-muted',
                   )}
                 >
                   <span
                     className={cn(
                       'absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-                      toggles[item.label] && 'translate-x-4',
+                      readReceipts && 'translate-x-4',
                     )}
                   />
                 </button>
               </div>
-            ))}
+            </section>
+
+            <Link
+              to="/settings/privacy/blocked"
+              className="flex items-center gap-3 rounded-xl bg-card px-4 py-3.5 transition-colors hover:bg-accent/5"
+            >
+              <Ban size={18} className="text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground">Blocked users</p>
+              </div>
+              <span className="text-xs text-muted-foreground">{blockedUsers.length}</span>
+              <ArrowLeft size={16} className="rotate-180 text-muted-foreground" />
+            </Link>
           </div>
         </div>
       </div>

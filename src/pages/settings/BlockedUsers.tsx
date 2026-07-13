@@ -1,0 +1,68 @@
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Ban, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { getBlockedUsers } from '@/services/chat';
+
+export default function BlockedUsers() {
+  const navigate = useNavigate();
+  const { data: users = [], isPending } = useQuery({
+    queryKey: ['blockedUsers'],
+    queryFn: getBlockedUsers,
+  });
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
+        <button onClick={() => navigate(-1)} className="text-foreground transition-colors hover:text-accent">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-xl font-bold text-foreground">Blocked Users</h1>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-4xl p-6">
+          <div className="mb-6 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="hidden text-muted-foreground transition-colors hover:text-accent md:flex">
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Blocked Users</h2>
+              <p className="text-sm text-muted-foreground">Manage users you've blocked</p>
+            </div>
+          </div>
+
+          {isPending ? (
+            <div className="flex justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-muted-foreground" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl bg-card py-12 text-center">
+              <Ban size={36} className="mb-3 text-muted-foreground/40" />
+              <p className="text-sm font-medium text-foreground">No blocked users</p>
+              <p className="mt-1 text-xs text-muted-foreground">Users you block will appear here</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl bg-card">
+              {users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center gap-3 px-4 py-3.5"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+                    {user.fullName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{user.fullName}</p>
+                    <p className="text-xs text-muted-foreground">@{user.username}</p>
+                  </div>
+                  <button className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/10">
+                    Unblock
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

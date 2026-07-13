@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const sections = [
   { to: '/settings/notifications', icon: Bell, label: 'Notifications', desc: 'Message, group, and sound preferences' },
-  { to: '/settings/privacy', icon: Shield, label: 'Privacy', desc: 'Online status, read receipts' },
+  { to: '/settings/privacy', icon: Shield, label: 'Privacy', desc: 'Last seen, read receipts, blocked users' },
   { to: '/settings/appearance', icon: Sun, label: 'Appearance', desc: 'Theme preferences' },
   { to: '/settings/account', icon: AlertTriangle, label: 'Account', desc: 'Danger zone and account management' },
 ];
