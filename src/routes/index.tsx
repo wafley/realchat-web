@@ -117,6 +117,10 @@ export const router = createBrowserRouter([
                 lazy: () => import('@/pages/settings/Privacy').then((m) => ({ Component: m.default })),
               },
               {
+                path: 'settings/privacy/blocked',
+                lazy: () => import('@/pages/settings/BlockedUsers').then((m) => ({ Component: m.default })),
+              },
+              {
                 path: 'settings/appearance',
                 lazy: () => import('@/pages/settings/Appearance').then((m) => ({ Component: m.default })),
               },

@@ -496,6 +496,32 @@ export async function blockUser(userId: string): Promise<void> {
   }
 }
 
+export async function getBlockedUsers(): Promise<User[]> {
+  if (DEV_MODE) {
+    await delay(200);
+    return [
+      { id: 'blocked1', username: 'spam_bot', fullName: 'Spam Bot', email: 'spam@example.com', status: 'offline', lastSeen: new Date(Date.now() - 86400000 * 3), createdAt: new Date() },
+      { id: 'blocked2', username: 'troll', fullName: 'Troll Account', email: 'troll@example.com', status: 'offline', createdAt: new Date() },
+    ];
+  }
+  const { default: axios } = await import('axios');
+  const { data } = await axios.get<User[]>(`${import.meta.env.VITE_API_URL}/users/blocked`);
+  return data;
+}
+
+export async function unblockUser(userId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/users/${userId}/block`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to unblock user');
+  }
+}
+
 export async function reportUser(userId: string): Promise<void> {
   try {
     if (DEV_MODE) {
