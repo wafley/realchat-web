@@ -7,7 +7,7 @@ import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole, clearChat } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, editMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole, clearChat } from '@/services/chat';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -30,6 +30,7 @@ export default function ChatRoom() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMsg, setEditingMsg] = useState<Message | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ msg: Message; x: number; y: number } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -150,6 +151,17 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
     mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) => sendImageMessage(chatId, file, isDM, caption || undefined, rp),
     onSuccess(r) { onMessageSent(r); },
     onError() { toast.error('Failed to send image. Please try again.'); },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ msgId, content }: { msgId: string; content: string }) => editMessage(chatId, msgId, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
+      setEditingMsg(null);
+      setInput('');
+      toast.success('Message edited');
+    },
+    onError: () => toast.error('Failed to edit message. Please try again.'),
   });
 
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -300,6 +312,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
       if (showSearch) { setShowSearch(false); setSearchQuery(''); setSearchMatches([]); setActiveMatchIndex(0); }
       if (showEmojiPicker) setShowEmojiPicker(false);
       if (replyingTo) setReplyingTo(null);
+      if (editingMsg) { setEditingMsg(null); setInput(''); }
       if (lightboxUrl) setLightboxUrl(null);
       if (contextMenu) setContextMenu(null);
       if (deleteTarget) setDeleteTarget(null);
@@ -538,6 +551,10 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const msg = contextMenu.msg;
     setContextMenu(null);
     switch (action) {
+      case 'edit':
+        setEditingMsg(msg);
+        setInput(msg.content);
+        break;
       case 'copy':
         navigator.clipboard.writeText(msg.content);
         toast.success('Copied to clipboard');
@@ -729,6 +746,17 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
     toast(n ? 'Notifications muted' : 'Notifications unmuted');
   }, [muted, chatId]);
 
+  const handleUpdateEdit = () => {
+    const text = input.trim();
+    if (!text || !editingMsg) return;
+    editMutation.mutate({ msgId: editingMsg.id, content: text });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMsg(null);
+    setInput('');
+  };
+
   const handleSend = () => {
     if (selectedImage || selectedFile) {
       handleSendImage();
@@ -844,6 +872,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
       <ChatInput
         input={input}
         replyingTo={replyingTo}
+        editingMsg={editingMsg}
         imagePreview={imagePreview}
         selectedImage={selectedImage}
         selectedFile={selectedFile}
@@ -851,7 +880,9 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
         onInputChange={setInput}
         onSend={handleSend}
         onSendImage={handleSendImage}
+        onUpdateEdit={handleUpdateEdit}
         onCancelReply={handleCancelReply}
+        onCancelEdit={handleCancelEdit}
         onCancelImage={handleCancelImage}
         onImageSelect={handleImageSelect}
         onFileSelect={handleFileSelect}

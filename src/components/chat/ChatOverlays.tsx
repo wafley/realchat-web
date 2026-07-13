@@ -214,6 +214,16 @@ export default function ChatOverlays({
               <Reply size={15} className="text-muted-foreground" />
               Reply
             </button>
+            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.type === 'text' && (
+              <button
+                onClick={() => onContextMenuAction('edit')}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                role="menuitem"
+              >
+                <Edit3 size={15} className="text-muted-foreground" />
+                Edit
+              </button>
+            )}
             <button
               onClick={() => onContextMenuAction('copy')}
               className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"

@@ -1,5 +1,5 @@
 import { type RefObject } from 'react';
-import { Send, ImagePlus, Smile, FileText, X } from 'lucide-react';
+import { Send, ImagePlus, Smile, FileText, X, Check } from 'lucide-react';
 import type { Message } from '@/types';
 import { useThemeStore } from '@/store/themeStore';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
@@ -8,6 +8,7 @@ import { formatFileSize } from '@/lib/chatHelpers';
 interface ChatInputProps {
   input: string;
   replyingTo: Message | null;
+  editingMsg: Message | null;
   imagePreview: string | null;
   selectedImage: File | null;
   selectedFile: File | null;
@@ -15,7 +16,9 @@ interface ChatInputProps {
   onInputChange: (value: string) => void;
   onSend: () => void;
   onSendImage: () => void;
+  onUpdateEdit: () => void;
   onCancelReply: () => void;
+  onCancelEdit: () => void;
   onCancelImage: () => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -30,6 +33,7 @@ interface ChatInputProps {
 export default function ChatInput({
   input,
   replyingTo,
+  editingMsg,
   imagePreview,
   selectedImage,
   selectedFile,
@@ -37,7 +41,9 @@ export default function ChatInput({
   onInputChange,
   onSend,
   onSendImage,
+  onUpdateEdit,
   onCancelReply,
+  onCancelEdit,
   onCancelImage,
   onFileSelect,
   onImageSelect,
@@ -52,7 +58,20 @@ export default function ChatInput({
 
   return (
     <div className="relative border-t border-border">
-      {replyingTo && (
+      {editingMsg ? (
+        <div className="mx-2 mb-1 mt-1 flex items-start gap-2 rounded-xl border border-accent/30 bg-accent/5 p-1.5 pr-1 shadow-sm">
+          <div className="flex min-w-0 flex-1 items-start gap-1.5">
+            <div className="mt-0.5 h-full w-0.5 shrink-0 self-stretch rounded-full bg-accent/60" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground/90">Editing message</p>
+              <p className="truncate text-xs text-foreground/70">{editingMsg.content}</p>
+            </div>
+          </div>
+          <button onClick={onCancelEdit} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10">
+            <X size={12} />
+          </button>
+        </div>
+      ) : replyingTo && (
         <div className="mx-4 mb-2 mt-3 flex items-start gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <div className="mt-0.5 h-full w-0.5 shrink-0 self-stretch rounded-full bg-accent/60" />
@@ -147,7 +166,8 @@ export default function ChatInput({
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              if (imagePreview) onSendImage();
+              if (editingMsg) onUpdateEdit();
+              else if (imagePreview) onSendImage();
               else onSend();
             }
           }}
@@ -155,13 +175,14 @@ export default function ChatInput({
         />
         <button
           onClick={() => {
-            if (imagePreview) onSendImage();
+            if (editingMsg) onUpdateEdit();
+            else if (imagePreview) onSendImage();
             else onSend();
           }}
           disabled={!input.trim() && !imagePreview && !selectedFile}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
         >
-          <Send size={18} className="lg:size-5" />
+          {editingMsg ? <Check size={18} className="lg:size-5" /> : <Send size={18} className="lg:size-5" />}
         </button>
       </div>
     </div>
