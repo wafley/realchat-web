@@ -1,4 +1,4 @@
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2 } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember } from '@/types';
@@ -122,6 +122,14 @@ export default function ChatOverlays({
             >
               <Clipboard size={15} className="text-muted-foreground" />
               Copy
+            </button>
+            <button
+              onClick={() => onContextMenuAction('select')}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+              role="menuitem"
+            >
+              <CheckSquare size={15} className="text-muted-foreground" />
+              Select
             </button>
             <button
               onClick={() => onContextMenuAction('forward')}
