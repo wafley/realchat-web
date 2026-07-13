@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
@@ -423,7 +424,7 @@ export default function ChatOverlays({
               <div className="max-h-48 space-y-1 overflow-y-auto">
                 {group.members?.map((m: GroupMember) => (
                   <div key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-                    <div className="relative">
+                    <Link to={`/profile/${m.userId}`} className="relative">
                       <Avatar className="h-8 w-8">
                         {m.user?.avatarUrl && <AvatarImage src={m.user.avatarUrl} />}
                         <AvatarFallback className="text-xs">{(m.user?.fullName ?? m.userId)[0]}</AvatarFallback>
@@ -431,9 +432,9 @@ export default function ChatOverlays({
                       {m.user?.status === 'online' && (
                         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
                       )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm text-foreground">{m.user?.fullName ?? m.userId}</span>
+                    </Link>
+                    <Link to={`/profile/${m.userId}`} className="min-w-0 flex-1">
+                      <span className="text-sm text-foreground hover:text-accent">{m.user?.fullName ?? m.userId}</span>
                       <div className="flex items-center gap-1">
                         {m.role === 'admin' && m.userId !== group.creatorId && (
                           <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
@@ -448,7 +449,7 @@ export default function ChatOverlays({
                           </span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-1">
                       {isAdmin && m.userId !== currentUserId && m.userId !== group.creatorId && (
                         <>
