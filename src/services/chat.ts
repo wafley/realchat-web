@@ -1,4 +1,4 @@
-import type { Message, PaginatedResponse } from '@/types';
+import type { Message, PaginatedResponse, ReplyTo } from '@/types';
 
 interface ChatConversation {
   id: string;
@@ -118,7 +118,7 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
   return data;
 }
 
-export async function sendImageMessage(chatId: string, file: File, isDM: boolean, caption?: string): Promise<Message> {
+export async function sendImageMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
   if (DEV_MODE) {
     await delay(500);
     msgCounter++;
@@ -132,6 +132,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
       fileUrl: url,
       fileName: file.name,
       status: 'sent',
+      replyTo,
       createdAt: new Date(),
       sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
     };
@@ -151,11 +152,12 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
   const form = new FormData();
   form.append('file', file);
   if (caption) form.append('caption', caption);
+  if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
   const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
   return data;
 }
 
-export async function sendMessage(chatId: string, content: string, isDM: boolean): Promise<Message> {
+export async function sendMessage(chatId: string, content: string, isDM: boolean, replyTo?: ReplyTo): Promise<Message> {
   if (DEV_MODE) {
     await delay(200);
     msgCounter++;
@@ -166,6 +168,7 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       content,
       type: 'text',
       status: 'sent',
+      replyTo,
       createdAt: new Date(),
       sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
     };
@@ -182,7 +185,7 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
   }
   const { default: axios } = await import('axios');
   const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-  const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, { content });
+  const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, { content, replyTo });
   return data;
 }
 

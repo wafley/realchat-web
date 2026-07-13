@@ -10,6 +10,16 @@ export interface User {
   createdAt: Date;
 }
 
+export interface ReplyTo {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  type: 'text' | 'image';
+  fileUrl?: string;
+  fileName?: string;
+}
+
 export interface Message {
   id: string;
   groupId: string;
@@ -20,6 +30,7 @@ export interface Message {
   fileUrl?: string;
   fileName?: string;
   status?: MessageStatus;
+  replyTo?: ReplyTo;
   createdAt: Date;
   updatedAt?: Date;
 }
