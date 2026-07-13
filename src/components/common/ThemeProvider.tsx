@@ -1,22 +1,22 @@
 import { useEffect, type ReactNode } from 'react';
-
-type Theme = 'light' | 'dark' | 'system';
+import { useThemeStore } from '@/store/themeStore';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    const theme = (localStorage.getItem('theme') as Theme) || 'system';
-    const root = document.documentElement;
+  const mode = useThemeStore((s) => s.mode);
 
-    if (theme === 'system') {
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      root.classList.toggle('dark', mq.matches);
-      const handler = (e: MediaQueryListEvent) => root.classList.toggle('dark', e.matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    if (mode === 'system') {
+      const handler = () => {
+        const resolved = mq.matches ? 'dark' : 'light';
+        document.documentElement.classList.toggle('light', resolved === 'light');
+      };
+      handler();
       mq.addEventListener('change', handler);
       return () => mq.removeEventListener('change', handler);
     }
-
-    root.classList.toggle('dark', theme === 'dark');
-  }, []);
+  }, [mode]);
 
   return children;
 }
