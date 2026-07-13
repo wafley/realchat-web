@@ -1,9 +1,56 @@
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuthStore } from '@/store/authStore';
+import { toast } from 'sonner';
 
 export default function EditProfile() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
+
+  const [fullName, setFullName] = useState(user?.fullName || '');
+  const [username, setUsername] = useState(user?.username || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    if (!fullName.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+    if (!username.trim()) {
+      toast.error('Username is required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload: Record<string, string> = { fullName: fullName.trim(), username: username.trim(), bio: bio.trim() };
+      if (avatarFile) {
+        payload.avatarUrl = avatarPreview!;
+      }
+      await updateProfile(payload);
+      toast.success('Profile updated');
+      navigate('/profile');
+    } catch {
+      toast.error('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
@@ -28,11 +75,24 @@ export default function EditProfile() {
             <div className="flex items-center gap-4 border-b border-border/50 px-4 py-4">
               <div className="relative">
                 <Avatar className="h-16 w-16">
-                  <AvatarFallback className="text-lg">U</AvatarFallback>
+                  {(avatarPreview || user?.avatarUrl) && <AvatarImage src={avatarPreview || user?.avatarUrl} />}
+                  <AvatarFallback className="text-lg">
+                    {fullName.charAt(0).toUpperCase() || 'U'}
+                  </AvatarFallback>
                 </Avatar>
-                <button className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80">
+                <button
+                  onClick={() => inputRef.current?.click()}
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80"
+                >
                   <Camera size={12} />
                 </button>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
               </div>
               <div>
                 <p className="text-sm font-medium text-foreground">Profile Photo</p>
@@ -46,6 +106,8 @@ export default function EditProfile() {
                 <input
                   type="text"
                   placeholder="Your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   className="mt-1 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
               </div>
@@ -54,6 +116,8 @@ export default function EditProfile() {
                 <input
                   type="text"
                   placeholder="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="mt-1 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
               </div>
@@ -62,14 +126,21 @@ export default function EditProfile() {
                 <textarea
                   placeholder="Tell us about yourself"
                   rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
                   className="mt-1 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
               </div>
             </div>
           </div>
 
-          <button className="mt-6 w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80">
-            Save Changes
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving && <Loader2 size={16} className="animate-spin" />}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
