@@ -2,11 +2,12 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile } from 'lucide-react';
+import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile, Ellipsis } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message, MessageStatus, PaginatedResponse } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
 import { getMessages, sendMessage, sendImageMessage, markConversationAsRead } from '@/services/chat';
 import EmojiPicker from 'emoji-picker-react';
@@ -32,6 +33,10 @@ export default function ChatRoom() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const setTyping = useTypingStore((s) => s.setTyping);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,6 +170,27 @@ export default function ChatRoom() {
   };
 
   useEffect(() => {
+    if (!chatId || import.meta.env.VITE_DEV_MODE !== 'true') return;
+    if (!input) return;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      setOtherTyping(true);
+      setTyping(chatId, true);
+      typingDoneTimerRef.current = setTimeout(() => {
+        setOtherTyping(false);
+        setTyping(chatId, false);
+      }, 3000);
+    }, 1500);
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
+      setOtherTyping(false);
+      setTyping(chatId, false);
+    };
+  }, [input, chatId]);
+
+  useEffect(() => {
     if (!chatId) return;
     markConversationAsRead(chatId);
     queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
@@ -240,10 +266,21 @@ export default function ChatRoom() {
         <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
           <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className="flex-1">
-          <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
-          <p className="text-xs text-muted-foreground">{chatOnline ? 'Online' : 'Offline'}</p>
-        </div>
+          <div className="flex-1">
+            <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
+            {otherTyping ? (
+              <p className="flex items-center gap-1 text-xs text-accent">
+                <span className="flex gap-0.5">
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:0ms]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:150ms]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:300ms]" />
+                </span>
+                typing
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{chatOnline ? 'Online' : 'Offline'}</p>
+            )}
+          </div>
         <button
           onClick={() => {
             if (showSearch) { setSearchQuery(''); setShowSearch(false); }
@@ -386,6 +423,18 @@ export default function ChatRoom() {
               );
             })}
             <div ref={messagesEndRef} />
+            {otherTyping && (
+              <div className="flex items-center gap-2 px-1 py-1">
+                <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-chat-incoming-bg px-4 py-3">
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">typing</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

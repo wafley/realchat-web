@@ -6,6 +6,7 @@ import { Search, Plus, MessageSquareText, Users, UserPlus, AlertCircle, RefreshC
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
+import { useTypingStore } from '@/store/typingStore';
 import { getConversations } from '@/services/chat';
 
 const tabs = [
@@ -19,6 +20,8 @@ export default function ChatList() {
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+
+  const typingMap = useTypingStore((s) => s.typingMap);
 
   const { data: conversations = [], isPending, isError, error, refetch } = useQuery({
     queryKey: ['conversations'],
@@ -162,7 +165,11 @@ export default function ChatList() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
-                      {chat.lastMessage}
+                      {typingMap[chat.id] ? (
+                        <span className="text-accent">typing...</span>
+                      ) : (
+                        chat.lastMessage
+                      )}
                     </span>
                     <div className="flex shrink-0 items-center gap-2">
                       {(chat.members ?? 0) > 0 && (
