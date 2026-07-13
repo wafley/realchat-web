@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User } from '@/types';
@@ -40,7 +40,7 @@ interface ChatOverlaysProps {
   onReport: () => void;
   onCloseGroupInfo: () => void;
   onCloseReadReceipts: () => void;
-  onUpdateGroup: (data: { name?: string; description?: string }) => Promise<void>;
+  onUpdateGroup: (data: { name?: string; description?: string; avatarUrl?: string }) => Promise<void>;
   onAddMember: (userId: string) => Promise<void>;
   onRemoveMember: (userId: string) => Promise<void>;
   onLeaveGroup: () => Promise<void>;
@@ -110,6 +110,9 @@ export default function ChatOverlays({
 
   const [savingEdit, setSavingEdit] = useState(false);
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const handleStartEdit = () => {
     setEditName(group?.name ?? '');
@@ -120,7 +123,9 @@ export default function ChatOverlays({
   const handleSaveEdit = async () => {
     if (!editName.trim()) return;
     setSavingEdit(true);
-    await onUpdateGroup({ name: editName.trim(), description: editDesc.trim() });
+    await onUpdateGroup({ name: editName.trim(), description: editDesc.trim(), avatarUrl: avatarPreview ?? undefined });
+    setAvatarFile(null);
+    setAvatarPreview(null);
     setSavingEdit(false);
     setEditing(false);
   };
@@ -407,10 +412,15 @@ export default function ChatOverlays({
               <div className="max-h-48 space-y-1 overflow-y-auto">
                 {group.members?.map((m: GroupMember) => (
                   <div key={m.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-                    <Avatar className="h-8 w-8">
-                      {m.user?.avatarUrl && <AvatarImage src={m.user.avatarUrl} />}
-                      <AvatarFallback className="text-xs">{(m.user?.fullName ?? m.userId)[0]}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-8 w-8">
+                        {m.user?.avatarUrl && <AvatarImage src={m.user.avatarUrl} />}
+                        <AvatarFallback className="text-xs">{(m.user?.fullName ?? m.userId)[0]}</AvatarFallback>
+                      </Avatar>
+                      {m.user?.status === 'online' && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <span className="text-sm text-foreground">{m.user?.fullName ?? m.userId}</span>
                       <div className="flex items-center gap-1">
@@ -494,8 +504,36 @@ export default function ChatOverlays({
       )}
 
       {groupInfoOpen && editing && (
-        <Modal open={editing} onClose={() => setEditing(false)} title="Edit Group">
+        <Modal open={editing} onClose={() => { setEditing(false); setAvatarPreview(null); setAvatarFile(null); }} title="Edit Group">
           <div className="space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  {(avatarPreview || group?.avatarUrl) && <AvatarImage src={avatarPreview ?? group?.avatarUrl} />}
+                  <AvatarFallback className="text-lg">{editName[0] ?? 'G'}</AvatarFallback>
+                </Avatar>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80"
+                >
+                  <Camera size={12} />
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setAvatarFile(file);
+                      setAvatarPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+              </div>
+            </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">Group Name</label>
               <input

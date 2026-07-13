@@ -616,7 +616,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
   }, [toggleReactionMutation]);
 
   const updateGroupMutation = useMutation({
-    mutationFn: (data: { name?: string; description?: string }) => updateGroup(chatId, data),
+    mutationFn: (data: { name?: string; description?: string; avatarUrl?: string }) => updateGroup(chatId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
