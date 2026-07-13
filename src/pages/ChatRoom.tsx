@@ -223,20 +223,39 @@ export default function ChatRoom() {
     onError: () => toast.error('Failed to forward message. Please try again.'),
   });
 
+  const loadPinned = useCallback(() => {
+    refetchPinned().then((r) => { if (r.data) setPinnedMessages(r.data); });
+  }, [refetchPinned]);
+
+  const updateMsgPin = useCallback((msgId: string, pinned: boolean) => {
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          data: page.data.map((m) => (m.id === msgId ? { ...m, isPinned: pinned } : m)),
+        })),
+      };
+    });
+  }, [chatId, isDM]);
+
   const pinMutation = useMutation({
     mutationFn: (msgId: string) => pinMessage(chatId, msgId),
-    onSuccess: () => {
+    onSuccess: (_data, msgId) => {
       toast.success('Message pinned');
-      refetchPinned();
+      updateMsgPin(msgId, true);
+      loadPinned();
     },
     onError: () => toast.error('Failed to pin message'),
   });
 
   const unpinMutation = useMutation({
     mutationFn: (msgId: string) => unpinMessage(chatId, msgId),
-    onSuccess: () => {
+    onSuccess: (_data, msgId) => {
       toast.success('Message unpinned');
-      refetchPinned();
+      updateMsgPin(msgId, false);
+      loadPinned();
     },
     onError: () => toast.error('Failed to unpin message'),
   });
@@ -672,7 +691,7 @@ export default function ChatRoom() {
         />
       )}
 
-      <PinnedBanner pinnedMessages={pinnedMessages} />
+      <PinnedBanner pinnedMessages={pinnedMessages} onUnpin={(id) => unpinMutation.mutate(id)} />
 
       <MessageList
         filteredMessages={filteredMessages}

@@ -31,7 +31,7 @@ const MOCK_CONVERSATIONS: ChatConversation[] = [
 
 const MOCK_MESSAGES: Record<string, Message[]> = {
   '1': [
-    { id: 'm1', groupId: '1', senderId: 'aang', content: 'Hey everyone!', type: 'text', createdAt: new Date('2026-07-10T10:30') },
+    { id: 'm1', groupId: '1', senderId: 'aang', content: 'Hey everyone!', type: 'text', isPinned: true, createdAt: new Date('2026-07-10T10:30') },
     { id: 'm2', groupId: '1', senderId: DEV_USER_ID, content: 'Halo Aang! Apa kabar?', type: 'text', createdAt: new Date('2026-07-10T10:31') },
     { id: 'm3', groupId: '1', senderId: 'bambang', content: 'Selamat pagi teman-teman 👋', type: 'text', createdAt: new Date('2026-07-10T10:32') },
     { id: 'm4', groupId: '1', senderId: DEV_USER_ID, content: 'Ada yang lihat update baru?', type: 'text', createdAt: new Date('2026-07-10T10:33') },
