@@ -30,6 +30,8 @@ interface MessageListProps {
   onClickImage: (url: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
+  selectedIds: string[];
+  toggleSelect: (msgId: string) => void;
 }
 
 export default function MessageList({
@@ -58,6 +60,8 @@ export default function MessageList({
   onClickImage,
   onToggleReaction,
   onReactionPickerOpen,
+  selectedIds,
+  toggleSelect,
 }: MessageListProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-chat-tile-overlay px-4 py-4">
@@ -129,6 +133,8 @@ export default function MessageList({
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
                   onReactionPickerOpen={onReactionPickerOpen}
+                  selectedIds={selectedIds}
+                  toggleSelect={toggleSelect}
                 />
               </div>
             );

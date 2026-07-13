@@ -1,5 +1,5 @@
 import { memo, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus } from 'lucide-react';
+import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
@@ -23,6 +23,8 @@ interface MessageBubbleProps {
   onClickImage: (url: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
+  selectedIds: string[];
+  toggleSelect: (msgId: string) => void;
 }
 
 function MessageBubbleComp({
@@ -44,7 +46,11 @@ function MessageBubbleComp({
   onClickImage,
   onToggleReaction,
   onReactionPickerOpen,
+  selectedIds,
+  toggleSelect,
 }: MessageBubbleProps) {
+  const isSelected = selectedIds.includes(msg.id);
+  const inSelectionMode = selectedIds.length > 0;
   const reactionMap = new Map<string, { count: number; hasMine: boolean }>();
   if (msg.reactions) {
     for (const r of msg.reactions) {
@@ -56,14 +62,24 @@ function MessageBubbleComp({
   }
 
   return (
-    <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
-      {!isOwn && (
+    <div
+      className={`flex items-start gap-2 ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''}`}
+      onClick={() => { if (inSelectionMode) toggleSelect(msg.id); }}
+    >
+      {inSelectionMode ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleSelect(msg.id); }}
+          className="mt-3 flex h-6 w-6 shrink-0 items-center justify-center"
+        >
+          {isSelected ? <CheckSquare size={18} className="text-accent" /> : <Square size={18} className="text-muted-foreground" />}
+        </button>
+      ) : !isOwn ? (
         <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
           <AvatarFallback className="text-xs lg:text-sm">
             {name.charAt(0)}
           </AvatarFallback>
         </Avatar>
-      )}
+      ) : null}
       <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
         {!isOwn && (
           <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
@@ -97,7 +113,7 @@ function MessageBubbleComp({
           } ${isOwn
             ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
             : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
-          } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''}`}
+          } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''}`}
         >
           {msg.replyTo && (
             <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${isOwn ? 'border-white/40 bg-white/10' : 'border-black/30 bg-black/8'}`}>

@@ -65,6 +65,7 @@ export default function ChatRoom() {
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
 
   const [muted, setMuted] = useState(false);
+const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -308,8 +309,9 @@ export default function ChatRoom() {
       if (reportConfirmOpen) setReportConfirmOpen(false);
       if (readReceiptTarget) setReadReceiptTarget(null);
       if (reactingMsgId) { setReactingMsgId(null); setReactionPickerRect(null); }
+      if (selectedIds.length > 0) setSelectedIds([]);
     }
-  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget, forwardTarget, groupInfoOpen, blockConfirmOpen, reportConfirmOpen, readReceiptTarget, reactingMsgId]);
+  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget, forwardTarget, groupInfoOpen, blockConfirmOpen, reportConfirmOpen, readReceiptTarget, reactingMsgId, selectedIds.length]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -543,6 +545,9 @@ export default function ChatRoom() {
       case 'reply':
         setReplyingTo(msg);
         break;
+      case 'select':
+        setSelectedIds([msg.id]);
+        break;
       case 'forward':
         setForwardTarget(msg);
         break;
@@ -627,6 +632,24 @@ export default function ChatRoom() {
     handleReactionPickerClose();
   }, [reactingMsgId, toggleReactionMutation, handleReactionPickerClose]);
 
+  const toggleSelect = useCallback((msgId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(msgId) ? prev.filter((id) => id !== msgId) : [...prev, msgId],
+    );
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    selectedIds.forEach((id) => deleteMutation.mutate({ msgId: id, delForAll: false }));
+    setSelectedIds([]);
+  }, [selectedIds, deleteMutation]);
+
+  const handleBulkForward = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    const first = messages.find((m) => m.id === selectedIds[0]);
+    if (first) setForwardTarget(first);
+  }, [selectedIds, messages]);
+
   const handleToggleMute = useCallback(() => {
     const n = !muted;
     setMuted(n);
@@ -687,7 +710,33 @@ export default function ChatRoom() {
         />
       )}
 
-      <PinnedBanner pinnedMessages={pinnedMessages} onUnpin={(id) => unpinMutation.mutate(id)} />
+      <PinnedBanner pinnedMessages={pinnedMessages} onUnpin={(id) => unpinMutation.mutate(id)} onScrollTo={(id) => { document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
+
+      {selectedIds.length > 0 && (
+        <div className="flex items-center gap-3 border-b border-border bg-sidebar/80 px-4 py-2 text-xs">
+          <span className="font-medium text-foreground">{selectedIds.length} selected</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={handleBulkForward}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-accent/10"
+            >
+              Forward
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-destructive transition-colors hover:bg-destructive/10"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-muted-foreground transition-colors hover:bg-accent/10"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <MessageList
         filteredMessages={filteredMessages}
@@ -715,6 +764,8 @@ export default function ChatRoom() {
         onClickImage={(url) => setLightboxUrl(url)}
         onToggleReaction={handleToggleReaction}
         onReactionPickerOpen={handleReactionPickerOpen}
+        selectedIds={selectedIds}
+        toggleSelect={toggleSelect}
       />
 
       <ChatInput
