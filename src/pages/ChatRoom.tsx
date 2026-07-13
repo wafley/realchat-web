@@ -4,7 +4,7 @@ import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile, Ellipsis } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { Message, MessageStatus, PaginatedResponse } from '@/types';
+import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useTypingStore } from '@/store/typingStore';
@@ -48,6 +48,8 @@ export default function ChatRoom() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [otherTyping, setOtherTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const setTyping = useTypingStore((s) => s.setTyping);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,13 +133,13 @@ export default function ChatRoom() {
   }, [chatId, isDM]);
 
   const sendMutation = useMutation({
-    mutationFn: (content: string) => sendMessage(chatId, content, isDM),
-    onSuccess: onMessageSent,
+    mutationFn: ({ content, replyTo: rp }: { content: string; replyTo?: ReplyTo }) => sendMessage(chatId, content, isDM, rp),
+    onSuccess(r) { onMessageSent(r); },
   });
 
   const sendImageMutation = useMutation({
-    mutationFn: ({ file, caption }: { file: File; caption: string }) => sendImageMessage(chatId, file, isDM, caption || undefined),
-    onSuccess: onMessageSent,
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) => sendImageMessage(chatId, file, isDM, caption || undefined, rp),
+    onSuccess(r) { onMessageSent(r); },
   });
 
   const filteredMessages = showSearch && searchQuery.trim()
@@ -150,8 +152,10 @@ export default function ChatRoom() {
     if (e.key === 'Escape') {
       if (showSearch) { setShowSearch(false); setSearchQuery(''); }
       if (showEmojiPicker) setShowEmojiPicker(false);
+      if (replyingTo) setReplyingTo(null);
+      if (lightboxUrl) setLightboxUrl(null);
     }
-  }, [showSearch, showEmojiPicker]);
+  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -245,14 +249,25 @@ export default function ChatRoom() {
     e.target.value = '';
   };
 
+  const handleReplyClick = (msg: Message) => {
+    if (showEmojiPicker) setShowEmojiPicker(false);
+    setReplyingTo(msg);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
   const handleSendImage = () => {
     if (!selectedImage) return;
     const file = selectedImage;
     const caption = input.trim();
+    const rp = replyingTo ? { id: replyingTo.id, senderId: replyingTo.senderId, senderName: replyingTo.sender?.fullName ?? 'Unknown', content: replyingTo.content, type: replyingTo.type as 'text' | 'image', fileUrl: replyingTo.fileUrl, fileName: replyingTo.fileName } : undefined;
     setSelectedImage(null);
     setImagePreview(null);
     setInput('');
-    sendImageMutation.mutate({ file, caption });
+    setReplyingTo(null);
+    sendImageMutation.mutate({ file, caption, replyTo: rp });
   };
 
   const handleCancelImage = () => {
@@ -263,8 +278,10 @@ export default function ChatRoom() {
   const handleSend = () => {
     const text = input.trim();
     if (!text) return;
+    const rp = replyingTo ? { id: replyingTo.id, senderId: replyingTo.senderId, senderName: replyingTo.sender?.fullName ?? 'Unknown', content: replyingTo.content, type: replyingTo.type as 'text' | 'image', fileUrl: replyingTo.fileUrl, fileName: replyingTo.fileName } : undefined;
     setInput('');
-    sendMutation.mutate(text);
+    setReplyingTo(null);
+    sendMutation.mutate({ content: text, replyTo: rp });
   };
 
   return (
@@ -362,7 +379,7 @@ export default function ChatRoom() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-1">
             {hasNextPage && (
               <div ref={scrollTriggerRef} className="flex justify-center py-2">
                 {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
@@ -385,7 +402,7 @@ export default function ChatRoom() {
                     </div>
                   )}
                   <div
-                    className={`flex gap-3 lg:gap-4 ${isOwn ? 'flex-row-reverse' : ''} ${isNew ? 'animate-[fade-in-up_0.3s_ease-out]' : ''}`}
+                    className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''} ${isNew ? 'animate-[fade-in-up_0.3s_ease-out]' : ''}`}
                   >
                   {!isOwn && (
                     <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
@@ -400,39 +417,46 @@ export default function ChatRoom() {
                         {name}
                       </p>
                     )}
-                    <div
-                      className={`overflow-hidden ${
-                        msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base'
-                      } ${isOwn
-                        ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
-                        : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
-                      }`}
-                    >
-                      {msg.type === 'image' && msg.fileUrl ? (
-                        <div className="flex flex-col">
-                          <div className="overflow-hidden">
-                            <img
-                              src={msg.fileUrl}
-                              alt={msg.content || 'Image'}
-                              className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                              style={{ maxHeight: '300px' }}
-                              onClick={() => window.open(msg.fileUrl, '_blank')}
-                              loading="lazy"
-                            />
-                          </div>
-                          {msg.content && (
-                            <>
-                              <div className="mx-4 h-px bg-black/10" />
-                              <p className="px-4 pb-3 pt-2 text-sm lg:px-5 lg:pb-3 lg:pt-2.5 lg:text-base">
-                                {msg.content}
-                              </p>
-                            </>
-                          )}
+                  <div
+                    onClick={() => handleReplyClick(msg)}
+                    className={`cursor-pointer overflow-hidden ${
+                      msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-3 py-1.5 text-sm lg:px-4 lg:py-2 lg:text-base'
+                    } ${isOwn
+                      ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
+                      : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
+                    }`}
+                  >
+                    {msg.replyTo && (
+                      <div className={`mb-2 rounded-lg border-l-4 px-3 py-2 text-xs ${isOwn ? 'border-white/30 bg-white/5' : 'border-black/20 bg-black/5'}`}>
+                        <p className="text-[11px] font-semibold text-muted-foreground lg:text-xs">{msg.replyTo.senderName}</p>
+                        <p className="truncate text-muted-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
+                      </div>
+                    )}
+                    {msg.type === 'image' && msg.fileUrl ? (
+                      <div className="flex flex-col">
+                        <div className="overflow-hidden">
+                          <img
+                            src={msg.fileUrl}
+                            alt={msg.content || 'Image'}
+                            className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                            style={{ maxHeight: '300px' }}
+                            onClick={(e) => { e.stopPropagation(); setLightboxUrl(msg.fileUrl!); }}
+                            loading="lazy"
+                          />
                         </div>
-                      ) : (
-                        <p>{msg.content}</p>
-                      )}
-                    </div>
+                        {msg.content && (
+                          <>
+                            <div className="mx-4 h-px bg-black/10" />
+                            <p className="px-4 pb-3 pt-2 text-sm lg:px-5 lg:pb-3 lg:pt-2.5 lg:text-base">
+                              {msg.content}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <p>{msg.content}</p>
+                    )}
+                  </div>
                     <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
                       {formatTime(msg.createdAt)}
                       {isOwn && msg.status && (
@@ -465,6 +489,23 @@ export default function ChatRoom() {
       </div>
 
       <div className="relative border-t border-border">
+        {replyingTo && (
+          <div className="mx-4 mb-2 mt-3 flex items-start gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
+            <div className="flex min-w-0 flex-1 items-start gap-2">
+              <div className="mt-0.5 h-full w-0.5 shrink-0 self-stretch rounded-full bg-accent/60" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-accent lg:text-sm">Replying to {replyingTo.sender?.fullName ?? 'Unknown'}</p>
+                <p className="truncate text-xs text-muted-foreground lg:text-sm">{replyingTo.type === 'image' ? '📷 Photo' : replyingTo.content}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleCancelReply}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-8 lg:w-8"
+            >
+              <X size={14} className="lg:size-4" />
+            </button>
+          </div>
+        )}
         {imagePreview && (
           <div className="mx-4 mb-2 mt-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
             <div className="relative shrink-0">
@@ -542,6 +583,26 @@ export default function ChatRoom() {
           </button>
         </div>
       </div>
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Full size"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
