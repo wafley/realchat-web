@@ -223,10 +223,6 @@ export default function ChatRoom() {
     onError: () => toast.error('Failed to forward message. Please try again.'),
   });
 
-  const loadPinned = useCallback(() => {
-    refetchPinned().then((r) => { if (r.data) setPinnedMessages(r.data); });
-  }, [refetchPinned]);
-
   const updateMsgPin = useCallback((msgId: string, pinned: boolean) => {
     queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
       if (!prev) return prev;
@@ -245,7 +241,7 @@ export default function ChatRoom() {
     onSuccess: (_data, msgId) => {
       toast.success('Message pinned');
       updateMsgPin(msgId, true);
-      loadPinned();
+      refetchPinned().then((r) => { if (r.data) setPinnedMessages(r.data); });
     },
     onError: () => toast.error('Failed to pin message'),
   });
@@ -255,7 +251,7 @@ export default function ChatRoom() {
     onSuccess: (_data, msgId) => {
       toast.success('Message unpinned');
       updateMsgPin(msgId, false);
-      loadPinned();
+      refetchPinned().then((r) => { if (r.data) setPinnedMessages(r.data); });
     },
     onError: () => toast.error('Failed to unpin message'),
   });
