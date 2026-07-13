@@ -67,3 +67,23 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
   const { data } = await api.patch<User>('/auth/me', payload);
   return data;
 }
+
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  if (DEV_MODE) {
+    if (currentPassword !== 'password123') throw new Error('Current password is incorrect');
+    if (newPassword.length < 6) throw new Error('New password must be at least 6 characters');
+    return;
+  }
+  await api.post('/auth/change-password', { currentPassword, newPassword });
+}
+
+export async function deleteAccount(password: string): Promise<void> {
+  if (DEV_MODE) {
+    if (password !== 'password123') throw new Error('Password is incorrect');
+    localStorage.removeItem('token');
+    return;
+  }
+  await api.delete('/auth/me', { data: { password } });
+}
