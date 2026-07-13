@@ -2,12 +2,13 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText } from 'lucide-react';
+import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message, MessageStatus, PaginatedResponse } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, markConversationAsRead } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, markConversationAsRead } from '@/services/chat';
+import EmojiPicker from 'emoji-picker-react';
 
 function formatTime(date: Date) {
   const now = new Date();
@@ -26,8 +27,11 @@ export default function ChatRoom() {
   const [input, setInput] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollTriggerRef = useRef<HTMLDivElement>(null);
   const prevLastMsgIdRef = useRef<string | null>(null);
 
@@ -61,47 +65,55 @@ export default function ChatRoom() {
     [data],
   );
 
+  const onMessageSent = useCallback((newMsg: Message) => {
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
+      if (!prev) return prev;
+      const [firstPage, ...rest] = prev.pages;
+      return {
+        ...prev,
+        pages: [
+          { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
+          ...rest,
+        ],
+      };
+    });
+    const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
+    queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(['conversations'], (prev) => {
+      if (!prev) return prev;
+      const updated = prev.map((c) =>
+        c.id === chatId ? { ...c, lastMessage: preview, lastTime: 'now' } : c,
+      );
+      const idx = updated.findIndex((c) => c.id === chatId);
+      if (idx <= 0) return updated;
+      return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
+    });
+    if (import.meta.env.VITE_DEV_MODE === 'true') {
+      const steps: MessageStatus[] = ['delivered', 'read'];
+      steps.forEach((s, i) => {
+        setTimeout(() => {
+          queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              pages: prev.pages.map((page) => ({
+                ...page,
+                data: page.data.map((m) => (m.id === newMsg.id ? { ...m, status: s } : m)),
+              })),
+            };
+          });
+        }, (i + 1) * 1000);
+      });
+    }
+  }, [chatId, isDM]);
+
   const sendMutation = useMutation({
     mutationFn: (content: string) => sendMessage(chatId, content, isDM),
-    onSuccess: (newMsg) => {
-      queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
-        if (!prev) return prev;
-        const [firstPage, ...rest] = prev.pages;
-        return {
-          ...prev,
-          pages: [
-            { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
-            ...rest,
-          ],
-        };
-      });
-      queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(['conversations'], (prev) => {
-        if (!prev) return prev;
-        const updated = prev.map((c) =>
-          c.id === chatId ? { ...c, lastMessage: newMsg.content, lastTime: 'now' } : c,
-        );
-        const idx = updated.findIndex((c) => c.id === chatId);
-        if (idx <= 0) return updated;
-        return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
-      });
-      if (import.meta.env.VITE_DEV_MODE === 'true') {
-        const steps: MessageStatus[] = ['delivered', 'read'];
-        steps.forEach((s, i) => {
-          setTimeout(() => {
-            queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                pages: prev.pages.map((page) => ({
-                  ...page,
-                  data: page.data.map((m) => (m.id === newMsg.id ? { ...m, status: s } : m)),
-                })),
-              };
-            });
-          }, (i + 1) * 1000);
-        });
-      }
-    },
+    onSuccess: onMessageSent,
+  });
+
+  const sendImageMutation = useMutation({
+    mutationFn: (file: File) => sendImageMessage(chatId, file, isDM),
+    onSuccess: onMessageSent,
   });
 
   const filteredMessages = showSearch && searchQuery.trim()
@@ -160,6 +172,27 @@ export default function ChatRoom() {
     observer.observe(el);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const handleSendImage = () => {
+    if (!selectedImage) return;
+    const file = selectedImage;
+    setSelectedImage(null);
+    setImagePreview(null);
+    sendImageMutation.mutate(file);
+  };
+
+  const handleCancelImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
 
   const handleSend = () => {
     const text = input.trim();
@@ -281,13 +314,24 @@ export default function ChatRoom() {
                       </p>
                     )}
                     <div
-                      className={`rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base ${
-                        isOwn
-                          ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
-                          : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
+                      className={`overflow-hidden ${
+                        msg.type === 'image' ? 'rounded-2xl' : 'rounded-2xl px-4 py-2 text-sm lg:px-5 lg:py-3 lg:text-base'
+                      } ${isOwn
+                        ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md'
+                        : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md'
                       }`}
                     >
-                      <p>{msg.content}</p>
+                      {msg.type === 'image' && msg.fileUrl ? (
+                        <img
+                          src={msg.fileUrl}
+                          alt={msg.content}
+                          className="max-w-full cursor-pointer object-cover transition-transform hover:scale-[1.02]"
+                          style={{ maxHeight: '300px' }}
+                          onClick={() => window.open(msg.fileUrl, '_blank')}
+                        />
+                      ) : (
+                        <p>{msg.content}</p>
+                      )}
                     </div>
                     <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
                       {formatTime(msg.createdAt)}
@@ -308,18 +352,56 @@ export default function ChatRoom() {
       </div>
 
       <div className="border-t border-border px-4 py-3">
+        {imagePreview && (
+          <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="h-12 w-12 rounded-lg object-cover"
+            />
+            <span className="flex-1 truncate text-sm text-foreground">{selectedImage?.name}</span>
+            <button
+              onClick={handleCancelImage}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-9 lg:w-9"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5 lg:px-4 lg:py-2.5">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-10 lg:w-10"
+            type="button"
+          >
+            <ImagePlus size={18} className="lg:size-5" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
           <input
             type="text"
             placeholder="Type a message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (selectedImage) handleSendImage();
+                else handleSend();
+              }
+            }}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:text-base"
           />
           <button
-            onClick={handleSend}
-            disabled={!input.trim()}
+            onClick={() => {
+              if (selectedImage) handleSendImage();
+              else handleSend();
+            }}
+            disabled={!input.trim() && !selectedImage}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
           >
             <Send size={18} className="lg:size-5" />
