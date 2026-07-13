@@ -1,4 +1,4 @@
-import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction } from '@/types';
+import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User } from '@/types';
 
 interface ChatConversation {
   id: string;
@@ -522,12 +522,12 @@ export async function getGroups(): Promise<ChatConversation[]> {
   }
 }
 
-export async function searchUsers(query: string): Promise<typeof MOCK_USERS> {
+export async function searchUsers(query: string): Promise<User[]> {
   try {
     if (DEV_MODE) {
       await delay(100);
       const q = query.toLowerCase();
-      return MOCK_USERS.filter((u) => u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q));
+      return MOCK_USERS.filter((u) => u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)) as User[];
     }
     const { default: axios } = await import('axios');
     const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/users/search`, { params: { q: query } });
