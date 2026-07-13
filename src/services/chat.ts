@@ -677,6 +677,20 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
   }
 }
 
+export async function clearChat(chatId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      delete MOCK_MESSAGES[chatId];
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/chats/${chatId}/messages`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to clear chat');
+  }
+}
+
 function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }

@@ -1,4 +1,5 @@
-import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface ChatHeaderProps {
@@ -13,6 +14,7 @@ interface ChatHeaderProps {
   onBlockClick: () => void;
   onReportClick: () => void;
   onGroupInfoClick: () => void;
+  onClearChat: () => void;
 }
 
 export default function ChatHeader({
@@ -27,7 +29,21 @@ export default function ChatHeader({
   onBlockClick,
   onReportClick,
   onGroupInfoClick,
+  onClearChat,
 }: ChatHeaderProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    if (moreOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [moreOpen]);
+
   return (
     <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
       <button
@@ -90,6 +106,25 @@ export default function ChatHeader({
           <Info size={18} />
         </button>
       )}
+      <div ref={moreRef} className="relative">
+        <button
+          onClick={() => setMoreOpen(!moreOpen)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
+        >
+          <MoreVertical size={18} />
+        </button>
+        {moreOpen && (
+          <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-popover py-1 shadow-lg">
+            <button
+              onClick={() => { setMoreOpen(false); onClearChat(); }}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              <Trash2 size={15} className="text-muted-foreground" />
+              Clear Chat
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
