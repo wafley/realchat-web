@@ -77,35 +77,6 @@ export default function ChatHeader({
       >
         <Search size={18} className="lg:size-5" />
       </button>
-      {isDM ? (
-        <>
-          <button
-            onClick={onToggleMute}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
-          >
-            {muted ? <BellOff size={16} /> : <Bell size={16} />}
-          </button>
-          <button
-            onClick={onBlockClick}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
-          >
-            <Ban size={16} />
-          </button>
-          <button
-            onClick={onReportClick}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
-          >
-            <Flag size={16} />
-          </button>
-        </>
-      ) : (
-        <button
-          onClick={onGroupInfoClick}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-10 lg:w-10"
-        >
-          <Info size={18} />
-        </button>
-      )}
       <div ref={moreRef} className="relative">
         <button
           onClick={() => setMoreOpen(!moreOpen)}
@@ -114,14 +85,36 @@ export default function ChatHeader({
           <MoreVertical size={18} />
         </button>
         {moreOpen && (
-          <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-border bg-popover py-1 shadow-lg">
-            <button
-              onClick={() => { setMoreOpen(false); onClearChat(); }}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-            >
-              <Trash2 size={15} className="text-muted-foreground" />
-              Clear Chat
-            </button>
+          <div className="absolute right-0 top-full z-50 mt-1 w-48 overflow-hidden rounded-xl border border-border bg-popover py-1 shadow-lg">
+            <div className="border-b border-border pb-1">
+              {isDM ? (
+                <>
+                  <button onClick={() => { setMoreOpen(false); onToggleMute(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                    {muted ? <BellOff size={15} className="text-muted-foreground" /> : <Bell size={15} className="text-muted-foreground" />}
+                    {muted ? 'Unmute' : 'Mute'}
+                  </button>
+                  <button onClick={() => { setMoreOpen(false); onBlockClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                    <Ban size={15} className="text-muted-foreground" />
+                    Block
+                  </button>
+                  <button onClick={() => { setMoreOpen(false); onReportClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                    <Flag size={15} className="text-muted-foreground" />
+                    Report
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => { setMoreOpen(false); onGroupInfoClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                  <Info size={15} className="text-muted-foreground" />
+                  Group Info
+                </button>
+              )}
+            </div>
+            <div className="pt-1">
+              <button onClick={() => { setMoreOpen(false); onClearChat(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                <Trash2 size={15} className="text-muted-foreground" />
+                Clear Chat
+              </button>
+            </div>
           </div>
         )}
       </div>
