@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus } from 'lucide-react';
+import { ArrowLeft, Search, Send, X, Loader2, Check, CheckCheck, Clock, AlertCircle, RefreshCw, MessageSquareText, ImagePlus, Smile } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message, MessageStatus, PaginatedResponse } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { useThemeStore } from '@/store/themeStore';
 import { queryClient } from '@/lib/queryClient';
 import { getMessages, sendMessage, sendImageMessage, markConversationAsRead } from '@/services/chat';
 import EmojiPicker from 'emoji-picker-react';
@@ -24,14 +25,18 @@ export default function ChatRoom() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = useAuthStore((s) => s.user);
+  const theme = useThemeStore((s) => s.theme);
   const [input, setInput] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const scrollTriggerRef = useRef<HTMLDivElement>(null);
   const prevLastMsgIdRef = useRef<string | null>(null);
 
@@ -123,11 +128,11 @@ export default function ChatRoom() {
     : messages;
 
   const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
-    if (e.key === 'Escape' && showSearch) {
-      setShowSearch(false);
-      setSearchQuery('');
+    if (e.key === 'Escape') {
+      if (showSearch) { setShowSearch(false); setSearchQuery(''); }
+      if (showEmojiPicker) setShowEmojiPicker(false);
     }
-  }, [showSearch]);
+  }, [showSearch, showEmojiPicker]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -139,6 +144,25 @@ export default function ChatRoom() {
       searchInputRef.current?.focus();
     }
   }, [showSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const isOutsidePicker = emojiPickerRef.current && !emojiPickerRef.current.contains(target);
+      const isOnToggle = emojiToggleRef.current && emojiToggleRef.current.contains(target);
+      if (isOutsidePicker && !isOnToggle) {
+        setShowEmojiPicker(false);
+      }
+    };
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
+
+  const handleEmojiClick = (emojiData: { emoji: string }) => {
+    setInput((prev) => prev + emojiData.emoji);
+  };
 
   useEffect(() => {
     if (!chatId) return;
@@ -366,9 +390,9 @@ export default function ChatRoom() {
         )}
       </div>
 
-      <div className="border-t border-border px-4 py-3">
+      <div className="relative border-t border-border">
         {imagePreview && (
-          <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
+          <div className="mx-4 mb-2 mt-3 flex items-center gap-3 rounded-xl border border-border bg-card p-2 pr-1 shadow-sm">
             <div className="relative shrink-0">
               <img
                 src={imagePreview}
@@ -389,7 +413,14 @@ export default function ChatRoom() {
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5 lg:px-4 lg:py-2.5">
+        {showEmojiPicker && (
+          <div ref={emojiPickerRef} className="absolute bottom-full left-0 right-0 z-50 mx-4 mb-1">
+            <div className="overflow-hidden rounded-xl shadow-lg">
+              <EmojiPicker onEmojiClick={handleEmojiClick} theme={theme as 'dark' | 'light'} />
+            </div>
+          </div>
+        )}
+        <div className="mx-4 mb-3 mt-3 flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5 lg:px-4 lg:py-2.5">
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-10 lg:w-10"
@@ -404,6 +435,14 @@ export default function ChatRoom() {
             onChange={handleImageSelect}
             className="hidden"
           />
+          <button
+            ref={emojiToggleRef}
+            onClick={() => setShowEmojiPicker((v) => !v)}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors lg:h-10 lg:w-10 ${showEmojiPicker ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}`}
+            type="button"
+          >
+            <Smile size={18} className="lg:size-5" />
+          </button>
           <input
             type="text"
             placeholder={selectedImage ? 'Add a caption...' : 'Type a message...'}
