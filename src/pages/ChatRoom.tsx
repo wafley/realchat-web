@@ -7,7 +7,8 @@ import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction } from '@/services/chat';
+import ReactionPicker from '@/components/chat/ReactionPicker';
 
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSearchBar from '@/components/chat/ChatSearchBar';
@@ -60,6 +61,8 @@ export default function ChatRoom() {
   const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
 
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
+  const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
+  const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
 
   const [muted, setMuted] = useState(false);
 
@@ -289,8 +292,9 @@ export default function ChatRoom() {
       if (blockConfirmOpen) setBlockConfirmOpen(false);
       if (reportConfirmOpen) setReportConfirmOpen(false);
       if (readReceiptTarget) setReadReceiptTarget(null);
+      if (reactingMsgId) { setReactingMsgId(null); setReactionPickerRect(null); }
     }
-  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget, forwardTarget, groupInfoOpen, blockConfirmOpen, reportConfirmOpen, readReceiptTarget]);
+  }, [showSearch, showEmojiPicker, replyingTo, lightboxUrl, contextMenu, deleteTarget, forwardTarget, groupInfoOpen, blockConfirmOpen, reportConfirmOpen, readReceiptTarget, reactingMsgId]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -570,6 +574,44 @@ export default function ChatRoom() {
     toast.success('Report submitted');
   }, [chatId]);
 
+  const toggleReactionMutation = useMutation({
+    mutationFn: ({ msgId, emoji }: { msgId: string; emoji: string }) => toggleReaction(chatId, msgId, emoji),
+    onSuccess: (reactions, { msgId }) => {
+      queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM], (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            data: page.data.map((m) => (m.id === msgId ? { ...m, reactions } : m)),
+          })),
+        };
+      });
+    },
+    onError: () => toast.error('Failed to toggle reaction'),
+  });
+
+  const handleToggleReaction = useCallback((msgId: string, emoji: string) => {
+    toggleReactionMutation.mutate({ msgId, emoji });
+  }, [toggleReactionMutation]);
+
+  const handleReactionPickerOpen = useCallback((msgId: string, rect: DOMRect) => {
+    setReactingMsgId(msgId);
+    setReactionPickerRect(rect);
+  }, []);
+
+  const handleReactionPickerClose = useCallback(() => {
+    setReactingMsgId(null);
+    setReactionPickerRect(null);
+  }, []);
+
+  const handleReactionPickerSelect = useCallback((emoji: string) => {
+    if (reactingMsgId) {
+      toggleReactionMutation.mutate({ msgId: reactingMsgId, emoji });
+    }
+    handleReactionPickerClose();
+  }, [reactingMsgId, toggleReactionMutation, handleReactionPickerClose]);
+
   const handleToggleMute = useCallback(() => {
     const n = !muted;
     setMuted(n);
@@ -656,6 +698,8 @@ export default function ChatRoom() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClickImage={(url) => setLightboxUrl(url)}
+        onToggleReaction={handleToggleReaction}
+        onReactionPickerOpen={handleReactionPickerOpen}
       />
 
       <ChatInput
@@ -679,6 +723,14 @@ export default function ChatRoom() {
         fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
         imageInputRef={imageInputRef as React.RefObject<HTMLInputElement>}
       />
+
+      {reactingMsgId && reactionPickerRect && (
+        <ReactionPicker
+          onReact={handleReactionPickerSelect}
+          onClose={handleReactionPickerClose}
+          anchorRect={reactionPickerRect}
+        />
+      )}
 
       <ChatOverlays
         deleteTarget={deleteTarget}
