@@ -9,6 +9,7 @@ import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
 import { getMessages, sendMessage, sendImageMessage, editMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole, clearChat, DM_USER_MAP } from '@/services/chat';
 import ReactionPicker from '@/components/chat/ReactionPicker';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSearchBar from '@/components/chat/ChatSearchBar';
@@ -66,7 +67,8 @@ export default function ChatRoom() {
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
 
   const [muted, setMuted] = useState(false);
-const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const keyboardHeight = useKeyboardHeight();
 
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -773,7 +775,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" style={{ paddingBottom: keyboardHeight }}>
       <ChatHeader
         chatName={chatName}
         otherTyping={otherTyping}
