@@ -45,6 +45,7 @@ interface ChatOverlaysProps {
   onRemoveMember: (userId: string) => Promise<void>;
   onLeaveGroup: () => Promise<void>;
   onDeleteGroup: () => Promise<void>;
+  onUpdateMemberRole: (userId: string, role: 'admin' | 'member') => Promise<void>;
   searchUsers: (query: string) => Promise<User[]>;
 }
 
@@ -83,6 +84,7 @@ export default function ChatOverlays({
   onRemoveMember,
   onLeaveGroup,
   onDeleteGroup,
+  onUpdateMemberRole,
   searchUsers,
 }: ChatOverlaysProps) {
   const isAdmin = group?.members?.some((m) => m.userId === currentUserId && m.role === 'admin');
@@ -107,6 +109,7 @@ export default function ChatOverlays({
   const [deletingGroup, setDeletingGroup] = useState(false);
 
   const [savingEdit, setSavingEdit] = useState(false);
+  const [roleLoading, setRoleLoading] = useState<string | null>(null);
 
   const handleStartEdit = () => {
     setEditName(group?.name ?? '');
@@ -410,27 +413,48 @@ export default function ChatOverlays({
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <span className="text-sm text-foreground">{m.user?.fullName ?? m.userId}</span>
-                      {m.role === 'admin' && (
-                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                          <Shield size={10} />
-                          Admin
-                        </span>
-                      )}
-                      {m.role === 'member' && m.userId === group.creatorId && (
-                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
-                          <Crown size={10} />
-                          Creator
-                        </span>
+                      <div className="flex items-center gap-1">
+                        {m.role === 'admin' && m.userId !== group.creatorId && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                            <Shield size={10} />
+                            Admin
+                          </span>
+                        )}
+                        {m.userId === group.creatorId && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500">
+                            <Crown size={10} />
+                            Creator
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {isAdmin && m.userId !== currentUserId && m.userId !== group.creatorId && (
+                        <>
+                          {roleLoading === m.userId ? (
+                            <Loader2 size={14} className="animate-spin text-muted-foreground" />
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                setRoleLoading(m.userId);
+                                await onUpdateMemberRole(m.userId, m.role === 'admin' ? 'member' : 'admin');
+                                setRoleLoading(null);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent"
+                              title={m.role === 'admin' ? 'Demote to member' : 'Promote to admin'}
+                            >
+                              <Shield size={13} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setRemoveTarget({ userId: m.userId, userName: m.user?.fullName ?? m.userId })}
+                            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <UserMinus size={14} />
+                          </button>
+                        </>
                       )}
                     </div>
-                    {isAdmin && m.userId !== currentUserId && (
-                      <button
-                        onClick={() => setRemoveTarget({ userId: m.userId, userName: m.user?.fullName ?? m.userId })}
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <UserMinus size={14} />
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>

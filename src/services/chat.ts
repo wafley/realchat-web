@@ -610,6 +610,25 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
   }
 }
 
+export async function updateMemberRole(groupId: string, userId: string, role: 'admin' | 'member'): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const user = MOCK_USERS.find((u) => u.id === userId);
+      if (!user) return;
+      MOCK_MESSAGES[groupId] = [
+        ...(MOCK_MESSAGES[groupId] ?? []),
+        { id: `sys-role-${++msgCounter}`, groupId, senderId: 'system', content: `${user.fullName} menjadi admin`, type: 'system', createdAt: new Date() },
+      ];
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.patch(`${import.meta.env.VITE_API_URL}/groups/${groupId}/members/${userId}/role`, { role });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to update member role');
+  }
+}
+
 export async function deleteGroup(groupId: string): Promise<void> {
   try {
     if (DEV_MODE) {
