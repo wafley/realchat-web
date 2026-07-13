@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { formatLastSeen } from '@/utils/time';
 import { getUser } from '@/services/user';
 
 export default function UserProfile() {
@@ -75,6 +76,9 @@ export default function UserProfile() {
                   />
                   {user.status === 'online' ? 'Online' : 'Offline'}
                 </span>
+                {user.status !== 'online' && user.lastSeen && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">last seen {formatLastSeen(user.lastSeen)}</p>
+                )}
               </div>
 
               <div className="mx-6 mb-4 overflow-hidden rounded-xl bg-card">

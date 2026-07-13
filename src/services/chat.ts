@@ -9,6 +9,7 @@ interface ChatConversation {
   lastTime?: string;
   unread?: number;
   online?: boolean;
+  lastSeen?: Date;
   members?: number;
   muted?: boolean;
 }
@@ -21,12 +22,12 @@ const MOCK_CONVERSATIONS: ChatConversation[] = [
   { id: '1', name: 'General', type: 'group', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12, muted: false },
   { id: '2', name: 'Random', type: 'group', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: true, members: 10, muted: false },
   { id: '3', name: 'Project Alpha', type: 'group', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6, muted: false },
-  { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, members: 5, muted: false },
-  { id: 'dm1', name: 'Aang Gacor', type: 'dm', lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2, online: true, muted: false },
-  { id: 'dm2', name: 'Bambang', type: 'dm', lastMessage: 'The server migration is complete', lastTime: '09:00', online: true, muted: false },
-  { id: 'dm3', name: 'Cici', type: 'dm', lastMessage: "I'll be out tomorrow", lastTime: '16:00', online: false, muted: false },
-  { id: 'dm4', name: 'Dewi', type: 'dm', lastMessage: 'The deadline has been extended', lastTime: '14:00', online: true, muted: false },
-  { id: 'dm5', name: 'Eko', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: '11:06', online: false, muted: false },
+  { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, lastSeen: new Date(Date.now() - 86400000), members: 5, muted: false },
+  { id: 'dm1', name: 'Aang Gacor', type: 'dm', lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2, online: true, lastSeen: new Date(), muted: false },
+  { id: 'dm2', name: 'Bambang', type: 'dm', lastMessage: 'The server migration is complete', lastTime: '09:00', online: true, lastSeen: new Date(Date.now() - 60000), muted: false },
+  { id: 'dm3', name: 'Cici', type: 'dm', lastMessage: "I'll be out tomorrow", lastTime: '16:00', online: false, lastSeen: new Date(Date.now() - 7200000), muted: false },
+  { id: 'dm4', name: 'Dewi', type: 'dm', lastMessage: 'The deadline has been extended', lastTime: '14:00', online: true, lastSeen: new Date(Date.now() - 1800000), muted: false },
+  { id: 'dm5', name: 'Eko', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: '11:06', online: false, lastSeen: new Date(Date.now() - 3600000), muted: false },
 ];
 
 const MOCK_GROUP_OVERRIDES = new Map<string, { name?: string; description?: string; avatarUrl?: string }>();
