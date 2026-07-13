@@ -1,8 +1,60 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Ban, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ban, Trash2, Key, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
+import Modal from '@/components/ui/modal';
 
 export default function SettingsAccount() {
   const navigate = useNavigate();
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+
+  const changePwMutation = useMutation({
+    mutationFn: () => changePassword(currentPassword, newPassword),
+    onSuccess: () => {
+      toast.success('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    },
+    onError: (err) => toast.error(parseAuthError(err)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteAccount(deletePassword),
+    onSuccess: () => {
+      localStorage.removeItem('token');
+      navigate('/login');
+    },
+    onError: (err) => toast.error(parseAuthError(err)),
+  });
+
+  const handleChangePw = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    changePwMutation.mutate();
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
@@ -23,6 +75,62 @@ export default function SettingsAccount() {
             </div>
           </div>
 
+          <div className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+              <Key size={18} className="text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">Change Password</span>
+            </div>
+            <form onSubmit={handleChangePw} className="space-y-3 p-4">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-9 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="Enter current password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={changePwMutation.isPending}
+                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {changePwMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                Change Password
+              </button>
+            </form>
+          </div>
+
           <div className="rounded-xl border border-destructive/20 bg-card p-4">
             <div className="flex items-center gap-3">
               <Ban size={18} className="text-destructive" />
@@ -33,13 +141,57 @@ export default function SettingsAccount() {
                 </p>
               </div>
             </div>
-            <button className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10">
+            <button
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+            >
               <Trash2 size={16} />
               Delete Account
             </button>
           </div>
         </div>
       </div>
+
+      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); setDeleteInput(''); setDeletePassword(''); }} title="Delete Account">
+        <p className="mb-2 text-sm text-muted-foreground">
+          This action is <strong className="text-destructive">irreversible</strong>. Your account, messages, and all data will be permanently deleted.
+        </p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Type <strong className="text-foreground">DELETE</strong> to confirm, then enter your password.
+        </p>
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={deleteInput}
+            onChange={(e) => setDeleteInput(e.target.value)}
+            placeholder='Type "DELETE"'
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <input
+            type="password"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            placeholder="Enter your password"
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <div className="mt-4 flex justify-end gap-3">
+          <button
+            onClick={() => { setDeleteConfirmOpen(false); setDeleteInput(''); setDeletePassword(''); }}
+            className="rounded-lg border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteInput !== 'DELETE' || !deletePassword || deleteMutation.isPending}
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {deleteMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+            Delete Account
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

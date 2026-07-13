@@ -1,14 +1,29 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Ban, Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getBlockedUsers } from '@/services/chat';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getBlockedUsers, unblockUser } from '@/services/chat';
+import Modal from '@/components/ui/modal';
 
 export default function BlockedUsers() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: users = [], isPending } = useQuery({
     queryKey: ['blockedUsers'],
     queryFn: getBlockedUsers,
   });
+
+  const [unblockTarget, setUnblockTarget] = useState<string | null>(null);
+
+  const unblockMutation = useMutation({
+    mutationFn: (userId: string) => unblockUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      setUnblockTarget(null);
+    },
+  });
+
+  const targetUser = users.find((u) => u.id === unblockTarget);
 
   return (
     <div className="flex h-full flex-col">
@@ -54,7 +69,10 @@ export default function BlockedUsers() {
                     <p className="text-sm font-medium text-foreground">{user.fullName}</p>
                     <p className="text-xs text-muted-foreground">@{user.username}</p>
                   </div>
-                  <button className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/10">
+                  <button
+                    onClick={() => setUnblockTarget(user.id)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/10"
+                  >
                     Unblock
                   </button>
                 </div>
@@ -63,6 +81,32 @@ export default function BlockedUsers() {
           )}
         </div>
       </div>
+
+      <Modal
+        open={!!unblockTarget}
+        onClose={() => setUnblockTarget(null)}
+        title="Unblock User"
+      >
+        <p className="mb-4 text-sm text-muted-foreground">
+          {targetUser ? `Unblock ${targetUser.fullName}? They will be able to send you messages again.` : ''}
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setUnblockTarget(null)}
+            className="rounded-lg border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => unblockTarget && unblockMutation.mutate(unblockTarget)}
+            disabled={unblockMutation.isPending}
+            className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {unblockMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+            Unblock
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
