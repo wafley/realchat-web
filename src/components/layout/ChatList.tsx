@@ -8,6 +8,7 @@ import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import { useTypingStore } from '@/store/typingStore';
 import { getConversations, bulkDeleteConversations } from '@/services/chat';
+import { formatLastSeen } from '@/utils/time';
 import type { Conversation } from '@/types';
 
 const tabs = [
@@ -312,7 +313,7 @@ export default function ChatList() {
               return (
                 <ItemTag
                   key={chat.id}
-                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online } } : {})}
+                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online, lastSeen: chat.lastSeen } } : {})}
                   role="listitem"
                   aria-current={isActive && !isSelectionMode ? 'page' : undefined}
                   onMouseDown={(e: React.MouseEvent) => {
@@ -380,6 +381,10 @@ export default function ChatList() {
                       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
                         {typingMap[chat.id] ? (
                           <span className="text-accent">typing...</span>
+                        ) : chat.online ? (
+                          chat.lastMessage
+                        ) : chat.lastSeen ? (
+                          <span className="text-muted-foreground">last seen {formatLastSeen(chat.lastSeen)}</span>
                         ) : (
                           chat.lastMessage
                         )}

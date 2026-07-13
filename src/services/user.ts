@@ -6,12 +6,12 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 const DEV_USER_ID = 'dev-user-1';
 
 const MOCK_USERS: User[] = [
-  { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: 'aang@example.com', status: 'online', createdAt: new Date('2026-07-01') },
-  { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: 'bambang@example.com', status: 'online', createdAt: new Date('2026-07-01') },
-  { id: 'cici', username: 'cici', fullName: 'Cici', email: 'cici@example.com', status: 'online', createdAt: new Date('2026-07-01') },
-  { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: 'dewi@example.com', status: 'offline', createdAt: new Date('2026-07-01') },
-  { id: 'eko', username: 'eko', fullName: 'Eko', email: 'eko@example.com', status: 'offline', createdAt: new Date('2026-07-01') },
-  { id: DEV_USER_ID, username: 'devuser', fullName: 'Dev User', email: 'dev@hallowok.com', status: 'online', createdAt: new Date('2026-01-01') },
+  { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: 'aang@example.com', status: 'online', lastSeen: new Date(), createdAt: new Date('2026-07-01') },
+  { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: 'bambang@example.com', status: 'online', lastSeen: new Date(Date.now() - 60000), createdAt: new Date('2026-07-01') },
+  { id: 'cici', username: 'cici', fullName: 'Cici', email: 'cici@example.com', status: 'online', lastSeen: new Date(Date.now() - 300000), createdAt: new Date('2026-07-01') },
+  { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: 'dewi@example.com', status: 'offline', lastSeen: new Date(Date.now() - 3600000), createdAt: new Date('2026-07-01') },
+  { id: 'eko', username: 'eko', fullName: 'Eko', email: 'eko@example.com', status: 'offline', lastSeen: new Date(Date.now() - 86400000), createdAt: new Date('2026-07-01') },
+  { id: DEV_USER_ID, username: 'devuser', fullName: 'Dev User', email: 'dev@hallowok.com', status: 'online', lastSeen: new Date(), createdAt: new Date('2026-01-01') },
 ];
 
 export async function getUser(userId: string): Promise<User> {

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { formatLastSeen } from '@/utils/time';
 
 interface ChatHeaderProps {
   chatName: string;
@@ -10,6 +11,7 @@ interface ChatHeaderProps {
   isDM: boolean;
   muted: boolean;
   userId?: string;
+  lastSeen?: Date | null;
   onBack: () => void;
   onSearchToggle: () => void;
   onToggleMute: () => void;
@@ -26,6 +28,7 @@ export default function ChatHeader({
   isDM,
   muted,
   userId,
+  lastSeen,
   onBack,
   onSearchToggle,
   onToggleMute,
@@ -76,7 +79,9 @@ export default function ChatHeader({
             typing
           </p>
         ) : (
-          <p className="text-xs text-muted-foreground">{chatOnline ? 'Online' : 'Offline'}</p>
+          <p className="text-xs text-muted-foreground">
+            {chatOnline ? 'Online' : lastSeen ? `last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
+          </p>
         )}
       </div>
       <button

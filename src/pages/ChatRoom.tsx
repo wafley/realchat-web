@@ -74,6 +74,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const chatId = (isDM ? userId : groupId) || '';
   const chatName = location.state?.name || 'Chat';
   const chatOnline = location.state?.online ?? true;
+  const chatLastSeen = location.state?.lastSeen ?? null;
   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? userId) : undefined;
 
   const {
@@ -780,6 +781,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
         isDM={isDM}
         muted={muted}
         userId={otherUserId}
+        lastSeen={chatLastSeen}
         onBack={() => navigate(-1)}
         onSearchToggle={() => {
           if (showSearch) { setSearchQuery(''); setShowSearch(false); }
