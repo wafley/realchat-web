@@ -94,7 +94,17 @@ function senderName(senderId: string): string {
   return map[senderId] ?? 'Unknown';
 }
 
+let groupIdCounter = 10;
 let msgCounter = 100;
+
+const MOCK_USERS = [
+  { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: 'aang@example.com', status: 'online', createdAt: new Date() },
+  { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: 'bambang@example.com', status: 'online', createdAt: new Date() },
+  { id: 'cici', username: 'cici', fullName: 'Cici', email: 'cici@example.com', status: 'online', createdAt: new Date() },
+  { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: 'dewi@example.com', status: 'offline', createdAt: new Date() },
+  { id: 'eko', username: 'eko', fullName: 'Eko', email: 'eko@example.com', status: 'offline', createdAt: new Date() },
+  { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@example.com', status: 'online', createdAt: new Date() },
+];
 
 export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 30): Promise<PaginatedResponse<Message>> {
   try {
@@ -445,25 +455,91 @@ export async function reportUser(userId: string): Promise<void> {
   }
 }
 
+export async function getGroups(): Promise<ChatConversation[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      return MOCK_CONVERSATIONS.filter((c) => c.type === 'group');
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.get<ChatConversation[]>(`${import.meta.env.VITE_API_URL}/groups`);
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get groups');
+  }
+}
+
+export async function searchUsers(query: string): Promise<typeof MOCK_USERS> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const q = query.toLowerCase();
+      return MOCK_USERS.filter((u) => u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q));
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/users/search`, { params: { q: query } });
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to search users');
+  }
+}
+
+export async function createGroup(name: string, description: string, memberIds: string[]): Promise<ChatConversation> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const id = String(++groupIdCounter);
+      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: true, muted: false };
+      MOCK_CONVERSATIONS.unshift(newConv);
+      MOCK_MESSAGES[id] = [
+        { id: `sys-${id}`, groupId: id, senderId: 'system', content: 'Group created', type: 'system', createdAt: new Date() },
+      ];
+      return newConv;
+    }
+    const { default: axios } = await import('axios');
+    const { data } = await axios.post<ChatConversation>(`${import.meta.env.VITE_API_URL}/groups`, { name, description, memberIds });
+    return data;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to create group');
+  }
+}
+
+export async function leaveGroup(groupId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const idx = MOCK_CONVERSATIONS.findIndex((c) => c.id === groupId);
+      if (idx !== -1) MOCK_CONVERSATIONS.splice(idx, 1);
+      delete MOCK_MESSAGES[groupId];
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/groups/${groupId}/leave`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to leave group');
+  }
+}
+
 export async function getGroup(groupId: string): Promise<Group> {
   try {
     if (DEV_MODE) {
       await delay(200);
       const members: GroupMember[] = [
-        { id: 'gm1', userId: 'aang', groupId, role: 'admin', joinedAt: new Date(), user: { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: '', status: 'online', createdAt: new Date() } },
-        { id: 'gm2', userId: 'bambang', groupId, role: 'member', joinedAt: new Date(), user: { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: '', status: 'online', createdAt: new Date() } },
-        { id: 'gm3', userId: 'cici', groupId, role: 'admin', joinedAt: new Date(), user: { id: 'cici', username: 'cici', fullName: 'Cici', email: '', status: 'online', createdAt: new Date() } },
-        { id: 'gm4', userId: 'dewi', groupId, role: 'member', joinedAt: new Date(), user: { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: '', status: 'offline', createdAt: new Date() } },
-        { id: 'gm5', userId: 'eko', groupId, role: 'member', joinedAt: new Date(), user: { id: 'eko', username: 'eko', fullName: 'Eko', email: '', status: 'offline', createdAt: new Date() } },
-        { id: 'gm6', userId: DEV_USER_ID, groupId, role: 'admin', joinedAt: new Date(), user: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: '', status: 'online', createdAt: new Date() } },
+        { id: 'gm1', userId: 'aang', groupId, role: 'admin', joinedAt: new Date(), user: { id: 'aang', username: 'aang_gacor', fullName: 'Aang Gacor', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Aang+Gacor&backgroundColor=4f46e5', status: 'online', createdAt: new Date() } },
+        { id: 'gm2', userId: 'bambang', groupId, role: 'member', joinedAt: new Date(), user: { id: 'bambang', username: 'bambang', fullName: 'Bambang', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Bambang&backgroundColor=059669', status: 'online', createdAt: new Date() } },
+        { id: 'gm3', userId: 'cici', groupId, role: 'admin', joinedAt: new Date(), user: { id: 'cici', username: 'cici', fullName: 'Cici', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Cici&backgroundColor=d97706', status: 'online', createdAt: new Date() } },
+        { id: 'gm4', userId: 'dewi', groupId, role: 'member', joinedAt: new Date(), user: { id: 'dewi', username: 'dewi', fullName: 'Dewi', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Dewi&backgroundColor=dc2626', status: 'offline', createdAt: new Date() } },
+        { id: 'gm5', userId: 'eko', groupId, role: 'member', joinedAt: new Date(), user: { id: 'eko', username: 'eko', fullName: 'Eko', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Eko&backgroundColor=7c3aed', status: 'offline', createdAt: new Date() } },
+        { id: 'gm6', userId: DEV_USER_ID, groupId, role: 'admin', joinedAt: new Date(), user: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: '', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=You&backgroundColor=0891b2', status: 'online', createdAt: new Date() } },
       ];
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
       return {
         id: groupId,
         name: conv?.name ?? 'Group',
         description: 'A great group for discussion',
+        avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(conv?.name ?? 'Group') + '&backgroundColor=2563eb',
         members,
-        creatorId: 'aang',
+        creatorId: DEV_USER_ID,
         isPrivate: false,
         createdAt: new Date(),
       };
@@ -480,6 +556,10 @@ export async function addGroupMember(groupId: string, userId: string): Promise<v
   try {
     if (DEV_MODE) {
       await delay(200);
+      const user = MOCK_USERS.find((u) => u.id === userId);
+      if (!user) return;
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
+      if (conv) conv.members = (conv.members ?? 0) + 1;
       return;
     }
     const { default: axios } = await import('axios');
@@ -493,6 +573,8 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
   try {
     if (DEV_MODE) {
       await delay(200);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
+      if (conv) conv.members = Math.max(0, (conv.members ?? 1) - 1);
       return;
     }
     const { default: axios } = await import('axios');
@@ -507,13 +589,31 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
     if (DEV_MODE) {
       await delay(200);
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
-      if (conv && data.name) conv.name = data.name;
+      if (conv) {
+        if (data.name) conv.name = data.name;
+      }
       return;
     }
     const { default: axios } = await import('axios');
     await axios.patch(`${import.meta.env.VITE_API_URL}/groups/${groupId}`, data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to update group');
+  }
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const idx = MOCK_CONVERSATIONS.findIndex((c) => c.id === groupId);
+      if (idx !== -1) MOCK_CONVERSATIONS.splice(idx, 1);
+      delete MOCK_MESSAGES[groupId];
+      return;
+    }
+    const { default: axios } = await import('axios');
+    await axios.delete(`${import.meta.env.VITE_API_URL}/groups/${groupId}`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to delete group');
   }
 }
 
