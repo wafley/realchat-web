@@ -7,7 +7,7 @@ import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
-import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole } from '@/services/chat';
+import { getMessages, sendMessage, sendImageMessage, deleteMessage, markConversationAsRead, forwardMessage, pinMessage, unpinMessage, getPinnedMessages, sendFileMessage, toggleMuteConversation, blockUser, reportUser, getConversations, getGroup, toggleReaction, searchUsers, updateGroup, addGroupMember, removeGroupMember, leaveGroup, deleteGroup, updateMemberRole, clearChat } from '@/services/chat';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -674,6 +674,15 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
     onError: () => toast.error('Failed to update member role'),
   });
 
+  const clearChatMutation = useMutation({
+    mutationFn: () => clearChat(chatId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
+      toast.success('Chat cleared');
+    },
+    onError: () => toast.error('Failed to clear chat'),
+  });
+
   const handleSearchUsers = useCallback(async (query: string) => {
     return searchUsers(query);
   }, []);
@@ -750,6 +759,7 @@ const [selectedIds, setSelectedIds] = useState<string[]>([]);
         onBlockClick={() => setBlockConfirmOpen(true)}
         onReportClick={() => setReportConfirmOpen(true)}
         onGroupInfoClick={() => setGroupInfoOpen(true)}
+        onClearChat={() => clearChatMutation.mutate()}
       />
 
       {showSearch && (
