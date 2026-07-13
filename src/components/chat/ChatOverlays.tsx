@@ -3,6 +3,7 @@ import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2,
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User } from '@/types';
+import { senderName } from '@/services/chat';
 
 interface ContextMenuData {
   msg: Message;
@@ -707,7 +708,7 @@ export default function ChatOverlays({
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs">{userId[0]}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-foreground">{userId}</span>
+                  <span className="text-sm text-foreground">{senderName(userId)}</span>
                   <CheckCheck size={14} className="ml-auto text-accent" />
                 </div>
               ))
