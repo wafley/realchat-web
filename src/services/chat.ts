@@ -560,6 +560,10 @@ export async function addGroupMember(groupId: string, userId: string): Promise<v
       if (!user) return;
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
       if (conv) conv.members = (conv.members ?? 0) + 1;
+      MOCK_MESSAGES[groupId] = [
+        ...(MOCK_MESSAGES[groupId] ?? []),
+        { id: `sys-join-${++msgCounter}`, groupId, senderId: 'system', content: `${user.fullName} telah bergabung`, type: 'system', createdAt: new Date() },
+      ];
       return;
     }
     const { default: axios } = await import('axios');
@@ -573,8 +577,13 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
   try {
     if (DEV_MODE) {
       await delay(200);
+      const user = MOCK_USERS.find((u) => u.id === userId);
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
       if (conv) conv.members = Math.max(0, (conv.members ?? 1) - 1);
+      MOCK_MESSAGES[groupId] = [
+        ...(MOCK_MESSAGES[groupId] ?? []),
+        { id: `sys-leave-${++msgCounter}`, groupId, senderId: 'system', content: `${user?.fullName ?? userId} telah keluar`, type: 'system', createdAt: new Date() },
+      ];
       return;
     }
     const { default: axios } = await import('axios');

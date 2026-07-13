@@ -51,6 +51,17 @@ function MessageBubbleComp({
 }: MessageBubbleProps) {
   const isSelected = selectedIds.includes(msg.id);
   const inSelectionMode = selectedIds.length > 0;
+
+  if (msg.type === 'system') {
+    return (
+      <div className="flex justify-center py-2">
+        <span className="rounded-full bg-muted/50 px-4 py-1 text-[11px] italic text-muted-foreground lg:text-xs">
+          {msg.content}
+        </span>
+      </div>
+    );
+  }
+
   const reactionMap = new Map<string, { count: number; hasMine: boolean }>();
   if (msg.reactions) {
     for (const r of msg.reactions) {
