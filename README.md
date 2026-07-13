@@ -153,7 +153,7 @@ src/
 
 <div align="center">
   <br>
-  <sub>Built with 🔥 by <strong>wafley</strong></sub>
+  <sub>Built with 🔥 by <strong>Alxyzz</strong></sub>
   <br>
   <sub>MIT License</sub>
 </div>
