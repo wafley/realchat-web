@@ -1,5 +1,5 @@
 import type { User } from '@/types';
-import axios from 'axios';
+import api from '@/lib/api';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -21,6 +21,6 @@ export async function getUser(userId: string): Promise<User> {
     if (!user) throw new Error('User not found');
     return user;
   }
-  const { data } = await axios.get<User>(`${import.meta.env.VITE_API_URL}/users/${userId}`);
+  const { data } = await api.get<User>(`/users/${userId}`);
   return data;
 }

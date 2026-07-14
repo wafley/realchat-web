@@ -1,3 +1,4 @@
+import api from '@/lib/api';
 import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User } from '@/types';
 
 interface ChatConversation {
@@ -147,9 +148,9 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
       }));
       return { data, total, page, limit, totalPages };
     }
-    const { default: axios } = await import('axios');
+
     const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const { data } = await axios.get<PaginatedResponse<Message>>(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+    const { data } = await api.get<PaginatedResponse<Message>>(`${endpoint}`, {
       params: { page, limit },
     });
     return data;
@@ -188,13 +189,13 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
       }
       return msg;
     }
-    const { default: axios } = await import('axios');
+
     const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
     const form = new FormData();
     form.append('file', file);
     if (caption) form.append('caption', caption);
     if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
-    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
+    const { data } = await api.post<Message>(`${endpoint}`, form);
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send image');
@@ -228,9 +229,9 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       }
       return msg;
     }
-    const { default: axios } = await import('axios');
+
     const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, { content, replyTo });
+    const { data } = await api.post<Message>(`${endpoint}`, { content, replyTo });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send message');
@@ -250,8 +251,8 @@ export async function editMessage(chatId: string, messageId: string, content: st
       if (conv) { conv.lastMessage = content; conv.lastTime = 'now'; }
       return { ...msgs[idx] };
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.patch<Message>(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, { content });
+
+    const { data } = await api.patch<Message>(`/messages/${messageId}`, { content });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to edit message');
@@ -278,8 +279,8 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
       }
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/messages/${messageId}`, {
+
+    await api.delete(`/messages/${messageId}`, {
       data: { deleteForAll },
     });
   } catch (err) {
@@ -302,8 +303,8 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
       }
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.post(`${import.meta.env.VITE_API_URL}/conversations/${chatId}/read`);
+
+    await api.post(`/conversations/${chatId}/read`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to mark as read');
   }
@@ -315,8 +316,8 @@ export async function getConversations(): Promise<ChatConversation[]> {
       await delay(200);
       return [...MOCK_CONVERSATIONS];
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.get<ChatConversation[]>(`${import.meta.env.VITE_API_URL}/conversations`);
+
+    const { data } = await api.get<ChatConversation[]>(`/conversations`);
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to fetch conversations');
@@ -334,8 +335,8 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
       });
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.post(`${import.meta.env.VITE_API_URL}/conversations/bulk-delete`, { ids });
+
+    await api.post(`/conversations/bulk-delete`, { ids });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete conversations');
   }
@@ -362,8 +363,8 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
       MOCK_MESSAGES[targetChatId].push(forwarded);
       return forwarded;
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}/messages/forward`, {
+
+    const { data } = await api.post<Message>(`/messages/forward`, {
       targetChatId, messageId: msg.id, sourceChatId,
     });
     return data;
@@ -383,8 +384,8 @@ export async function pinMessage(chatId: string, messageId: string): Promise<voi
       msgs[idx] = { ...msgs[idx], isPinned: true };
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.post(`${import.meta.env.VITE_API_URL}/messages/${messageId}/pin`);
+
+    await api.post(`/messages/${messageId}/pin`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to pin message');
   }
@@ -401,8 +402,8 @@ export async function unpinMessage(chatId: string, messageId: string): Promise<v
       msgs[idx] = { ...msgs[idx], isPinned: false };
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/messages/${messageId}/pin`);
+
+    await api.delete(`/messages/${messageId}/pin`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to unpin message');
   }
@@ -415,8 +416,8 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
       const msgs = MOCK_MESSAGES[chatId] ?? [];
       return msgs.filter((m) => m.isPinned);
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.get<Message[]>(`${import.meta.env.VITE_API_URL}/messages/${chatId}/pinned`);
+
+    const { data } = await api.get<Message[]>(`/messages/${chatId}/pinned`);
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get pinned messages');
@@ -454,12 +455,12 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
       }
       return msg;
     }
-    const { default: axios } = await import('axios');
+
     const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
     const form = new FormData();
     form.append('file', file);
     if (caption) form.append('caption', caption);
-    const { data } = await axios.post<Message>(`${import.meta.env.VITE_API_URL}${endpoint}`, form);
+    const { data } = await api.post<Message>(`${endpoint}`, form);
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send file');
@@ -475,8 +476,8 @@ export async function toggleMuteConversation(chatId: string): Promise<boolean> {
       conv.muted = !conv.muted;
       return conv.muted;
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.post<{ muted: boolean }>(`${import.meta.env.VITE_API_URL}/conversations/${chatId}/toggle-mute`);
+
+    const { data } = await api.post<{ muted: boolean }>(`/conversations/${chatId}/toggle-mute`);
     return data.muted;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to toggle mute');
@@ -489,8 +490,8 @@ export async function blockUser(userId: string): Promise<void> {
       await delay(200);
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.post(`${import.meta.env.VITE_API_URL}/users/${userId}/block`);
+
+    await api.post(`/users/${userId}/block`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to block user');
   }
@@ -504,8 +505,7 @@ export async function getBlockedUsers(): Promise<User[]> {
       { id: 'blocked2', username: 'troll', fullName: 'Troll Account', email: 'troll@example.com', status: 'offline', createdAt: new Date() },
     ];
   }
-  const { default: axios } = await import('axios');
-  const { data } = await axios.get<User[]>(`${import.meta.env.VITE_API_URL}/users/blocked`);
+  const { data } = await api.get<User[]>('/users/blocked');
   return data;
 }
 
@@ -515,8 +515,8 @@ export async function unblockUser(userId: string): Promise<void> {
       await delay(200);
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/users/${userId}/block`);
+
+    await api.delete(`/users/${userId}/block`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to unblock user');
   }
@@ -528,8 +528,8 @@ export async function reportUser(userId: string): Promise<void> {
       await delay(200);
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.post(`${import.meta.env.VITE_API_URL}/users/${userId}/report`);
+
+    await api.post(`/users/${userId}/report`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to report user');
   }
@@ -541,8 +541,8 @@ export async function getGroups(): Promise<ChatConversation[]> {
       await delay(100);
       return MOCK_CONVERSATIONS.filter((c) => c.type === 'group');
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.get<ChatConversation[]>(`${import.meta.env.VITE_API_URL}/groups`);
+
+    const { data } = await api.get<ChatConversation[]>(`/groups`);
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get groups');
@@ -556,8 +556,8 @@ export async function searchUsers(query: string): Promise<User[]> {
       const q = query.toLowerCase();
       return MOCK_USERS.filter((u) => u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)) as User[];
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/users/search`, { params: { q: query } });
+
+    const { data } = await api.get(`/users/search`, { params: { q: query } });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to search users');
@@ -576,8 +576,8 @@ export async function createGroup(name: string, description: string, memberIds: 
       ];
       return newConv;
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.post<ChatConversation>(`${import.meta.env.VITE_API_URL}/groups`, { name, description, memberIds });
+
+    const { data } = await api.post<ChatConversation>(`/groups`, { name, description, memberIds });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to create group');
@@ -593,8 +593,8 @@ export async function leaveGroup(groupId: string): Promise<void> {
       delete MOCK_MESSAGES[groupId];
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/groups/${groupId}/leave`);
+
+    await api.delete(`/groups/${groupId}/leave`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to leave group');
   }
@@ -625,8 +625,8 @@ export async function getGroup(groupId: string): Promise<Group> {
         createdAt: new Date(),
       };
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.get<Group>(`${import.meta.env.VITE_API_URL}/groups/${groupId}`);
+
+    const { data } = await api.get<Group>(`/groups/${groupId}`);
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get group');
@@ -647,8 +647,8 @@ export async function addGroupMember(groupId: string, userId: string): Promise<v
       ];
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.post(`${import.meta.env.VITE_API_URL}/groups/${groupId}/members`, { userId });
+
+    await api.post(`/groups/${groupId}/members`, { userId });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to add member');
   }
@@ -667,8 +667,8 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
       ];
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/groups/${groupId}/members/${userId}`);
+
+    await api.delete(`/groups/${groupId}/members/${userId}`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to remove member');
   }
@@ -687,8 +687,8 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
       }
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.patch(`${import.meta.env.VITE_API_URL}/groups/${groupId}`, data);
+
+    await api.patch(`/groups/${groupId}`, data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to update group');
   }
@@ -706,8 +706,8 @@ export async function updateMemberRole(groupId: string, userId: string, role: 'a
       ];
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.patch(`${import.meta.env.VITE_API_URL}/groups/${groupId}/members/${userId}/role`, { role });
+
+    await api.patch(`/groups/${groupId}/members/${userId}/role`, { role });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to update member role');
   }
@@ -722,8 +722,8 @@ export async function deleteGroup(groupId: string): Promise<void> {
       delete MOCK_MESSAGES[groupId];
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/groups/${groupId}`);
+
+    await api.delete(`/groups/${groupId}`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete group');
   }
@@ -747,8 +747,8 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
       msg.reactions = current;
       return [...current];
     }
-    const { default: axios } = await import('axios');
-    const { data } = await axios.post<{ reactions: Reaction[] }>(`${import.meta.env.VITE_API_URL}/messages/${messageId}/reactions`, { emoji });
+
+    const { data } = await api.post<{ reactions: Reaction[] }>(`/messages/${messageId}/reactions`, { emoji });
     return data.reactions;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to toggle reaction');
@@ -762,8 +762,8 @@ export async function clearChat(chatId: string): Promise<void> {
       delete MOCK_MESSAGES[chatId];
       return;
     }
-    const { default: axios } = await import('axios');
-    await axios.delete(`${import.meta.env.VITE_API_URL}/chats/${chatId}/messages`);
+
+    await api.delete(`/chats/${chatId}/messages`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to clear chat');
   }

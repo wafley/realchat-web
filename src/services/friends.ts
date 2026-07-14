@@ -1,5 +1,5 @@
 import type { FriendRequest, User } from '@/types';
-import axios from 'axios';
+import api from '@/lib/api';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 const DEV_USER_ID = 'dev-user-1';
@@ -40,7 +40,7 @@ export async function searchPeople(query: string): Promise<User[]> {
         (u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)),
     );
   }
-  const { data } = await axios.get<User[]>(`${import.meta.env.VITE_API_URL}/users/search`, { params: { q: query } });
+  const { data } = await api.get<User[]>('/users/search', { params: { q: query } });
   return data;
 }
 
@@ -52,7 +52,7 @@ export async function sendFriendRequest(userId: string): Promise<void> {
     mockSentRequests.push({ id: `sent-${Date.now()}`, sender: MOCK_USERS[7]!, receiver: user, status: 'pending', createdAt: new Date() });
     return;
   }
-  await axios.post(`${import.meta.env.VITE_API_URL}/friends/request`, { userId });
+  await api.post('/friends/request', { userId });
 }
 
 export async function cancelFriendRequest(userId: string): Promise<void> {
@@ -61,7 +61,7 @@ export async function cancelFriendRequest(userId: string): Promise<void> {
     mockSentRequests = mockSentRequests.filter((r) => r.receiver.id !== userId);
     return;
   }
-  await axios.delete(`${import.meta.env.VITE_API_URL}/friends/request/${userId}`);
+  await api.delete(`/friends/request/${userId}`);
 }
 
 export async function acceptFriendRequest(requestId: string): Promise<void> {
@@ -75,7 +75,7 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
     }
     return;
   }
-  await axios.post(`${import.meta.env.VITE_API_URL}/friends/accept/${requestId}`);
+  await api.post('/friends/accept', { requestId });
 }
 
 export async function rejectFriendRequest(requestId: string): Promise<void> {
@@ -84,7 +84,7 @@ export async function rejectFriendRequest(requestId: string): Promise<void> {
     mockRequests = mockRequests.filter((r) => r.id !== requestId);
     return;
   }
-  await axios.post(`${import.meta.env.VITE_API_URL}/friends/reject/${requestId}`);
+  await api.post('/friends/reject', { requestId });
 }
 
 export async function getFriends(): Promise<User[]> {
@@ -92,7 +92,7 @@ export async function getFriends(): Promise<User[]> {
     await delay(200);
     return [...mockFriends];
   }
-  const { data } = await axios.get<User[]>(`${import.meta.env.VITE_API_URL}/friends`);
+  const { data } = await api.get<User[]>('/friends');
   return data;
 }
 
@@ -101,7 +101,7 @@ export async function getPendingRequests(): Promise<FriendRequest[]> {
     await delay(200);
     return [...mockRequests];
   }
-  const { data } = await axios.get<FriendRequest[]>(`${import.meta.env.VITE_API_URL}/friends/requests`);
+  const { data } = await api.get<FriendRequest[]>('/friends/requests');
   return data;
 }
 
@@ -110,7 +110,7 @@ export async function getSentRequests(): Promise<FriendRequest[]> {
     await delay(200);
     return [...mockSentRequests];
   }
-  const { data } = await axios.get<FriendRequest[]>(`${import.meta.env.VITE_API_URL}/friends/requests/sent`);
+  const { data } = await api.get<FriendRequest[]>('/friends/requests/sent');
   return data;
 }
 
@@ -120,5 +120,5 @@ export async function removeFriend(userId: string): Promise<void> {
     mockFriends = mockFriends.filter((f) => f.id !== userId);
     return;
   }
-  await axios.delete(`${import.meta.env.VITE_API_URL}/friends/${userId}`);
+  await api.delete(`/friends/${userId}`);
 }
