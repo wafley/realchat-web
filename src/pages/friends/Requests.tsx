@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, X, Loader2 } from 'lucide-react';
+import { Check, X, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getPendingRequests, acceptFriendRequest, rejectFriendRequest } from '@/services/friends';
 import { toast } from 'sonner';
@@ -70,7 +70,7 @@ export default function Requests() {
               className="flex items-center gap-4 rounded-2xl border border-border px-4 py-3.5"
             >
               <Avatar className="h-12 w-12 shrink-0">
-                <AvatarFallback className="font-bold">{req.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{req.name}</p>
