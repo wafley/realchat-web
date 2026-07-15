@@ -58,7 +58,7 @@ export default function Groups() {
             </div>
             <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Users size={14} />
-              <span>{g.members ?? 0}</span>
+              <span>{g.members?.length ?? 0}</span>
               {g.online && <span className="ml-1 text-green-500">● {g.online}</span>}
             </div>
           </Link>

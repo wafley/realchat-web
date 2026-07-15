@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 
 interface ChatHeaderProps {
@@ -13,6 +13,7 @@ interface ChatHeaderProps {
   userId?: string;
   lastSeen?: Date | null;
   memberCount?: number | null;
+  avatarUrl?: string;
   onBack: () => void;
   onSearchToggle: () => void;
   onToggleMute: () => void;
@@ -31,6 +32,7 @@ export default function ChatHeader({
   userId,
   lastSeen,
   memberCount,
+  avatarUrl,
   onBack,
   onSearchToggle,
   onToggleMute,
@@ -63,6 +65,7 @@ export default function ChatHeader({
         <ArrowLeft size={20} />
       </button>
       <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
+        {avatarUrl && <AvatarImage src={avatarUrl} alt={chatName} />}
         <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
