@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
+import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import type { Message } from '@/types';
 
 interface UseChatActionsProps {
@@ -163,8 +163,6 @@ export function useChatActions(props: UseChatActionsProps) {
     fetchNextPage,
   } = props;
 
-  const setTyping = useTypingStore((s) => s.setTyping);
-
   // --- Effects ---
 
   useEffect(() => {
@@ -204,15 +202,15 @@ export function useChatActions(props: UseChatActionsProps) {
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
     typingTimerRef.current = setTimeout(() => {
-      setTyping(chatId, true);
+      emitTypingStart(chatId);
       typingDoneTimerRef.current = setTimeout(() => {
-        setTyping(chatId, false);
+        emitTypingStop(chatId);
       }, 3000);
     }, 1500);
     return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
-      setTyping(chatId, false);
+      emitTypingStop(chatId);
     };
   }, [input, chatId]);
 

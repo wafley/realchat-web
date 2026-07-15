@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { Message } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { useTypingStore } from '@/store/typingStore';
 import { getMessages, DM_USER_MAP } from '@/services/chat';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
@@ -17,7 +18,6 @@ export function useChatState() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [otherTyping, setOtherTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMsg, setEditingMsg] = useState<Message | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -60,6 +60,8 @@ export function useChatState() {
   const chatLastSeen = location.state?.lastSeen ?? null;
   const memberCount = location.state?.members ?? null;
   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? userId) : undefined;
+
+  const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);
 
   const {
     data,
@@ -113,7 +115,7 @@ export function useChatState() {
     selectedImage, setSelectedImage,
     imagePreview, setImagePreview,
     showEmojiPicker, setShowEmojiPicker,
-    otherTyping, setOtherTyping,
+    otherTyping,
     replyingTo, setReplyingTo,
     editingMsg, setEditingMsg,
     lightboxUrl, setLightboxUrl,
