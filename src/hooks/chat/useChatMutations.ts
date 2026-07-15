@@ -85,26 +85,6 @@ export function useChatMutations({
           return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
         },
       );
-      if (import.meta.env.VITE_DEV_MODE === 'true') {
-        const steps: MessageStatus[] = ['delivered', 'read'];
-        steps.forEach((s, i) => {
-          setTimeout(() => {
-            queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
-              ['messages', chatId, isDM],
-              (prev) => {
-                if (!prev) return prev;
-                return {
-                  ...prev,
-                  pages: prev.pages.map((page) => ({
-                    ...page,
-                    data: page.data.map((m) => (m.id === newMsg.id ? { ...m, status: s } : m)),
-                  })),
-                };
-              },
-            );
-          }, (i + 1) * 1000);
-        });
-      }
     },
     [chatId, isDM],
   );
