@@ -564,12 +564,12 @@ export async function searchUsers(query: string): Promise<User[]> {
   }
 }
 
-export async function createGroup(name: string, description: string, memberIds: string[]): Promise<ChatConversation> {
+export async function createGroup(name: string, description: string, memberIds: string[], isPrivate = false): Promise<ChatConversation> {
   try {
     if (DEV_MODE) {
       await delay(200);
       const id = String(++groupIdCounter);
-      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: true, muted: false };
+      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: false, muted: false };
       MOCK_CONVERSATIONS.unshift(newConv);
       MOCK_MESSAGES[id] = [
         { id: `sys-${id}`, groupId: id, senderId: 'system', content: 'Group created', type: 'system', createdAt: new Date() },
@@ -577,7 +577,7 @@ export async function createGroup(name: string, description: string, memberIds: 
       return newConv;
     }
 
-    const { data } = await api.post<ChatConversation>(`/groups`, { name, description, memberIds });
+    const { data } = await api.post<ChatConversation>(`/groups`, { name, description, memberIds, isPrivate });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to create group');

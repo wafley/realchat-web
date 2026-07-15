@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Search, X, Loader2, Camera } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
 import type { User } from '@/types';
 
@@ -10,9 +10,13 @@ export default function CreateGroup() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const searchMutation = useMutation({
     mutationFn: (q: string) => searchUsers(q),
@@ -20,8 +24,8 @@ export default function CreateGroup() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createGroup(name, description, selectedIds),
-    onSuccess: (group) => navigate(`/chat/${group.id}`, { state: { name: group.name, online: false, members: selectedIds.length + 1 } }),
+    mutationFn: () => createGroup(name, description, selectedIds, isPrivate),
+    onSuccess: (group) => navigate(`/groups/${group.id}`),
   });
 
   const handleSearch = (q: string) => {
@@ -34,6 +38,14 @@ export default function CreateGroup() {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const url = URL.createObjectURL(file);
+    setAvatarPreview(url);
   };
 
   return (
@@ -50,6 +62,30 @@ export default function CreateGroup() {
 
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
         <div className="space-y-5">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-accent/5 transition-colors hover:border-accent/50 hover:bg-accent/10"
+            >
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
+              ) : (
+                <Camera size={20} className="text-muted-foreground group-hover:text-accent" />
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
+            <div>
+              <p className="text-sm font-medium text-foreground">Group Photo</p>
+              <p className="text-xs text-muted-foreground">Optional — click to upload</p>
+            </div>
+          </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">Group Name</label>
             <input
@@ -70,6 +106,21 @@ export default function CreateGroup() {
               rows={3}
               className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Private Group</p>
+              <p className="text-xs text-muted-foreground">Only invited members can join</p>
+            </div>
+            <button
+              onClick={() => setIsPrivate(!isPrivate)}
+              className={`relative h-6 w-11 rounded-full transition-colors ${isPrivate ? 'bg-accent' : 'bg-muted'}`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isPrivate ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
+              />
+            </button>
           </div>
 
           <div>
