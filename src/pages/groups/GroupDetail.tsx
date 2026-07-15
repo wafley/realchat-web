@@ -125,7 +125,7 @@ export default function GroupDetail() {
       <div className="mb-6 flex items-center gap-4">
         <Avatar className="h-16 w-16 shrink-0">
           {group.avatarUrl && <AvatarImage src={group.avatarUrl} alt={group.name} />}
-          <AvatarFallback className="text-xl font-bold">{group.name.charAt(0)}</AvatarFallback>
+          <AvatarFallback className="text-xl font-bold"><Users size={24} /></AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold text-foreground">{group.name}</h1>

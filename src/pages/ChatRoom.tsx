@@ -111,14 +111,14 @@ export default function ChatRoom() {
       style={{ paddingBottom: state.keyboardHeight }}
     >
       <ChatHeader
-        chatName={state.chatName}
+        chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
         otherTyping={state.otherTyping}
         chatOnline={state.chatOnline}
         isDM={state.isDM}
         muted={state.muted}
         userId={state.otherUserId}
         lastSeen={state.chatLastSeen}
-        memberCount={state.memberCount}
+        memberCount={mutations.group?.members?.length ?? state.memberCount}
         avatarUrl={!state.isDM ? mutations.group?.avatarUrl : undefined}
         onBack={() => navigate(-1)}
         onSearchToggle={() => {

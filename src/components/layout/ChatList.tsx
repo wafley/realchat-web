@@ -356,7 +356,7 @@ export default function ChatList() {
                     <Avatar className="lg:h-12 lg:w-12">
                       {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
                       <AvatarFallback className="lg:text-base">
-                        {chat.name.charAt(0).toUpperCase()}
+                        {chat.type === 'group' ? <Users size={18} /> : chat.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     {chat.online && !isSelectionMode && (
