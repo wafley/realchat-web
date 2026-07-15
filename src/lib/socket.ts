@@ -2,8 +2,11 @@ import { io, type Socket } from 'socket.io-client';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
+type EventCallback = (...args: any[]) => void;
+
 class SocketClient {
   private socket: Socket | null = null;
+  private listeners: Map<string, Set<EventCallback>> = new Map();
 
   connect(token?: string): Socket {
     if (this.socket?.connected) return this.socket;
@@ -37,6 +40,13 @@ class SocketClient {
       }
     });
 
+    // Re-register internal listeners after reconnect
+    this.socket.on('connect', () => {
+      this.listeners.forEach((callbacks, event) => {
+        callbacks.forEach((cb) => this.socket?.on(event, cb));
+      });
+    });
+
     return this.socket;
   }
 
@@ -44,25 +54,57 @@ class SocketClient {
     return this.socket;
   }
 
+  get isConnected(): boolean {
+    return this.socket?.connected ?? false;
+  }
+
   disconnect(): void {
     this.socket?.close();
     this.socket = null;
+    this.listeners.clear();
   }
 
-  joinConversation(conversationId: string): void {
-    this.socket?.emit('conversation:join', conversationId);
+  on(event: string, callback: EventCallback): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+    this.socket?.on(event, callback);
   }
 
-  leaveConversation(conversationId: string): void {
-    this.socket?.emit('conversation:leave', conversationId);
+  off(event: string, callback: EventCallback): void {
+    this.listeners.get(event)?.delete(callback);
+    this.socket?.off(event, callback);
   }
 
-  sendTyping(conversationId: string, isTyping: boolean): void {
-    this.socket?.emit('message:typing', { conversationId, isTyping });
+  // --- Room ---
+
+  joinRoom(conversationId: string): void {
+    this.socket?.emit('room:join', conversationId);
   }
+
+  leaveRoom(conversationId: string): void {
+    this.socket?.emit('room:leave', conversationId);
+  }
+
+  // --- Typing ---
+
+  emitTypingStart(conversationId: string): void {
+    this.socket?.emit('typing:start', { conversationId });
+  }
+
+  emitTypingStop(conversationId: string): void {
+    this.socket?.emit('typing:stop', { conversationId });
+  }
+
+  // --- Message ---
 
   sendMessage(conversationId: string, content: string, replyTo?: { id: string }): void {
     this.socket?.emit('message:send', { conversationId, content, replyTo });
+  }
+
+  emitMessageSeen(conversationId: string): void {
+    this.socket?.emit('message:seen', { conversationId });
   }
 }
 
