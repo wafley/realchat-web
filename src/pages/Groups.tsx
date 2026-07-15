@@ -46,8 +46,7 @@ export default function Groups() {
         ) : filtered.map((g) => (
           <Link
             key={g.id}
-            to={`/chat/${g.id}`}
-            state={{ name: g.name, online: true }}
+            to={`/groups/${g.id}`}
             className="flex min-h-[88px] items-center gap-4 rounded-2xl border border-border px-4 py-3.5 transition-colors hover:bg-accent/5"
           >
             <Avatar className="h-12 w-12 shrink-0">
