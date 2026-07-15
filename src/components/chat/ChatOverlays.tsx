@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User } from '@/types';
@@ -402,7 +402,7 @@ export default function ChatOverlays({
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
                 {group.avatarUrl && <AvatarImage src={group.avatarUrl} />}
-                <AvatarFallback className="text-lg">{group.name[0]}</AvatarFallback>
+                <AvatarFallback className="text-lg"><Users size={24} /></AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <h3 className="text-lg font-semibold text-foreground">{group.name}</h3>
@@ -527,7 +527,7 @@ export default function ChatOverlays({
               <div className="relative">
                 <Avatar className="h-20 w-20">
                   {(avatarPreview || group?.avatarUrl) && <AvatarImage src={avatarPreview ?? group?.avatarUrl} />}
-                  <AvatarFallback className="text-lg">{editName[0] ?? 'G'}</AvatarFallback>
+                  <AvatarFallback className="text-lg"><Users size={28} /></AvatarFallback>
                 </Avatar>
                 <button
                   type="button"
