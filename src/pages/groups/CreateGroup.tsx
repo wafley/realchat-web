@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, X, Loader2, Camera } from 'lucide-react';
+import { ArrowLeft, Plus, Search, X, Loader2, Camera, User } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
@@ -155,7 +155,7 @@ export default function CreateGroup() {
                       }`}
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">{u.fullName[0]}</AvatarFallback>
+                        <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground">{u.fullName}</p>

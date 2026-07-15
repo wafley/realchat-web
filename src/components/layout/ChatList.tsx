@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, Users, UserPlus, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
+import { Search, Plus, MessageSquareText, Users, User, UserPlus, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
@@ -356,7 +356,7 @@ export default function ChatList() {
                     <Avatar className="lg:h-12 lg:w-12">
                       {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
                       <AvatarFallback className="lg:text-base">
-                        {chat.type === 'group' ? <Users size={18} /> : chat.name.charAt(0).toUpperCase()}
+                        {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
                       </AvatarFallback>
                     </Avatar>
                     {chat.online && !isSelectionMode && (
@@ -390,11 +390,6 @@ export default function ChatList() {
                         )}
                       </span>
                       <div className="flex shrink-0 items-center gap-2">
-                        {(chat.members ?? 0) > 0 && (
-                          <span className="whitespace-nowrap text-[10px] text-muted-foreground lg:text-xs">
-                            {chat.members} members
-                          </span>
-                        )}
                         {(chat.unread ?? 0) > 0 && !isSelectionMode && (
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground lg:h-6 lg:w-6 lg:text-xs">
                             {chat.unread}
