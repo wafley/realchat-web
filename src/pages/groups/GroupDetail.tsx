@@ -1,10 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Loader2, AlertCircle, Users, ArrowLeft, Settings, UserMinus, Crown, Shield, MoreVertical } from 'lucide-react';
+import { Loader2, AlertCircle, Users, ArrowLeft, Settings, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { getGroup, leaveGroup, removeGroupMember, updateMemberRole } from '@/services/chat';
+import Modal from '@/components/ui/modal';
+import { getGroup, leaveGroup, removeGroupMember, updateMemberRole, updateGroup, deleteGroup } from '@/services/chat';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -12,13 +13,39 @@ import { cn } from '@/lib/utils';
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const currentUser = useQuery({ queryKey: ['auth', 'user'] }).data;
   const [showActions, setShowActions] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: group, isPending, isError } = useQuery({
     queryKey: ['group', id],
     queryFn: () => getGroup(id!),
     enabled: !!id,
+  });
+
+  const editMutation = useMutation({
+    mutationFn: () => updateGroup(id!, { name: editName, description: editDesc }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group', id] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      setEditOpen(false);
+      toast.success('Group updated');
+    },
+    onError: () => toast.error('Failed to update group'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteGroup(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      toast.success('Group deleted');
+      navigate('/groups');
+    },
+    onError: () => toast.error('Failed to delete group'),
   });
 
   if (isPending) {
@@ -79,6 +106,12 @@ export default function GroupDetail() {
     }
   };
 
+  const openEdit = () => {
+    setEditName(group?.name ?? '');
+    setEditDesc(group?.description ?? '');
+    setEditOpen(true);
+  };
+
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
       <button
@@ -109,6 +142,24 @@ export default function GroupDetail() {
             )}
           </div>
         </div>
+        {(isAdmin || isCreator) && (
+          <div className="flex shrink-0 gap-1">
+            <button
+              onClick={openEdit}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+            >
+              <Pencil size={16} />
+            </button>
+            {isCreator && (
+              <button
+                onClick={() => setDeleteOpen(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mb-4 flex items-center justify-between">
@@ -207,6 +258,57 @@ export default function GroupDetail() {
           </button>
         </div>
       )}
+
+      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Group">
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Group Name</label>
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-foreground">Description</label>
+            <textarea
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <button
+            onClick={() => editMutation.mutate()}
+            disabled={!editName.trim() || editMutation.isPending}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+          >
+            {editMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete Group">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Are you sure you want to delete this group? This action cannot be undone.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setDeleteOpen(false)}
+            className="flex h-10 flex-1 items-center justify-center rounded-xl border border-border text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-destructive text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+          >
+            {deleteMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Delete'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
