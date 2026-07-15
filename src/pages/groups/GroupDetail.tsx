@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Loader2, AlertCircle, Users, ArrowLeft, Settings, UserMinus, Crown, Shield, MoreVertical } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getGroup, leaveGroup, removeGroupMember, updateMemberRole } from '@/services/chat';
 import { useAuthStore } from '@/store/authStore';
@@ -91,6 +91,7 @@ export default function GroupDetail() {
 
       <div className="mb-6 flex items-center gap-4">
         <Avatar className="h-16 w-16 shrink-0">
+          {group.avatarUrl && <AvatarImage src={group.avatarUrl} alt={group.name} />}
           <AvatarFallback className="text-xl font-bold">{group.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
