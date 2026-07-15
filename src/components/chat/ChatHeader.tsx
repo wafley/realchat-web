@@ -12,6 +12,7 @@ interface ChatHeaderProps {
   muted: boolean;
   userId?: string;
   lastSeen?: Date | null;
+  memberCount?: number | null;
   onBack: () => void;
   onSearchToggle: () => void;
   onToggleMute: () => void;
@@ -29,6 +30,7 @@ export default function ChatHeader({
   muted,
   userId,
   lastSeen,
+  memberCount,
   onBack,
   onSearchToggle,
   onToggleMute,
@@ -78,9 +80,13 @@ export default function ChatHeader({
             </span>
             typing
           </p>
-        ) : (
+        ) : isDM ? (
           <p className="text-xs text-muted-foreground">
             {chatOnline ? 'Online' : lastSeen ? `last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {memberCount != null ? `${memberCount} members` : 'Group'}
           </p>
         )}
       </div>
