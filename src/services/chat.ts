@@ -20,10 +20,10 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 const DEV_USER_ID = 'dev-user-1';
 
 const MOCK_CONVERSATIONS: ChatConversation[] = [
-  { id: '1', name: 'General', type: 'group', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12, muted: false },
-  { id: '2', name: 'Random', type: 'group', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: true, members: 10, muted: false },
-  { id: '3', name: 'Project Alpha', type: 'group', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6, muted: false },
-  { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, lastSeen: new Date(Date.now() - 86400000), members: 5, muted: false },
+  { id: '1', name: 'General', type: 'group', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=General&backgroundColor=2563eb', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12, muted: false },
+  { id: '2', name: 'Random', type: 'group', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Random&backgroundColor=059669', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: true, members: 10, muted: false },
+  { id: '3', name: 'Project Alpha', type: 'group', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Project+Alpha&backgroundColor=d97706', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6, muted: false },
+  { id: '4', name: 'Design Team', type: 'group', avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=Design+Team&backgroundColor=dc2626', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, lastSeen: new Date(Date.now() - 86400000), members: 5, muted: false },
   { id: 'dm1', name: 'Aang Gacor', type: 'dm', lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2, online: true, lastSeen: new Date(), muted: false },
   { id: 'dm2', name: 'Bambang', type: 'dm', lastMessage: 'The server migration is complete', lastTime: '09:00', online: true, lastSeen: new Date(Date.now() - 60000), muted: false },
   { id: 'dm3', name: 'Cici', type: 'dm', lastMessage: "I'll be out tomorrow", lastTime: '16:00', online: false, lastSeen: new Date(Date.now() - 7200000), muted: false },
@@ -314,7 +314,13 @@ export async function getConversations(): Promise<ChatConversation[]> {
   try {
     if (DEV_MODE) {
       await delay(200);
-      return [...MOCK_CONVERSATIONS];
+      return MOCK_CONVERSATIONS.map((c) => {
+        if (c.type === 'group') {
+          const override = MOCK_GROUP_OVERRIDES.get(c.id);
+          return { ...c, name: override?.name ?? c.name, avatarUrl: override?.avatarUrl ?? c.avatarUrl };
+        }
+        return c;
+      });
     }
 
     const { data } = await api.get<ChatConversation[]>(`/conversations`);

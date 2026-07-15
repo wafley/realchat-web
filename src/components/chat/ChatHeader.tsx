@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
+import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 
@@ -66,7 +66,9 @@ export default function ChatHeader({
       </button>
       <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
         {avatarUrl && <AvatarImage src={avatarUrl} alt={chatName} />}
-        <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
+        <AvatarFallback className="lg:text-base">
+          {isDM ? chatName.charAt(0) : <Users size={18} />}
+        </AvatarFallback>
       </Avatar>
       <div className="flex-1">
         {isDM && userId ? (
