@@ -24,3 +24,16 @@ export async function getUser(userId: string): Promise<User> {
   const { data } = await api.get<User>(`/users/${userId}`);
   return data;
 }
+
+export async function uploadAvatar(file: File): Promise<string> {
+  if (DEV_MODE) {
+    await new Promise((r) => setTimeout(r, 300));
+    return URL.createObjectURL(file);
+  }
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const { data } = await api.post<{ url: string }>('/users/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.url;
+}
