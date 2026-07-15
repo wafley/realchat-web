@@ -4,8 +4,7 @@ import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2,
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User } from '@/types';
-import { senderName } from '@/services/chat';
-import { uploadAvatar } from '@/services/user';
+import { senderName, uploadGroupAvatar } from '@/services/chat';
 
 interface ContextMenuData {
   msg: Message;
@@ -127,8 +126,8 @@ export default function ChatOverlays({
     if (!editName.trim()) return;
     setSavingEdit(true);
     let avatarUrl: string | undefined;
-    if (_avatarFile) {
-      avatarUrl = await uploadAvatar(_avatarFile);
+    if (_avatarFile && group) {
+      avatarUrl = await uploadGroupAvatar(group.id, _avatarFile);
     }
     await onUpdateGroup({ name: editName.trim(), description: editDesc.trim(), avatarUrl: avatarUrl ?? avatarPreview ?? undefined });
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
