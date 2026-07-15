@@ -102,6 +102,10 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            path: 'search',
+            lazy: () => import('@/pages/Search').then((m) => ({ Component: m.default })),
+          },
+          {
             element: <SettingsLayout />,
             children: [
               {
