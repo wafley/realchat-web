@@ -1,5 +1,5 @@
 import { memo, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square } from 'lucide-react';
+import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
@@ -87,7 +87,7 @@ function MessageBubbleComp({
       ) : !isOwn ? (
         <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
           <AvatarFallback className="text-xs lg:text-sm">
-            {name.charAt(0)}
+            <User size={14} />
           </AvatarFallback>
         </Avatar>
       ) : null}

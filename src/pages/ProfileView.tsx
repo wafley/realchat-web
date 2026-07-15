@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Pencil, Mail, Info, Calendar } from 'lucide-react';
+import { Pencil, Mail, Info, Calendar, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const infoItems = [
@@ -28,7 +28,7 @@ export default function ProfileView() {
               <Avatar className="h-24 w-24">
                 {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
                 <AvatarFallback className="text-2xl">
-                  {user?.username?.charAt(0).toUpperCase()}
+                  <User size={24} />
                 </AvatarFallback>
               </Avatar>
               <button

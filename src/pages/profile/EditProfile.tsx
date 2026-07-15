@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
 import { uploadAvatar } from '@/services/user';
@@ -80,7 +80,7 @@ export default function EditProfile() {
                 <Avatar className="h-16 w-16">
                   {(avatarPreview || user?.avatarUrl) && <AvatarImage src={avatarPreview || user?.avatarUrl} />}
                   <AvatarFallback className="text-lg">
-                    {fullName.charAt(0).toUpperCase() || 'U'}
+                    <User size={20} />
                   </AvatarFallback>
                 </Avatar>
                 <button
