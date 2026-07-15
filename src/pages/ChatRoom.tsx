@@ -119,6 +119,7 @@ export default function ChatRoom() {
         userId={state.otherUserId}
         lastSeen={state.chatLastSeen}
         memberCount={state.memberCount}
+        avatarUrl={!state.isDM ? mutations.group?.avatarUrl : undefined}
         onBack={() => navigate(-1)}
         onSearchToggle={() => {
           if (state.showSearch) {
