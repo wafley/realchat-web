@@ -594,7 +594,7 @@ export async function leaveGroup(groupId: string): Promise<void> {
       return;
     }
 
-    await api.delete(`/groups/${groupId}/leave`);
+    await api.delete(`/groups/${groupId}/members/me`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to leave group');
   }
