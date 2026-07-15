@@ -112,7 +112,7 @@ export default function ChatOverlays({
 
   const [savingEdit, setSavingEdit] = useState(false);
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [_avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
