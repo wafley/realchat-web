@@ -1,4 +1,4 @@
-import { House, Users, UserPlus, User, Settings } from 'lucide-react';
+import { House, Users, UserPlus, User, Settings, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -12,6 +12,7 @@ export const navItems: NavItem[] = [
   { to: '/', icon: House, label: 'Home', end: true },
   { to: '/groups', icon: Users, label: 'Groups' },
   { to: '/friends', icon: UserPlus, label: 'Friends' },
+  { to: '/search', icon: Search, label: 'Search' },
   { to: '/profile', icon: User, label: 'Profile' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
