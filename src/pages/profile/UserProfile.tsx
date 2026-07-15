@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, AlertCircle, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
@@ -73,7 +73,7 @@ export default function UserProfile() {
                 <Avatar className="h-24 w-24">
                   {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
                   <AvatarFallback className="text-2xl">
-                    {user.username?.charAt(0).toUpperCase()}
+                    <User size={24} />
                   </AvatarFallback>
                 </Avatar>
                 <h2 className="mt-4 text-xl font-bold text-foreground">{user.fullName}</h2>

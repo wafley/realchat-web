@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2 } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users, User } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 
 interface ChatHeaderProps {
@@ -12,6 +12,8 @@ interface ChatHeaderProps {
   muted: boolean;
   userId?: string;
   lastSeen?: Date | null;
+  memberCount?: number | null;
+  avatarUrl?: string;
   onBack: () => void;
   onSearchToggle: () => void;
   onToggleMute: () => void;
@@ -29,6 +31,8 @@ export default function ChatHeader({
   muted,
   userId,
   lastSeen,
+  memberCount,
+  avatarUrl,
   onBack,
   onSearchToggle,
   onToggleMute,
@@ -61,7 +65,10 @@ export default function ChatHeader({
         <ArrowLeft size={20} />
       </button>
       <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
-        <AvatarFallback className="lg:text-base">{chatName.charAt(0)}</AvatarFallback>
+        {avatarUrl && <AvatarImage src={avatarUrl} alt={chatName} />}
+        <AvatarFallback className="lg:text-base">
+          {isDM ? <User size={18} /> : <Users size={18} />}
+        </AvatarFallback>
       </Avatar>
       <div className="flex-1">
         {isDM && userId ? (
@@ -78,9 +85,13 @@ export default function ChatHeader({
             </span>
             typing
           </p>
-        ) : (
+        ) : isDM ? (
           <p className="text-xs text-muted-foreground">
             {chatOnline ? 'Online' : lastSeen ? `last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {memberCount != null ? `${memberCount} members` : 'Group'}
           </p>
         )}
       </div>

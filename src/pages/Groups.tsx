@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Users, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getGroups } from '@/services/chat';
 
 export default function Groups() {
@@ -46,19 +46,19 @@ export default function Groups() {
         ) : filtered.map((g) => (
           <Link
             key={g.id}
-            to={`/chat/${g.id}`}
-            state={{ name: g.name, online: true }}
+            to={`/groups/${g.id}`}
             className="flex min-h-[88px] items-center gap-4 rounded-2xl border border-border px-4 py-3.5 transition-colors hover:bg-accent/5"
           >
             <Avatar className="h-12 w-12 shrink-0">
-              <AvatarFallback className="font-bold">{g.name.charAt(0)}</AvatarFallback>
+              {g.avatarUrl && <AvatarImage src={g.avatarUrl} alt={g.name} />}
+              <AvatarFallback className="font-bold"><Users size={20} /></AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-lg font-semibold text-foreground">{g.name}</h3>
             </div>
             <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Users size={14} />
-              <span>{g.members ?? 0}</span>
+              <span>{g.members?.length ?? 0}</span>
               {g.online && <span className="ml-1 text-green-500">● {g.online}</span>}
             </div>
           </Link>

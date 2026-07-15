@@ -1,11 +1,10 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User } from '@/types';
-import { senderName } from '@/services/chat';
-import { uploadAvatar } from '@/services/user';
+import { senderName, uploadGroupAvatar } from '@/services/chat';
 
 interface ContextMenuData {
   msg: Message;
@@ -127,8 +126,8 @@ export default function ChatOverlays({
     if (!editName.trim()) return;
     setSavingEdit(true);
     let avatarUrl: string | undefined;
-    if (_avatarFile) {
-      avatarUrl = await uploadAvatar(_avatarFile);
+    if (_avatarFile && group) {
+      avatarUrl = await uploadGroupAvatar(group.id, _avatarFile);
     }
     await onUpdateGroup({ name: editName.trim(), description: editDesc.trim(), avatarUrl: avatarUrl ?? avatarPreview ?? undefined });
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -316,10 +315,10 @@ export default function ChatOverlays({
                   onClick={() => forwardTarget && onForward(c.id, forwardTarget)}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
                 >
-                  <Avatar className="h-8 w-8">
-                    {c.avatarUrl && <AvatarImage src={c.avatarUrl} />}
-                    <AvatarFallback className="text-xs">{c.name[0]}</AvatarFallback>
-                  </Avatar>
+                    <Avatar className="h-8 w-8">
+                      {c.avatarUrl && <AvatarImage src={c.avatarUrl} />}
+                      <AvatarFallback className="text-xs">{c.type === 'group' ? <Users size={14} /> : <User size={14} />}</AvatarFallback>
+                    </Avatar>
                   <span className="font-medium">{c.name}</span>
                   <span className="ml-auto text-xs text-muted-foreground">
                     {c.type === 'group' ? 'Group' : 'DM'}
@@ -403,7 +402,7 @@ export default function ChatOverlays({
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
                 {group.avatarUrl && <AvatarImage src={group.avatarUrl} />}
-                <AvatarFallback className="text-lg">{group.name[0]}</AvatarFallback>
+                <AvatarFallback className="text-lg"><Users size={24} /></AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
                 <h3 className="text-lg font-semibold text-foreground">{group.name}</h3>
@@ -433,7 +432,7 @@ export default function ChatOverlays({
                     <Link to={`/profile/${m.userId}`} className="relative">
                       <Avatar className="h-8 w-8">
                         {m.user?.avatarUrl && <AvatarImage src={m.user.avatarUrl} />}
-                        <AvatarFallback className="text-xs">{(m.user?.fullName ?? m.userId)[0]}</AvatarFallback>
+                        <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
                       </Avatar>
                       {m.user?.status === 'online' && (
                         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
@@ -528,7 +527,7 @@ export default function ChatOverlays({
               <div className="relative">
                 <Avatar className="h-20 w-20">
                   {(avatarPreview || group?.avatarUrl) && <AvatarImage src={avatarPreview ?? group?.avatarUrl} />}
-                  <AvatarFallback className="text-lg">{editName[0] ?? 'G'}</AvatarFallback>
+                  <AvatarFallback className="text-lg"><Users size={28} /></AvatarFallback>
                 </Avatar>
                 <button
                   type="button"
@@ -616,7 +615,7 @@ export default function ChatOverlays({
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent/10"
                   >
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs">{u.fullName[0]}</AvatarFallback>
+                      <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground">{u.fullName}</p>
@@ -713,7 +712,7 @@ export default function ChatOverlays({
               readReceiptTarget.readBy.map((userId) => (
                 <div key={userId} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs">{userId[0]}</AvatarFallback>
+                    <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-foreground">{senderName(userId)}</span>
                   <CheckCheck size={14} className="ml-auto text-accent" />

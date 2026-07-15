@@ -314,7 +314,13 @@ export async function getConversations(): Promise<ChatConversation[]> {
   try {
     if (DEV_MODE) {
       await delay(200);
-      return [...MOCK_CONVERSATIONS];
+      return MOCK_CONVERSATIONS.map((c) => {
+        if (c.type === 'group') {
+          const override = MOCK_GROUP_OVERRIDES.get(c.id);
+          return { ...c, name: override?.name ?? c.name, avatarUrl: override?.avatarUrl ?? c.avatarUrl };
+        }
+        return c;
+      });
     }
 
     const { data } = await api.get<ChatConversation[]>(`/conversations`);
@@ -564,12 +570,12 @@ export async function searchUsers(query: string): Promise<User[]> {
   }
 }
 
-export async function createGroup(name: string, description: string, memberIds: string[]): Promise<ChatConversation> {
+export async function createGroup(name: string, description: string, memberIds: string[], isPrivate = false): Promise<ChatConversation> {
   try {
     if (DEV_MODE) {
       await delay(200);
       const id = String(++groupIdCounter);
-      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: true, muted: false };
+      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: false, muted: false };
       MOCK_CONVERSATIONS.unshift(newConv);
       MOCK_MESSAGES[id] = [
         { id: `sys-${id}`, groupId: id, senderId: 'system', content: 'Group created', type: 'system', createdAt: new Date() },
@@ -577,7 +583,7 @@ export async function createGroup(name: string, description: string, memberIds: 
       return newConv;
     }
 
-    const { data } = await api.post<ChatConversation>(`/groups`, { name, description, memberIds });
+    const { data } = await api.post<ChatConversation>(`/groups`, { name, description, memberIds, isPrivate });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to create group');
@@ -594,7 +600,7 @@ export async function leaveGroup(groupId: string): Promise<void> {
       return;
     }
 
-    await api.delete(`/groups/${groupId}/leave`);
+    await api.delete(`/groups/${groupId}/members/me`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to leave group');
   }
@@ -618,7 +624,7 @@ export async function getGroup(groupId: string): Promise<Group> {
         id: groupId,
         name: override?.name ?? conv?.name ?? 'Group',
         description: override?.description ?? 'A great group for discussion',
-        avatarUrl: override?.avatarUrl ?? 'https://api.dicebear.com/7.x/initials/svg?seed=' + encodeURIComponent(conv?.name ?? 'Group') + '&backgroundColor=2563eb',
+        avatarUrl: override?.avatarUrl,
         members,
         creatorId: DEV_USER_ID,
         isPrivate: false,
@@ -726,6 +732,24 @@ export async function deleteGroup(groupId: string): Promise<void> {
     await api.delete(`/groups/${groupId}`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete group');
+  }
+}
+
+export async function uploadGroupAvatar(groupId: string, file: File): Promise<string> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return URL.createObjectURL(file);
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const { data } = await api.post<{ url: string }>(`/groups/${groupId}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.url;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to upload group avatar');
   }
 }
 

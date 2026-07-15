@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Ban, Loader2 } from 'lucide-react';
+import { ArrowLeft, Ban, Loader2, User } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getBlockedUsers, unblockUser } from '@/services/chat';
 import Modal from '@/components/ui/modal';
@@ -62,8 +62,8 @@ export default function BlockedUsers() {
                   key={user.id}
                   className="flex items-center gap-3 px-4 py-3.5"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
-                    {user.fullName.charAt(0).toUpperCase()}
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <User size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground">{user.fullName}</p>

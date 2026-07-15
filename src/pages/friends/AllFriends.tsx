@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MessageSquareText, Loader2 } from 'lucide-react';
+import { Search, MessageSquareText, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getFriends } from '@/services/friends';
 import { DM_USER_MAP } from '@/services/chat';
@@ -87,7 +87,7 @@ export default function AllFriends() {
                     className="relative shrink-0 cursor-pointer"
                   >
                     <Avatar className="h-12 w-12">
-                      <AvatarFallback className="font-bold">{friend.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
                     </Avatar>
                     {friend.online && (
                       <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
