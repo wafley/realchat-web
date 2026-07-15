@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useTypingStore } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
@@ -199,7 +199,7 @@ export function useChatActions(props: UseChatActionsProps) {
   }, [showEmojiPicker]);
 
   useEffect(() => {
-    if (!chatId || import.meta.env.VITE_DEV_MODE !== 'true') return;
+    if (!chatId) return;
     if (!input) return;
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
@@ -553,13 +553,6 @@ export function useChatActions(props: UseChatActionsProps) {
     [deleteTarget, deleteMutation],
   );
 
-  const handleForward = useCallback(
-    (targetChatId: string, msg: Message) => {
-      forwardMutation.mutate({ targetChatId, msg });
-    },
-    [forwardMutation],
-  );
-
   const handleBlock = useCallback(() => {
     blockUser(chatId);
     setBlockConfirmOpen(false);
@@ -611,11 +604,31 @@ export function useChatActions(props: UseChatActionsProps) {
     setSelectedIds([]);
   }, [selectedIds, deleteMutation]);
 
+  const [bulkForwardMessages, setBulkForwardMessages] = useState<Message[]>([]);
+
   const handleBulkForward = useCallback(() => {
     if (selectedIds.length === 0) return;
-    const first = messages.find((m) => m.id === selectedIds[0]);
-    if (first) setForwardTarget(first);
+    const msgs = messages.filter((m) => selectedIds.includes(m.id));
+    if (msgs.length === 1) {
+      setForwardTarget(msgs[0]);
+    } else if (msgs.length > 1) {
+      setBulkForwardMessages(msgs);
+      setForwardTarget(msgs[0]);
+    }
   }, [selectedIds, messages]);
+
+  const handleForward = useCallback(
+    (targetChatId: string, msg: Message) => {
+      if (bulkForwardMessages.length > 0) {
+        bulkForwardMessages.forEach((m) => forwardMutation.mutate({ targetChatId, msg: m }));
+        setBulkForwardMessages([]);
+        setSelectedIds([]);
+      } else {
+        forwardMutation.mutate({ targetChatId, msg });
+      }
+    },
+    [bulkForwardMessages, forwardMutation, setSelectedIds],
+  );
 
   const handleToggleMute = useCallback(() => {
     const n = !muted;
