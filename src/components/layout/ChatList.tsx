@@ -313,7 +313,7 @@ export default function ChatList() {
               return (
                 <ItemTag
                   key={chat.id}
-                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online, lastSeen: chat.lastSeen } } : {})}
+                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online, lastSeen: chat.lastSeen, members: chat.members } } : {})}
                   role="listitem"
                   aria-current={isActive && !isSelectionMode ? 'page' : undefined}
                   onMouseDown={(e: React.MouseEvent) => {

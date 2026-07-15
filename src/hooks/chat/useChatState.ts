@@ -58,6 +58,7 @@ export function useChatState() {
   const chatName = location.state?.name || 'Chat';
   const chatOnline = location.state?.online ?? true;
   const chatLastSeen = location.state?.lastSeen ?? null;
+  const memberCount = location.state?.members ?? null;
   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? userId) : undefined;
 
   const {
@@ -103,6 +104,7 @@ export function useChatState() {
     chatName,
     chatOnline,
     chatLastSeen,
+    memberCount,
     otherUserId,
     // State
     input, setInput,

@@ -118,6 +118,7 @@ export default function ChatRoom() {
         muted={state.muted}
         userId={state.otherUserId}
         lastSeen={state.chatLastSeen}
+        memberCount={state.memberCount}
         onBack={() => navigate(-1)}
         onSearchToggle={() => {
           if (state.showSearch) {
