@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
 
@@ -38,7 +38,7 @@ export default function Sidebar() {
         <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
           {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
           <AvatarFallback className="text-xs lg:text-sm">
-            {user?.username?.charAt(0).toUpperCase()}
+            <User size={16} />
           </AvatarFallback>
         </Avatar>
         <button

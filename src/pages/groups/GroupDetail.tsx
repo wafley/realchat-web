@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Loader2, AlertCircle, Users, ArrowLeft, Settings, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, AlertCircle, Users, ArrowLeft, Settings, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2, User } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Modal from '@/components/ui/modal';
@@ -186,7 +186,7 @@ export default function GroupDetail() {
               <div className="relative shrink-0">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className="text-xs font-bold">
-                    {(memberUser?.fullName ?? '?').charAt(0)}
+                    <User size={14} />
                   </AvatarFallback>
                 </Avatar>
                 {memberUser?.status === 'online' && (

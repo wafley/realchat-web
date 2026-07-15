@@ -184,7 +184,7 @@ export default function SearchPage() {
             >
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback className="text-xs font-bold">
-                  {(msg.senderName ?? '?').charAt(0)}
+                  <User size={14} />
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
