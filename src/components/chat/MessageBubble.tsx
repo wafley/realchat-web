@@ -195,7 +195,7 @@ function MessageBubbleComp({
             </span>
           )}
         </div>
-        {(
+        {reactionMap.size > 0 && (
           <div className={`-mb-1 mt-1 flex flex-wrap gap-1 ${isOwn ? 'justify-end' : ''}`}>
             {Array.from(reactionMap.entries()).map(([emoji, { count, hasMine }]) => (
               <button
