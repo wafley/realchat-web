@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -9,6 +10,7 @@ import ChatOverlays from '@/components/chat/ChatOverlays';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
+import { joinRoom, leaveRoom, emitMessageSeen, setCurrentChat } from '@/services/socket.service';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
@@ -104,6 +106,20 @@ export default function ChatRoom() {
     isFetchingNextPage: state.isFetchingNextPage,
     fetchNextPage: state.fetchNextPage,
   });
+
+  // Socket: join/leave room, set current chat, emit seen
+  useEffect(() => {
+    if (!state.chatId) return;
+
+    setCurrentChat(state.chatId, state.isDM);
+    joinRoom(state.chatId);
+    emitMessageSeen(state.chatId);
+
+    return () => {
+      leaveRoom(state.chatId);
+      setCurrentChat(null, false);
+    };
+  }, [state.chatId, state.isDM]);
 
   return (
     <div
