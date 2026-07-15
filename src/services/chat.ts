@@ -729,6 +729,24 @@ export async function deleteGroup(groupId: string): Promise<void> {
   }
 }
 
+export async function uploadGroupAvatar(groupId: string, file: File): Promise<string> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      return URL.createObjectURL(file);
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const { data } = await api.post<{ url: string }>(`/groups/${groupId}/avatar`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.url;
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to upload group avatar');
+  }
+}
+
 export async function toggleReaction(chatId: string, messageId: string, emoji: string): Promise<Reaction[]> {
   try {
     if (DEV_MODE) {
