@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Users, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getGroups } from '@/services/chat';
 
 export default function Groups() {
@@ -50,6 +50,7 @@ export default function Groups() {
             className="flex min-h-[88px] items-center gap-4 rounded-2xl border border-border px-4 py-3.5 transition-colors hover:bg-accent/5"
           >
             <Avatar className="h-12 w-12 shrink-0">
+              {g.avatarUrl && <AvatarImage src={g.avatarUrl} alt={g.name} />}
               <AvatarFallback className="font-bold">{g.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
