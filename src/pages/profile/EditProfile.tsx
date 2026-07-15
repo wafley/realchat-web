@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
+import { uploadAvatar } from '@/services/user';
 import { toast } from 'sonner';
 
 export default function EditProfile() {
@@ -39,9 +40,11 @@ export default function EditProfile() {
     try {
       const payload: Record<string, string> = { fullName: fullName.trim(), username: username.trim(), bio: bio.trim() };
       if (avatarFile) {
-        payload.avatarUrl = avatarPreview!;
+        const avatarUrl = await uploadAvatar(avatarFile);
+        payload.avatarUrl = avatarUrl;
       }
       await updateProfile(payload);
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
       toast.success('Profile updated');
       navigate('/profile');
     } catch {
