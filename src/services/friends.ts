@@ -114,6 +114,15 @@ export async function getSentRequests(): Promise<FriendRequest[]> {
   return data;
 }
 
+export async function getPendingRequestCount(): Promise<number> {
+  if (DEV_MODE) {
+    await delay(100);
+    return mockRequests.length;
+  }
+  const { data } = await api.get<FriendRequest[]>('/friends/requests');
+  return data.length;
+}
+
 export async function removeFriend(userId: string): Promise<void> {
   if (DEV_MODE) {
     await delay(200);
