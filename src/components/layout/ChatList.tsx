@@ -66,10 +66,12 @@ export default function ChatList() {
     },
   });
 
-  const { data: conversations = [], isPending, isError, error, refetch } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ['conversations'],
     queryFn: getConversations,
   });
+
+  const conversations = Array.isArray(data) ? data : [];
 
   const filtered = conversations.filter((c) => {
     if (tab === 'messages' && c.type !== 'dm') return false;
