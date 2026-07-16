@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getPendingRequests, acceptFriendRequest, rejectFriendRequest } from '@/services/friends';
+import { queryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
 
 interface RequestItem {
@@ -34,6 +35,7 @@ export default function Requests() {
     try {
       await acceptFriendRequest(reqId);
       setRequests((prev) => prev.filter((r) => r.id !== reqId));
+      queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
       toast.success('Friend request accepted!');
     } catch {
       toast.error('Failed to accept request');
@@ -44,6 +46,7 @@ export default function Requests() {
     try {
       await rejectFriendRequest(reqId);
       setRequests((prev) => prev.filter((r) => r.id !== reqId));
+      queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
       toast.success('Request rejected');
     } catch {
       toast.error('Failed to reject request');
