@@ -1,13 +1,7 @@
 import type { ReactNode } from 'react';
 
 export function formatTime(date: Date) {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / 86400000);
-  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  if (days === 0) return time;
-  if (days === 1) return `Yesterday · ${time}`;
-  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${time}`;
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export function formatDateSeparator(date: Date): string {
