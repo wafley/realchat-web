@@ -30,7 +30,6 @@ export default function Register() {
       await register({
         email: data.email,
         username: data.username,
-        fullName: data.fullName,
         password: data.password,
       });
       navigate('/', { replace: true });
@@ -56,21 +55,6 @@ export default function Register() {
         />
         {errors.username && (
           <p className="text-sm text-destructive">{errors.username.message}</p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <label htmlFor="fullName" className="text-sm font-medium text-foreground">
-          Full Name
-        </label>
-        <Input
-          id="fullName"
-          type="text"
-          placeholder="John Doe"
-          autoComplete="name"
-          {...registerField('fullName')}
-        />
-        {errors.fullName && (
-          <p className="text-sm text-destructive">{errors.fullName.message}</p>
         )}
       </div>
       <div className="space-y-2">
