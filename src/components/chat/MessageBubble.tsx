@@ -88,10 +88,10 @@ function MessageBubbleComp({
         {msg.edited && <span className="italic text-[8px] lg:text-[9px]">edited</span>}
         {formatTime(msg.createdAt)}
         {isOwn && msg.status && (
-          msg.status === 'sending' ? <Clock size={10} className={`${isOverlay ? 'text-white' : isOwn ? 'text-white/60' : 'text-muted-foreground/75'} lg:size-3`} />
-          : msg.status === 'sent' ? <Check size={10} className="lg:size-3" />
-          : msg.status === 'delivered' ? <CheckCheck size={10} className="lg:size-3" />
-          : <CheckCheck size={10} className="text-accent lg:size-3" />
+          msg.status === 'sending' ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : <CheckCheck size={13} className="text-blue-300 lg:size-3.5" />
         )}
       </span>
     );
@@ -144,8 +144,8 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`cursor-pointer overflow-hidden relative ${
-            msg.type === 'image' || msg.type === 'video' ? 'rounded-2xl' : 'rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base'
+          className={`cursor-pointer relative ${
+            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base'
           } ${isOwn
             ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
             : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
