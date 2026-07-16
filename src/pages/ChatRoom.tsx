@@ -136,7 +136,7 @@ export default function ChatRoom() {
         lastSeen={state.chatLastSeen}
         memberCount={mutations.group?.members?.length ?? state.memberCount}
         avatarUrl={!state.isDM ? mutations.group?.avatarUrl : undefined}
-        onBack={() => navigate(-1)}
+        onBack={() => navigate('/')}
         onSearchToggle={() => {
           if (state.showSearch) {
             state.setSearchQuery('');

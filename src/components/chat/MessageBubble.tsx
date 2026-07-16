@@ -1,4 +1,4 @@
-import { memo, type PointerEvent, type TouchEvent } from 'react';
+import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
 import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
@@ -51,6 +51,7 @@ function MessageBubbleComp({
 }: MessageBubbleProps) {
   const isSelected = selectedIds.includes(msg.id);
   const inSelectionMode = selectedIds.length > 0;
+  const [isExpanded, setIsExpanded] = useState(false);
 
   if (msg.type === 'system') {
     return (
@@ -72,6 +73,30 @@ function MessageBubbleComp({
     }
   }
 
+  const showReadMore = (msg.content || '').length > 500;
+  const displayedContent = showReadMore && !isExpanded 
+    ? (msg.content || '').slice(0, 500) + '...'
+    : (msg.content || '');
+
+  const renderTimestamp = (isOverlay = false) => {
+    return (
+      <span className={`inline-flex items-center gap-1 text-[9px] lg:text-[10px] select-none ${
+        isOverlay 
+          ? 'text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium' 
+          : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} absolute bottom-1 right-2`
+      }`}>
+        {msg.edited && <span className="italic text-[8px] lg:text-[9px]">edited</span>}
+        {formatTime(msg.createdAt)}
+        {isOwn && msg.status && (
+          msg.status === 'sending' ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : <CheckCheck size={13} className="text-blue-300 lg:size-3.5" />
+        )}
+      </span>
+    );
+  };
+
   return (
     <div
       className={`flex items-start gap-2 ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''}`}
@@ -91,7 +116,7 @@ function MessageBubbleComp({
           </AvatarFallback>
         </Avatar>
       ) : null}
-      <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''}`}>
+      <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''} flex flex-col min-w-0`}>
         {!isOwn && (
           <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
             {name}
@@ -119,8 +144,8 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`cursor-pointer overflow-hidden ${
-            msg.type === 'image' || msg.type === 'video' ? 'rounded-2xl' : 'rounded-2xl px-2.5 py-1 text-sm lg:px-3 lg:py-1.5 lg:text-base'
+          className={`cursor-pointer relative ${
+            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base'
           } ${isOwn
             ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
             : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
@@ -134,65 +159,134 @@ function MessageBubbleComp({
           )}
           {msg.type === 'image' && msg.fileUrl ? (
             <div className="flex flex-col">
-              <div className="overflow-hidden">
-                <img
-                  src={msg.fileUrl}
-                  alt={msg.content || 'Image'}
-                  className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                  style={{ maxHeight: '300px' }}
-                  onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
-                  loading="lazy"
-                />
-              </div>
-              {msg.content && (
+              {msg.content ? (
                 <>
+                  <div className="overflow-hidden">
+                    <img
+                      src={msg.fileUrl}
+                      alt={msg.content || 'Image'}
+                      className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                      style={{ maxHeight: '300px' }}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
+                      loading="lazy"
+                    />
+                  </div>
                   <div className="mx-4 h-px bg-black/10" />
-                  <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-2 lg:pt-2 lg:text-base">
-                    {msg.content}
+                  <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                    {highlightText(displayedContent, searchQuery)}
+                    {showReadMore && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsExpanded(!isExpanded);
+                        }}
+                        className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                      >
+                        {isExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
                   </p>
                 </>
+              ) : (
+                <div className="relative overflow-hidden">
+                  <img
+                    src={msg.fileUrl}
+                    alt="Image"
+                    className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                    style={{ maxHeight: '300px' }}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
+                    loading="lazy"
+                  />
+                  {renderTimestamp(true)}
+                </div>
               )}
             </div>
           ) : msg.type === 'video' && msg.fileUrl ? (
             <div className="flex flex-col">
-              <video
-                src={msg.fileUrl}
-                controls
-                className="block w-full rounded-2xl"
-                style={{ maxHeight: '400px' }}
-                preload="metadata"
-              />
-              {msg.content && (
-                <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-2 lg:pt-2 lg:text-base">
-                  {msg.content}
-                </p>
+              {msg.content ? (
+                <>
+                  <video
+                    src={msg.fileUrl}
+                    controls
+                    className="block w-full rounded-t-2xl"
+                    style={{ maxHeight: '400px' }}
+                    preload="metadata"
+                  />
+                  <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                    {highlightText(displayedContent, searchQuery)}
+                    {showReadMore && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsExpanded(!isExpanded);
+                        }}
+                        className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                      >
+                        {isExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <div className="relative">
+                  <video
+                    src={msg.fileUrl}
+                    controls
+                    className="block w-full rounded-2xl"
+                    style={{ maxHeight: '400px' }}
+                    preload="metadata"
+                  />
+                  {renderTimestamp(true)}
+                </div>
               )}
             </div>
           ) : msg.fileUrl ? (
-            <a
-              href={msg.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 transition-colors hover:bg-card"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                <FileText size={18} className="text-accent" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{msg.fileName || 'Document'}</p>
-                {msg.fileSize && (
-                  <p className="text-xs text-muted-foreground">{formatFileSize(msg.fileSize)}</p>
-                )}
-              </div>
-            </a>
+            <div className="pb-1">
+              <a
+                href={msg.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 pr-14 transition-colors hover:bg-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
+                  <FileText size={18} className="text-accent" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{msg.fileName || 'Document'}</p>
+                  {msg.fileSize && (
+                    <p className="text-xs text-muted-foreground">{formatFileSize(msg.fileSize)}</p>
+                  )}
+                </div>
+              </a>
+            </div>
           ) : (
-            <p>{highlightText(msg.content, searchQuery)}</p>
+            <p className="whitespace-pre-wrap break-words pr-14 pb-0.5">
+              {highlightText(displayedContent, searchQuery)}
+              {showReadMore && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                >
+                  {isExpanded ? 'Read less' : 'Read more'}
+                </button>
+              )}
+            </p>
           )}
           {msg.isPinned && !hasActiveSearch && (
             <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground/50">
               <Pin size={10} /> Pinned
             </span>
+          )}
+
+          {/* Timestamps inside the bubble */}
+          {msg.type === 'image' || msg.type === 'video' ? (
+            msg.content && renderTimestamp(false)
+          ) : (
+            renderTimestamp(false)
           )}
         </div>
         {reactionMap.size > 0 && (
@@ -222,16 +316,6 @@ function MessageBubbleComp({
             </button>
           </div>
         )}
-        <p className={`mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground lg:text-xs ${isOwn ? 'justify-end' : ''}`}>
-          {msg.edited && <span className="italic">edited</span>}
-          {formatTime(msg.createdAt)}
-          {isOwn && msg.status && (
-            msg.status === 'sending' ? <Clock size={12} className="text-muted-foreground lg:size-3.5" />
-            : msg.status === 'sent' ? <Check size={12} className="lg:size-3.5" />
-            : msg.status === 'delivered' ? <CheckCheck size={12} className="lg:size-3.5" />
-            : <CheckCheck size={12} className="text-accent lg:size-3.5" />
-          )}
-        </p>
       </div>
     </div>
   );

@@ -112,7 +112,7 @@ export default function MessageList({
           </p>
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {hasNextPage && (
             <div ref={scrollTriggerRef} className="flex justify-center py-2">
               {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
@@ -127,7 +127,7 @@ export default function MessageList({
             return (
               <div key={msg.id}>
                 {showDateSeparator && (
-                  <div className="flex justify-center py-1">
+                  <div className="flex justify-center py-0.5">
                     <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
                       {formatDateSeparator(msg.createdAt)}
                     </span>
