@@ -5,12 +5,14 @@ import { useSocketStore } from '@/store/socketStore';
 import { LogOut, User, WifiOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
+import { usePendingFriendRequestCount } from '@/hooks/usePendingFriendRequestCount';
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const isConnected = useSocketStore((s) => s.isConnected);
   const reconnectAttempts = useSocketStore((s) => s.reconnectAttempts);
+  const { data: pendingCount } = usePendingFriendRequestCount();
 
   return (
     <aside className="hidden w-16 flex-col items-center border-r border-border bg-sidebar py-3 lg:flex lg:w-20">
@@ -22,7 +24,7 @@ export default function Sidebar() {
             end={to === '/'}
             className={({ isActive }) =>
               cn(
-              'flex h-10 w-10 items-center justify-center rounded-lg transition-colors lg:h-12 lg:w-12',
+              'relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors lg:h-12 lg:w-12',
               isActive
                 ? 'bg-accent/15 text-accent'
                 : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground',
@@ -31,6 +33,11 @@ export default function Sidebar() {
             title={label}
           >
             <Icon size={22} />
+            {to === '/friends' && pendingCount != null && pendingCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                {pendingCount > 99 ? '99+' : pendingCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
