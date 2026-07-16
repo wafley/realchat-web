@@ -64,7 +64,7 @@ export default function MessageList({
   toggleSelect,
 }: MessageListProps) {
   return (
-    <div className="flex-1 overflow-y-auto bg-chat-tile-overlay px-4 py-4">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden bg-chat-tile-overlay px-4 py-4">
       {isPending ? (
         <div className="flex h-full items-center justify-center">
           <Loader2 size={24} className="animate-spin text-muted-foreground" />
