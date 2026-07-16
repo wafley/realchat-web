@@ -92,7 +92,8 @@ export interface FriendRequest {
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface LoginPayload {
@@ -103,7 +104,6 @@ export interface LoginPayload {
 export interface RegisterPayload {
   email: string;
   username: string;
-  fullName: string;
   password: string;
 }
 
