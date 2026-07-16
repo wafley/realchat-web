@@ -1,5 +1,5 @@
-import { type RefObject, type PointerEvent, type TouchEvent } from 'react';
-import { Loader2, AlertCircle, RefreshCw, MessageSquareText } from 'lucide-react';
+import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback } from 'react';
+import { Loader2, AlertCircle, RefreshCw, MessageSquareText, ChevronDown } from 'lucide-react';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
@@ -63,8 +63,27 @@ export default function MessageList({
   selectedIds,
   toggleSelect,
 }: MessageListProps) {
+  const [showScrollDown, setShowScrollDown] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollDown(distanceFromBottom > 200);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messagesEndRef]);
+
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden bg-chat-tile-overlay px-4 py-4">
+    <div className="relative flex-1 overflow-hidden">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex h-full flex-col overflow-y-auto bg-chat-tile-overlay px-4 py-4"
+      >
       {isPending ? (
         <div className="flex h-full items-center justify-center">
           <Loader2 size={24} className="animate-spin text-muted-foreground" />
@@ -93,7 +112,7 @@ export default function MessageList({
           </p>
         </div>
       ) : (
-        <div className="space-y-0.5">
+        <div className="space-y-1">
           {hasNextPage && (
             <div ref={scrollTriggerRef} className="flex justify-center py-2">
               {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
@@ -108,7 +127,7 @@ export default function MessageList({
             return (
               <div key={msg.id}>
                 {showDateSeparator && (
-                  <div className="flex justify-center py-0.5">
+                  <div className="flex justify-center py-1">
                     <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
                       {formatDateSeparator(msg.createdAt)}
                     </span>
@@ -153,6 +172,16 @@ export default function MessageList({
             </div>
           )}
         </div>
+      )}
+      </div>
+      {showScrollDown && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-card shadow-lg ring-1 ring-border transition-transform hover:scale-110"
+          aria-label="Scroll to bottom"
+        >
+          <ChevronDown size={20} className="text-muted-foreground" />
+        </button>
       )}
     </div>
   );
