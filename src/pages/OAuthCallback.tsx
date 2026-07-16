@@ -12,19 +12,21 @@ export default function OAuthCallback() {
     if (calledRef.current) return;
     calledRef.current = true;
 
-    const token = params.get('token');
-    if (!token) {
+    const accessToken = params.get('accessToken') || params.get('token');
+    const refreshToken = params.get('refreshToken');
+    if (!accessToken) {
       navigate('/login', { replace: true });
       return;
     }
 
-    localStorage.setItem('token', token);
+    localStorage.setItem('accessToken', accessToken);
+    if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
     try {
       const userRaw = params.get('user');
       if (userRaw) {
         const user = JSON.parse(decodeURIComponent(userRaw));
-        useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
+        useAuthStore.setState({ user, accessToken, isAuthenticated: true, isLoading: false });
         navigate('/', { replace: true });
         return;
       }
@@ -33,18 +35,18 @@ export default function OAuthCallback() {
     authService
       .getMe()
       .then((user) => {
-        useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
+        useAuthStore.setState({ user, accessToken, isAuthenticated: true, isLoading: false });
         navigate('/', { replace: true });
       })
       .catch(() => {
-        localStorage.removeItem('token');
+        localStorage.clear();
         navigate('/login', { replace: true });
       });
   }, [navigate, params]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-muted-foreground">Completing sign in…</p>
+      <p className="text-muted-foreground">Completing sign in...</p>
     </div>
   );
 }
