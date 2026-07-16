@@ -83,7 +83,7 @@ function MessageBubbleComp({
       <span className={`inline-flex items-center gap-1 text-[9px] lg:text-[10px] select-none ${
         isOverlay 
           ? 'text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium' 
-          : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} absolute bottom-1 right-2`
+          : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} self-end mt-0.5`
       }`}>
         {msg.edited && <span className="italic text-[8px] lg:text-[9px]">edited</span>}
         {formatTime(msg.createdAt)}
@@ -144,7 +144,7 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`cursor-pointer overflow-hidden relative ${
+          className={`cursor-pointer overflow-hidden relative flex flex-col ${
             msg.type === 'image' || msg.type === 'video' ? 'rounded-2xl' : 'rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base'
           } ${isOwn
             ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
@@ -172,7 +172,7 @@ function MessageBubbleComp({
                     />
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
-                  <p className="px-3 pb-5 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-6 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                  <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
                     {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
                       <button
@@ -212,7 +212,7 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  <p className="px-3 pb-5 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-6 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                  <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
                     {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
                       <button
@@ -241,7 +241,7 @@ function MessageBubbleComp({
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="pb-5">
+            <div className="pb-1">
               <a
                 href={msg.fileUrl}
                 target="_blank"
@@ -261,7 +261,7 @@ function MessageBubbleComp({
               </a>
             </div>
           ) : (
-            <p className="whitespace-pre-wrap break-words pr-14 pb-0.5">
+            <p className="whitespace-pre-wrap break-words pb-0.5">
               {highlightText(displayedContent, searchQuery)}
               {showReadMore && (
                 <button
