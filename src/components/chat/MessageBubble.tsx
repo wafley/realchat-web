@@ -83,7 +83,7 @@ function MessageBubbleComp({
       <span className={`inline-flex items-center gap-1 text-[9px] lg:text-[10px] select-none ${
         isOverlay 
           ? 'text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium' 
-          : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} self-end mt-0.5`
+          : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} absolute bottom-0.5 right-0`
       }`}>
         {msg.edited && <span className="italic text-[8px] lg:text-[9px]">edited</span>}
         {formatTime(msg.createdAt)}
@@ -172,20 +172,23 @@ function MessageBubbleComp({
                     />
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
-                  <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
-                    {highlightText(displayedContent, searchQuery)}
-                    {showReadMore && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsExpanded(!isExpanded);
-                        }}
-                        className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
-                      >
-                        {isExpanded ? 'Read less' : 'Read more'}
-                      </button>
-                    )}
-                  </p>
+                  <div className="relative">
+                    <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                      {highlightText(displayedContent, searchQuery)}
+                      {showReadMore && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                          }}
+                          className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                        >
+                          {isExpanded ? 'Read less' : 'Read more'}
+                        </button>
+                      )}
+                    </p>
+                    {renderTimestamp(false)}
+                  </div>
                 </>
               ) : (
                 <div className="relative overflow-hidden">
@@ -212,20 +215,23 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  <p className="px-3 pb-2 pt-1.5 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
-                    {highlightText(displayedContent, searchQuery)}
-                    {showReadMore && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsExpanded(!isExpanded);
-                        }}
-                        className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
-                      >
-                        {isExpanded ? 'Read less' : 'Read more'}
-                      </button>
-                    )}
-                  </p>
+                  <div className="relative">
+                    <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                      {highlightText(displayedContent, searchQuery)}
+                      {showReadMore && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                          }}
+                          className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                        >
+                          {isExpanded ? 'Read less' : 'Read more'}
+                        </button>
+                      )}
+                    </p>
+                    {renderTimestamp(false)}
+                  </div>
                 </>
               ) : (
                 <div className="relative">
@@ -241,12 +247,12 @@ function MessageBubbleComp({
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="pb-1">
+            <div className="relative">
               <a
                 href={msg.fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 transition-colors hover:bg-card"
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 pr-14 transition-colors hover:bg-card"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -259,34 +265,31 @@ function MessageBubbleComp({
                   )}
                 </div>
               </a>
+              {renderTimestamp(false)}
             </div>
           ) : (
-            <p className="whitespace-pre-wrap break-words pb-0.5">
-              {highlightText(displayedContent, searchQuery)}
-              {showReadMore && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
-                >
-                  {isExpanded ? 'Read less' : 'Read more'}
-                </button>
-              )}
-            </p>
+            <div className="relative">
+              <p className="whitespace-pre-wrap break-words pr-14 pb-0.5">
+                {highlightText(displayedContent, searchQuery)}
+                {showReadMore && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                  >
+                    {isExpanded ? 'Read less' : 'Read more'}
+                  </button>
+                )}
+              </p>
+              {renderTimestamp(false)}
+            </div>
           )}
           {msg.isPinned && !hasActiveSearch && (
             <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground/50">
               <Pin size={10} /> Pinned
             </span>
-          )}
-
-          {/* Timestamps inside the bubble */}
-          {msg.type === 'image' || msg.type === 'video' ? (
-            msg.content && renderTimestamp(false)
-          ) : (
-            renderTimestamp(false)
           )}
         </div>
         {reactionMap.size > 0 && (

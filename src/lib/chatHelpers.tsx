@@ -4,9 +4,10 @@ export function formatTime(date: Date) {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / 86400000);
-  if (days === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (days === 1) return 'Yesterday';
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (days === 0) return time;
+  if (days === 1) return `Yesterday · ${time}`;
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${time}`;
 }
 
 export function formatDateSeparator(date: Date): string {
