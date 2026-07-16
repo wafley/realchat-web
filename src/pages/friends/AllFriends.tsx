@@ -3,13 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Search, MessageSquareText, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getFriends } from '@/services/friends';
-import { DM_USER_MAP } from '@/services/chat';
+import { findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
-
-const USER_DM_REVERSE: Record<string, string> = {};
-for (const [dmId, userId] of Object.entries(DM_USER_MAP)) {
-  USER_DM_REVERSE[userId] = dmId;
-}
 
 export default function AllFriends() {
   const navigate = useNavigate();
@@ -38,12 +33,12 @@ export default function AllFriends() {
       f.username.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleMessage = (friendId: string, name: string, online: boolean, lastSeen?: Date) => {
-    const dmId = USER_DM_REVERSE[friendId];
-    if (dmId) {
+  const handleMessage = async (friendId: string, name: string, online: boolean, lastSeen?: Date) => {
+    try {
+      const dmId = await findOrCreateConversation(friendId);
       navigate(`/dm/${dmId}`, { state: { name, online, lastSeen } });
-    } else {
-      toast.error('No conversation with this user');
+    } catch {
+      toast.error('Failed to open conversation');
     }
   };
 

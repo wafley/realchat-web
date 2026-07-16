@@ -108,6 +108,32 @@ export const DM_USER_MAP: Record<string, string> = {
   'dm5': 'eko',
 };
 
+let dmIdCounter = 6;
+
+export async function findOrCreateConversation(userId: string): Promise<string> {
+  if (DEV_MODE) {
+    await delay(100);
+    const existing = Object.entries(DM_USER_MAP).find(([, uid]) => uid === userId);
+    if (existing) return existing[0];
+    const newId = `dm${dmIdCounter++}`;
+    DM_USER_MAP[newId] = userId;
+    const user = MOCK_CONVERSATIONS.find((c) => c.id === Object.keys(DM_USER_MAP).find((k) => DM_USER_MAP[k] === userId));
+    const name = user?.name ?? userId;
+    MOCK_CONVERSATIONS.push({
+      id: newId,
+      name,
+      type: 'dm',
+      lastMessage: '',
+      lastTime: 'Now',
+      online: true,
+      muted: false,
+    });
+    return newId;
+  }
+  const { data } = await api.post<{ id: string }>('/conversations', { userId, type: 'dm' });
+  return data.id;
+}
+
 function populateReadBy(msg: Message, chatId: string, isDM: boolean): string[] | undefined {
   if (msg.type === 'system') return undefined;
   if (isDM) {
