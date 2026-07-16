@@ -181,6 +181,7 @@ function onGroupMemberRole(data: { groupId: string }) {
 
 function onNotification(_data: any) {
   queryClient.invalidateQueries({ queryKey: ['notifications'] });
+  queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
 }
 
 // --- Init / Destroy ---
