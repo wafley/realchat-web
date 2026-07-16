@@ -5,13 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { getUser } from '@/services/user';
-import { blockUser as blockUserService, DM_USER_MAP } from '@/services/chat';
+import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
-
-const USER_DM_REVERSE: Record<string, string> = {};
-for (const [dmId, uId] of Object.entries(DM_USER_MAP)) {
-  USER_DM_REVERSE[uId] = dmId;
-}
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
@@ -119,12 +114,12 @@ export default function UserProfile() {
 
               <div className="mx-6 mb-8 flex flex-col gap-2">
                 <button
-                  onClick={() => {
-                    const dmId = USER_DM_REVERSE[user.id];
-                    if (dmId) {
+                  onClick={async () => {
+                    try {
+                      const dmId = await findOrCreateConversation(user.id);
                       navigate(`/dm/${dmId}`, { state: { name: user.fullName, online: user.status === 'online' } });
-                    } else {
-                      toast.error('No conversation with this user');
+                    } catch {
+                      toast.error('Failed to open conversation');
                     }
                   }}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
