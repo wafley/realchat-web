@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, Users, User, MessageSquare, FileText, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, Users, User as UserIcon, MessageSquare, FileText, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { searchUsers, searchGroups, searchMessages } from '@/services/search';
@@ -131,7 +131,7 @@ export default function SearchPage() {
               >
                 <div className="relative shrink-0">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="text-sm font-bold"><User size={18} /></AvatarFallback>
+                    <AvatarFallback className="text-sm font-bold"><UserIcon size={18} /></AvatarFallback>
                   </Avatar>
                   {user.status === 'online' && (
                     <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
@@ -184,7 +184,7 @@ export default function SearchPage() {
             >
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback className="text-xs font-bold">
-                  <User size={14} />
+                  <UserIcon size={14} />
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
