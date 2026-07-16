@@ -25,9 +25,10 @@ export const registerSchema = z
   });
 
 export const editProfileSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required'),
+  fullName: z.string().trim().min(1, 'Full name is required'),
   username: z
     .string()
+    .trim()
     .min(1, 'Username is required')
     .min(3, 'Username must be at least 3 characters'),
   bio: z.string().max(200, 'Bio must be 200 characters or less').optional(),
