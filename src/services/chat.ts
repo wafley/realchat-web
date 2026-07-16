@@ -349,8 +349,8 @@ export async function getConversations(): Promise<ChatConversation[]> {
       });
     }
 
-    const { data } = await api.get<ChatConversation[]>(`/conversations`);
-    return data;
+    const { data } = await api.get(`/conversations`);
+    return Array.isArray(data) ? data : Array.isArray(data?.conversations) ? data.conversations : [];
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to fetch conversations');
   }
@@ -537,8 +537,8 @@ export async function getBlockedUsers(): Promise<User[]> {
       { id: 'blocked2', username: 'troll', fullName: 'Troll Account', email: 'troll@example.com', status: 'offline', createdAt: new Date() },
     ];
   }
-  const { data } = await api.get<User[]>('/users/blocked');
-  return data;
+  const { data } = await api.get('/users/blocked');
+  return Array.isArray(data) ? data : [];
 }
 
 export async function unblockUser(userId: string): Promise<void> {
@@ -574,8 +574,8 @@ export async function getGroups(): Promise<ChatConversation[]> {
       return MOCK_CONVERSATIONS.filter((c) => c.type === 'group');
     }
 
-    const { data } = await api.get<ChatConversation[]>(`/groups`);
-    return data;
+    const { data } = await api.get(`/groups`);
+    return Array.isArray(data) ? data : Array.isArray(data?.groups) ? data.groups : [];
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get groups');
   }
