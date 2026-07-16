@@ -1,23 +1,36 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Camera, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
 import { uploadAvatar } from '@/services/user';
 import { toast } from 'sonner';
+import { editProfileSchema, type editProfileSchema as EditProfileSchema } from '@/lib/validations';
 
 export default function EditProfile() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
 
-  const [fullName, setFullName] = useState(user?.fullName || '');
-  const [username, setUsername] = useState(user?.username || '');
-  const [bio, setBio] = useState(user?.bio || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditProfileSchema>({
+    resolver: zodResolver(editProfileSchema),
+    defaultValues: {
+      fullName: user?.fullName || '',
+      username: user?.username || '',
+      bio: user?.bio || '',
+    },
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -26,19 +39,14 @@ export default function EditProfile() {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleSave = async () => {
-    if (!fullName.trim()) {
-      toast.error('Full name is required');
-      return;
-    }
-    if (!username.trim()) {
-      toast.error('Username is required');
-      return;
-    }
-
+  const onSave = async (data: EditProfileSchema) => {
     setSaving(true);
     try {
-      const payload: Record<string, string> = { fullName: fullName.trim(), username: username.trim(), bio: bio.trim() };
+      const payload: Record<string, string> = {
+        fullName: data.fullName,
+        username: data.username,
+        bio: data.bio || '',
+      };
       if (avatarFile) {
         const avatarUrl = await uploadAvatar(avatarFile);
         payload.avatarUrl = avatarUrl;
@@ -109,36 +117,42 @@ export default function EditProfile() {
                 <input
                   type="text"
                   placeholder="Your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  {...register('fullName')}
                   className="mt-1 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
+                {errors.fullName && (
+                  <p className="mt-1 text-xs text-destructive">{errors.fullName.message}</p>
+                )}
               </div>
               <div className="border-b border-border/50 px-4 py-3.5">
                 <label className="text-xs text-muted-foreground">Username</label>
                 <input
                   type="text"
                   placeholder="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  {...register('username')}
                   className="mt-1 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
+                {errors.username && (
+                  <p className="mt-1 text-xs text-destructive">{errors.username.message}</p>
+                )}
               </div>
               <div className="px-4 py-3.5">
                 <label className="text-xs text-muted-foreground">Bio</label>
                 <textarea
                   placeholder="Tell us about yourself"
                   rows={3}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  {...register('bio')}
                   className="mt-1 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
+                {errors.bio && (
+                  <p className="mt-1 text-xs text-destructive">{errors.bio.message}</p>
+                )}
               </div>
             </div>
           </div>
 
           <button
-            onClick={handleSave}
+            onClick={handleSubmit(onSave)}
             disabled={saving}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-50"
           >
