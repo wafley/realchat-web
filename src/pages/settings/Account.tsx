@@ -1,30 +1,37 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Ban, Trash2, Key, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
 import Modal from '@/components/ui/modal';
+import { changePasswordSchema, type changePasswordSchema as ChangePasswordSchema } from '@/lib/validations';
 
 export default function SettingsAccount() {
   const navigate = useNavigate();
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ChangePasswordSchema>({
+    resolver: zodResolver(changePasswordSchema),
+  });
+
   const changePwMutation = useMutation({
-    mutationFn: () => changePassword(currentPassword, newPassword),
+    mutationFn: (data: ChangePasswordSchema) => changePassword(data.currentPassword, data.newPassword),
     onSuccess: () => {
       toast.success('Password changed successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      reset();
     },
     onError: (err) => toast.error(parseAuthError(err)),
   });
@@ -37,23 +44,6 @@ export default function SettingsAccount() {
     },
     onError: (err) => toast.error(parseAuthError(err)),
   });
-
-  const handleChangePw = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-    changePwMutation.mutate();
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -80,14 +70,13 @@ export default function SettingsAccount() {
               <Key size={18} className="text-muted-foreground" />
               <span className="text-sm font-semibold text-foreground">Change Password</span>
             </div>
-            <form onSubmit={handleChangePw} className="space-y-3 p-4">
+            <form onSubmit={handleSubmit((data) => changePwMutation.mutate(data))} className="space-y-3 p-4">
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Current Password</label>
                 <div className="relative">
                   <input
                     type={showPw ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    {...register('currentPassword')}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-9 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     placeholder="Enter current password"
                   />
@@ -99,26 +88,33 @@ export default function SettingsAccount() {
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {errors.currentPassword && (
+                  <p className="mt-1 text-xs text-destructive">{errors.currentPassword.message}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">New Password</label>
                 <input
                   type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
+                  {...register('newPassword')}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   placeholder="Enter new password"
                 />
+                {errors.newPassword && (
+                  <p className="mt-1 text-xs text-destructive">{errors.newPassword.message}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Confirm New Password</label>
                 <input
                   type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  {...register('confirmPassword')}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   placeholder="Confirm new password"
                 />
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
+                )}
               </div>
               <button
                 type="submit"

@@ -1,15 +1,16 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, Search, X, Loader2, Camera, User } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
 import type { User } from '@/types';
+import { createGroupSchema, type createGroupSchema as CreateGroupSchema } from '@/lib/validations';
 
 export default function CreateGroup() {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -18,13 +19,25 @@ export default function CreateGroup() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<CreateGroupSchema>({
+    resolver: zodResolver(createGroupSchema),
+  });
+
+  const groupName = watch('name');
+
   const searchMutation = useMutation({
     mutationFn: (q: string) => searchUsers(q),
     onSuccess: (data) => setSearchResults(data.filter((u) => u.id !== 'dev-user-1')),
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createGroup(name, description, selectedIds, isPrivate),
+    mutationFn: (data: CreateGroupSchema) =>
+      createGroup(data.name, data.description || '', selectedIds, isPrivate),
     onSuccess: (group) => navigate(`/groups/${group.id}`),
   });
 
@@ -61,9 +74,10 @@ export default function CreateGroup() {
       </div>
 
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
-        <div className="space-y-5">
+        <form onSubmit={handleSubmit((data) => createMutation.mutate(data))} className="space-y-5">
           <div className="flex items-center gap-4">
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-accent/5 transition-colors hover:border-accent/50 hover:bg-accent/10"
             >
@@ -91,21 +105,25 @@ export default function CreateGroup() {
             <input
               type="text"
               placeholder="Enter group name..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              {...register('name')}
               className="h-12 w-full rounded-xl border border-input bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
+            {errors.name && (
+              <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>
+            )}
           </div>
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">Description</label>
             <textarea
               placeholder="Describe what this group is about..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
               rows={3}
+              {...register('description')}
               className="w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
+            {errors.description && (
+              <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
@@ -114,6 +132,7 @@ export default function CreateGroup() {
               <p className="text-xs text-muted-foreground">Only invited members can join</p>
             </div>
             <button
+              type="button"
               onClick={() => setIsPrivate(!isPrivate)}
               className={`relative h-6 w-11 rounded-full transition-colors ${isPrivate ? 'bg-accent' : 'bg-muted'}`}
             >
@@ -149,6 +168,7 @@ export default function CreateGroup() {
                   return (
                     <button
                       key={u.id}
+                      type="button"
                       onClick={() => toggleUser(u.id)}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
                         isSelected ? 'bg-accent/10' : 'hover:bg-accent/5'
@@ -183,7 +203,7 @@ export default function CreateGroup() {
                       className="flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-xs text-accent"
                     >
                       {u.fullName}
-                      <button onClick={() => toggleUser(id)} className="ml-0.5 hover:text-foreground">
+                      <button type="button" onClick={() => toggleUser(id)} className="ml-0.5 hover:text-foreground">
                         <X size={12} />
                       </button>
                     </span>
@@ -194,8 +214,8 @@ export default function CreateGroup() {
           </div>
 
           <button
-            onClick={() => createMutation.mutate()}
-            disabled={!name.trim() || createMutation.isPending}
+            type="submit"
+            disabled={!groupName?.trim() || createMutation.isPending}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
           >
             {createMutation.isPending ? (
@@ -205,7 +225,7 @@ export default function CreateGroup() {
             )}
             Create Group
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
