@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Search, MessageSquareText, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getFriends } from '@/services/friends';
@@ -8,6 +9,7 @@ import { toast } from 'sonner';
 
 export default function AllFriends() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [friends, setFriends] = useState<{ id: string; name: string; username: string; online: boolean }[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,10 +35,11 @@ export default function AllFriends() {
       f.username.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleMessage = async (friendId: string, name: string, online: boolean, lastSeen?: Date) => {
+  const handleMessage = async (friendId: string, name: string, online: boolean) => {
     try {
       const dmId = await findOrCreateConversation(friendId);
-      navigate(`/dm/${dmId}`, { state: { name, online, lastSeen } });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      navigate(`/dm/${dmId}`, { state: { name, online } });
     } catch {
       toast.error('Failed to open conversation');
     }
