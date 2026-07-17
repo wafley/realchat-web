@@ -428,7 +428,7 @@ export async function getBlockedUsers(): Promise<User[]> {
       { id: 'blocked2', username: 'troll', fullName: 'Troll Account', email: 'troll@example.com', status: 'offline', createdAt: new Date() },
     ];
   }
-  const { data } = await api.get<User[]>('/users/blocked');
+  const { data } = await api.get('/users/blocked');
   return Array.isArray(data) ? data : [];
 }
 
