@@ -16,9 +16,9 @@ class SocketClient {
     this.socket = io(SOCKET_URL, {
       auth: { token: tk },
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 10000,
       transports: ['websocket', 'polling'],
     });
 
