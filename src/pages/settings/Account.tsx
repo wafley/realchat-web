@@ -6,6 +6,9 @@ import { ArrowLeft, Ban, Trash2, Key, Loader2, Eye, EyeOff } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
+import { useAuthStore } from '@/store/authStore';
+import { destroySocket } from '@/services/socket.service';
+import { queryClient } from '@/lib/queryClient';
 import Modal from '@/components/ui/modal';
 import { changePasswordSchema, type changePasswordSchema as ChangePasswordSchema } from '@/lib/validations';
 
@@ -40,6 +43,9 @@ export default function SettingsAccount() {
     mutationFn: () => deleteAccount(deletePassword),
     onSuccess: () => {
       localStorage.removeItem('accessToken');
+      queryClient.clear();
+      useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
+      destroySocket();
       navigate('/login');
     },
     onError: (err) => toast.error(parseAuthError(err)),
