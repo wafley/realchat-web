@@ -14,7 +14,7 @@ export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const currentUser = useQuery({ queryKey: ['auth', 'user'] }).data;
+  const currentUser = useAuthStore((s) => s.user);
   const [showActions, setShowActions] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState('');
