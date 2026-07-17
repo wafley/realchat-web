@@ -122,10 +122,7 @@ export default function ChatRoom() {
   }, [state.chatId, state.isDM]);
 
   return (
-    <div
-      className="flex h-full flex-col"
-      style={{ paddingBottom: state.keyboardHeight }}
-    >
+    <div className="flex h-full flex-col">
       <ChatHeader
         chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
         otherTyping={state.otherTyping}
