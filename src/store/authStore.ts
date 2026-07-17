@@ -40,13 +40,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
     localStorage.setItem('accessToken', res.token);
-    set({ user: res.user, token: res.token, isAuthenticated: true });
+    set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.register(payload);
     localStorage.setItem('accessToken', res.token);
-    set({ user: res.user, token: res.token, isAuthenticated: true });
+    set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
   },
   logout: async () => {
     try {
