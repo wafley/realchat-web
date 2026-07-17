@@ -58,7 +58,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
 export async function deleteAccount(password: string): Promise<void> {
   if (DEV_MODE) {
     if (password !== 'password123') throw new Error('Password is incorrect');
-    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
     return;
   }
   await api.delete('/auth/me', { data: { password } });

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { loginWithGoogle, loginWithFacebook } from '@/services/auth';
+import { toast } from 'sonner';
+
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -36,11 +39,19 @@ export default function OAuthButtons() {
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleGoogle = () => {
+    if (DEV_MODE) {
+      toast.info('OAuth login is not available in development mode');
+      return;
+    }
     setLoading('google');
     loginWithGoogle();
   };
 
   const handleFacebook = () => {
+    if (DEV_MODE) {
+      toast.info('OAuth login is not available in development mode');
+      return;
+    }
     setLoading('facebook');
     loginWithFacebook();
   };
