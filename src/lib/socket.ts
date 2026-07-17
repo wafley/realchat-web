@@ -11,7 +11,7 @@ class SocketClient {
   connect(token?: string): Socket {
     if (this.socket?.connected) return this.socket;
 
-    const tk = token || localStorage.getItem('token') || '';
+    const tk = token || localStorage.getItem('accessToken') || '';
 
     this.socket = io(SOCKET_URL, {
       auth: { token: tk },
@@ -32,7 +32,7 @@ class SocketClient {
 
     this.socket.on('connect_error', (err) => {
       if (err.message === 'Authentication error') {
-        const newToken = localStorage.getItem('token');
+        const newToken = localStorage.getItem('accessToken');
         if (newToken && newToken !== tk) {
           this.socket?.close();
           this.connect(newToken);

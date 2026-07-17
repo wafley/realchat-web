@@ -18,7 +18,7 @@ export default function OAuthCallback() {
       return;
     }
 
-    localStorage.setItem('token', token);
+    localStorage.setItem('accessToken', token);
 
     try {
       const userRaw = params.get('user');
@@ -37,7 +37,7 @@ export default function OAuthCallback() {
         navigate('/', { replace: true });
       })
       .catch(() => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
         navigate('/login', { replace: true });
       });
   }, [navigate, params]);

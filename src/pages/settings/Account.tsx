@@ -39,7 +39,7 @@ export default function SettingsAccount() {
   const deleteMutation = useMutation({
     mutationFn: () => deleteAccount(deletePassword),
     onSuccess: () => {
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
       navigate('/login');
     },
     onError: (err) => toast.error(parseAuthError(err)),

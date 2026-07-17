@@ -27,37 +27,37 @@ interface AuthState {
 
 function devLogin(set: (partial: Partial<AuthState>) => void) {
   const token = 'dev-token';
-  localStorage.setItem('token', token);
+  localStorage.setItem('accessToken', token);
   set({ user: MOCK_USER, token, isAuthenticated: true, isLoading: false });
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: localStorage.getItem('token'),
+  token: localStorage.getItem('accessToken'),
   isLoading: true,
   isAuthenticated: false,
   login: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
-    localStorage.setItem('token', res.token);
+    localStorage.setItem('accessToken', res.token);
     set({ user: res.user, token: res.token, isAuthenticated: true });
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.register(payload);
-    localStorage.setItem('token', res.token);
+    localStorage.setItem('accessToken', res.token);
     set({ user: res.user, token: res.token, isAuthenticated: true });
   },
   logout: async () => {
     try {
       if (!DEV_MODE) await authService.logout();
     } finally {
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
       set({ user: null, token: null, isAuthenticated: false });
     }
   },
   checkAuth: async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (!token) {
       set({ isLoading: false, isAuthenticated: false });
       return;
@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await authService.getMe();
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch {
-      localStorage.removeItem('token');
+      localStorage.removeItem('accessToken');
       set({ user: null, token: null, isAuthenticated: false, isLoading: false });
     }
   },
