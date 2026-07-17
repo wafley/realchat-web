@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User, LoginPayload, RegisterPayload, UpdateProfilePayload } from '@/types';
 import * as authService from '@/services/auth';
+import { queryClient } from '@/lib/queryClient';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -53,6 +54,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (!DEV_MODE) await authService.logout();
     } finally {
       localStorage.removeItem('accessToken');
+      queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
     }
   },
