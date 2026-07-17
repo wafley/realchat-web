@@ -189,22 +189,33 @@ function onNotification(_data: any) {
 export function initSocket(token?: string) {
   if (DEV_MODE) return;
 
-  const socket = socketClient.connect(token);
+  socketClient.connect(token);
 
-  socket.on('message:new', onMessageNew);
-  socket.on('message:edited', onMessageEdited);
-  socket.on('message:deleted', onMessageDeleted);
-  socket.on('message:status', onMessageStatus);
-  socket.on('typing:update', onTypingUpdate);
-  socket.on('presence:update', onPresenceUpdate);
-  socket.on('group:updated', onGroupUpdated);
-  socket.on('group:member:add', onGroupMemberAdd);
-  socket.on('group:member:remove', onGroupMemberRemove);
-  socket.on('group:member:role', onGroupMemberRole);
-  socket.on('notification:new', onNotification);
+  socketClient.on('message:new', onMessageNew);
+  socketClient.on('message:edited', onMessageEdited);
+  socketClient.on('message:deleted', onMessageDeleted);
+  socketClient.on('message:status', onMessageStatus);
+  socketClient.on('typing:update', onTypingUpdate);
+  socketClient.on('presence:update', onPresenceUpdate);
+  socketClient.on('group:updated', onGroupUpdated);
+  socketClient.on('group:member:add', onGroupMemberAdd);
+  socketClient.on('group:member:remove', onGroupMemberRemove);
+  socketClient.on('group:member:role', onGroupMemberRole);
+  socketClient.on('notification:new', onNotification);
 }
 
 export function destroySocket() {
+  socketClient.off('message:new', onMessageNew);
+  socketClient.off('message:edited', onMessageEdited);
+  socketClient.off('message:deleted', onMessageDeleted);
+  socketClient.off('message:status', onMessageStatus);
+  socketClient.off('typing:update', onTypingUpdate);
+  socketClient.off('presence:update', onPresenceUpdate);
+  socketClient.off('group:updated', onGroupUpdated);
+  socketClient.off('group:member:add', onGroupMemberAdd);
+  socketClient.off('group:member:remove', onGroupMemberRemove);
+  socketClient.off('group:member:role', onGroupMemberRole);
+  socketClient.off('notification:new', onNotification);
   socketClient.disconnect();
 }
 
