@@ -43,7 +43,7 @@ export default function GroupDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       toast.success('Group deleted');
-      navigate('/groups');
+      navigate('/');
     },
     onError: () => toast.error('Failed to delete group'),
   });
@@ -61,8 +61,8 @@ export default function GroupDetail() {
       <div className="flex flex-1 flex-col items-center justify-center gap-3">
         <AlertCircle size={32} className="text-destructive/60" />
         <p className="text-sm text-muted-foreground">Failed to load group</p>
-        <button onClick={() => navigate('/groups')} className="text-sm text-accent hover:underline">
-          Back to groups
+        <button onClick={() => navigate('/')} className="text-sm text-accent hover:underline">
+          Back to home
         </button>
       </div>
     );
@@ -77,7 +77,7 @@ export default function GroupDetail() {
     try {
       await leaveGroup(id);
       toast.success('Left group');
-      navigate('/groups');
+      navigate('/');
     } catch {
       toast.error('Failed to leave group');
     }
@@ -115,11 +115,11 @@ export default function GroupDetail() {
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
       <button
-        onClick={() => navigate('/groups')}
+        onClick={() => navigate('/')}
         className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft size={16} />
-        Back to groups
+        Back
       </button>
 
       <div className="mb-6 flex items-center gap-4">

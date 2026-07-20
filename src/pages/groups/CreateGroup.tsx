@@ -38,7 +38,7 @@ export default function CreateGroup() {
   const createMutation = useMutation({
     mutationFn: (data: CreateGroupSchema) =>
       createGroup(data.name, data.description || '', selectedIds, isPrivate),
-    onSuccess: (group) => navigate(`/groups/${group.id}`),
+    onSuccess: (group) => navigate(`/chat/${group.id}`),
   });
 
   const handleSearch = (q: string) => {
@@ -65,7 +65,7 @@ export default function CreateGroup() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border bg-background px-4 py-3 md:px-6">
         <button
-          onClick={() => navigate('/groups')}
+          onClick={() => navigate('/')}
           className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/10 hover:text-foreground lg:hidden"
         >
           <ArrowLeft size={20} />

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Users, Loader2, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Users, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getGroups } from '@/services/chat';
 
 export default function Groups() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const { data: groups = [], isPending, isError } = useQuery({
     queryKey: ['groups'],
@@ -18,6 +19,13 @@ export default function Groups() {
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
+      <button
+        onClick={() => navigate('/')}
+        className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft size={16} />
+        Back
+      </button>
       <div className="relative">
         <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
