@@ -28,7 +28,9 @@ interface AuthState {
 
 function devLogin(set: (partial: Partial<AuthState>) => void) {
   const token = 'dev-token';
+  const refreshToken = 'dev-refresh-token';
   localStorage.setItem('accessToken', token);
+  localStorage.setItem('refreshToken', refreshToken);
   set({ user: MOCK_USER, token, isAuthenticated: true, isLoading: false });
 }
 
@@ -40,20 +42,26 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
-    localStorage.setItem('accessToken', res.token);
-    set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
+    localStorage.setItem('accessToken', res.accessToken);
+    localStorage.setItem('refreshToken', res.refreshToken);
+    set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.register(payload);
-    localStorage.setItem('accessToken', res.token);
-    set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
+    localStorage.setItem('accessToken', res.accessToken);
+    localStorage.setItem('refreshToken', res.refreshToken);
+    set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
   },
   logout: async () => {
     try {
-      if (!DEV_MODE) await authService.logout();
+      if (!DEV_MODE) {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (refreshToken) await authService.logout(refreshToken);
+      }
     } finally {
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
     }
@@ -73,6 +81,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch {
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       set({ user: null, token: null, isAuthenticated: false, isLoading: false });
     }
   },

@@ -18,8 +18,13 @@ export async function getMe(): Promise<User> {
   return data;
 }
 
-export async function logout(): Promise<void> {
-  await api.post('/auth/logout');
+export async function logout(refreshToken: string): Promise<void> {
+  await api.post('/auth/logout', { refreshToken });
+}
+
+export async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  const { data } = await api.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken });
+  return data;
 }
 
 export function parseAuthError(err: unknown): string {
