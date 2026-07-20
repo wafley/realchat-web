@@ -1,8 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { useSocketStore } from '@/store/socketStore';
-import { LogOut, User, WifiOff } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
 import { usePendingFriendRequestCount } from '@/hooks/usePendingFriendRequestCount';
@@ -10,8 +9,6 @@ import { usePendingFriendRequestCount } from '@/hooks/usePendingFriendRequestCou
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const isConnected = useSocketStore((s) => s.isConnected);
-  const reconnectAttempts = useSocketStore((s) => s.reconnectAttempts);
   const { data: pendingCount } = usePendingFriendRequestCount();
 
   return (
@@ -46,13 +43,6 @@ export default function Sidebar() {
       </nav>
 
       <div className="flex-1" />
-
-      {!isConnected && reconnectAttempts > 0 && (
-        <div className="mb-2 flex flex-col items-center gap-1" title={`Reconnecting... (attempt ${reconnectAttempts})`}>
-          <WifiOff size={14} className="text-muted-foreground animate-pulse" />
-          <span className="hidden text-[9px] text-muted-foreground lg:block">Reconnecting</span>
-        </div>
-      )}
 
       <div className="flex flex-col items-center gap-3 lg:gap-4">
         <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
