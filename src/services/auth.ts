@@ -51,6 +51,22 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
   return data;
 }
 
+export async function forgotPassword(email: string): Promise<void> {
+  if (DEV_MODE) {
+    await new Promise((r) => setTimeout(r, 1000));
+    return;
+  }
+  await api.post('/auth/forgot-password', { email });
+}
+
+export async function resetPassword(token: string, password: string): Promise<void> {
+  if (DEV_MODE) {
+    await new Promise((r) => setTimeout(r, 1000));
+    return;
+  }
+  await api.post('/auth/reset-password', { token, password });
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   if (DEV_MODE) {
     if (currentPassword !== 'password123') throw new Error('Current password is incorrect');
