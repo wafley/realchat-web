@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sun, Bell, Shield, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Sun, Bell, Shield, AlertTriangle, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
+import { destroySocket } from '@/services/socket.service';
+import { queryClient } from '@/lib/queryClient';
 
 const sections = [
   { to: '/settings/notifications', icon: Bell, label: 'Notifications', desc: 'Message, group, and sound preferences' },
@@ -11,6 +14,15 @@ const sections = [
 
 export default function SettingsGeneral() {
   const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+
+  const handleLogout = () => {
+    queryClient.clear();
+    destroySocket();
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
@@ -45,6 +57,19 @@ export default function SettingsGeneral() {
                 </div>
               </Link>
             ))}
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-4 rounded-xl border border-destructive/20 p-4 text-destructive transition-colors hover:bg-destructive/5"
+            >
+              <LogOut size={22} />
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-sm font-medium">Logout</p>
+                <p className="text-xs text-muted-foreground">Sign out of your account</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
