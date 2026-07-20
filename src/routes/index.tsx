@@ -28,6 +28,10 @@ export const router = createBrowserRouter([
     path: '/forgot-password',
     lazy: () => import('@/pages/ForgotPassword').then((m) => ({ Component: m.default })),
   },
+  {
+    path: '/reset-password',
+    lazy: () => import('@/pages/ResetPassword').then((m) => ({ Component: m.default })),
+  },
     ],
   },
   {
