@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
-import type { Message, Group, GroupMember, User } from '@/types';
+import type { Message, Group, GroupMember, User as UserType } from '@/types';
 import { senderName, uploadGroupAvatar } from '@/services/chat';
 
 interface ContextMenuData {
@@ -48,7 +48,7 @@ interface ChatOverlaysProps {
   onLeaveGroup: () => Promise<void>;
   onDeleteGroup: () => Promise<void>;
   onUpdateMemberRole: (userId: string, role: 'admin' | 'member') => Promise<void>;
-  searchUsers: (query: string) => Promise<User[]>;
+  searchUsers: (query: string) => Promise<UserType[]>;
 }
 
 export default function ChatOverlays({
@@ -97,7 +97,7 @@ export default function ChatOverlays({
   const [editing, setEditing] = useState(false);
 
   const [addQuery, setAddQuery] = useState('');
-  const [addResults, setAddResults] = useState<User[]>([]);
+  const [addResults, setAddResults] = useState<UserType[]>([]);
   const [addSearching, setAddSearching] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
 
