@@ -85,7 +85,6 @@ function MessageBubbleComp({
           ? 'text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium' 
           : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} absolute bottom-1 right-2`
       }`}>
-        {msg.edited && <span className="italic text-[8px] lg:text-[9px]">edited</span>}
         {formatTime(msg.createdAt)}
         {isOwn && msg.status && (
           msg.status === 'sending' ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
@@ -289,6 +288,11 @@ function MessageBubbleComp({
             renderTimestamp(false)
           )}
         </div>
+        {msg.edited && (
+          <span className={`mt-0.5 text-[10px] italic text-muted-foreground/60 ${isOwn ? 'text-right' : ''}`}>
+            edited
+          </span>
+        )}
         {reactionMap.size > 0 && (
           <div className={`-mb-1 mt-1 flex flex-wrap gap-1 ${isOwn ? 'justify-end' : ''}`}>
             {Array.from(reactionMap.entries()).map(([emoji, { count, hasMine }]) => (
