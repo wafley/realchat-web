@@ -13,16 +13,22 @@ export default function OAuthCallback() {
     calledRef.current = true;
 
     const token = params.get('token');
+    const refreshToken = params.get('refreshToken');
     if (!token) {
       navigate('/login', { replace: true });
       return;
     }
 
+    const storeTokens = (accessToken: string, rt: string | null) => {
+      localStorage.setItem('accessToken', accessToken);
+      if (rt) localStorage.setItem('refreshToken', rt);
+    };
+
     try {
       const userRaw = params.get('user');
       if (userRaw) {
         const user = JSON.parse(decodeURIComponent(userRaw));
-        localStorage.setItem('accessToken', token);
+        storeTokens(token, refreshToken);
         useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
         navigate('/', { replace: true });
         return;
@@ -32,7 +38,7 @@ export default function OAuthCallback() {
     authService
       .getMe()
       .then((user) => {
-        localStorage.setItem('accessToken', token);
+        storeTokens(token, refreshToken);
         useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
         navigate('/', { replace: true });
       })
