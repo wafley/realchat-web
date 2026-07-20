@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User, LoginPayload, RegisterPayload, UpdateProfilePayload } from '@/types';
 import * as authService from '@/services/auth';
+import { queryClient } from '@/lib/queryClient';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -40,19 +41,20 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
     localStorage.setItem('accessToken', res.token);
-    set({ user: res.user, token: res.token, isAuthenticated: true });
+    set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.register(payload);
     localStorage.setItem('accessToken', res.token);
-    set({ user: res.user, token: res.token, isAuthenticated: true });
+    set({ user: res.user, token: res.token, isAuthenticated: true, isLoading: false });
   },
   logout: async () => {
     try {
       if (!DEV_MODE) await authService.logout();
     } finally {
       localStorage.removeItem('accessToken');
+      queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
     }
   },

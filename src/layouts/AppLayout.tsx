@@ -4,6 +4,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { useSocketStore } from '@/store/socketStore';
 import { initSocket, destroySocket } from '@/services/socket.service';
 
 export default function AppLayout() {
@@ -13,8 +14,12 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    useSocketStore.getState().connect();
     initSocket();
-    return () => destroySocket();
+    return () => {
+      destroySocket();
+      useSocketStore.getState().disconnect();
+    };
   }, [isAuthenticated]);
 
   return (

@@ -8,9 +8,9 @@ import './styles/globals.css';
 registerSW();
 
 if (Capacitor.isNativePlatform()) {
-  import('@capacitor/status-bar').then(({ StatusBar }) => {
+  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
     StatusBar.setOverlaysWebView({ overlay: true });
-    StatusBar.setStyle({ style: 'DARK' });
+    StatusBar.setStyle({ style: Style.Dark });
     StatusBar.setBackgroundColor({ color: '#09090b' });
   });
 
