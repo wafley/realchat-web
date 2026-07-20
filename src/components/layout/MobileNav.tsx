@@ -1,8 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { navItems } from '@/lib/navigation';
-import { useSocketStore } from '@/store/socketStore';
-import { WifiOff } from 'lucide-react';
 import { usePendingFriendRequestCount } from '@/hooks/usePendingFriendRequestCount';
 
 interface MobileNavProps {
@@ -10,8 +8,6 @@ interface MobileNavProps {
 }
 
 export default function MobileNav({ className }: MobileNavProps) {
-  const isConnected = useSocketStore((s) => s.isConnected);
-  const reconnectAttempts = useSocketStore((s) => s.reconnectAttempts);
   const { data: pendingCount } = usePendingFriendRequestCount();
 
   return (
@@ -42,12 +38,6 @@ export default function MobileNav({ className }: MobileNavProps) {
           {label}
         </NavLink>
       ))}
-      {!isConnected && reconnectAttempts > 0 && (
-        <div className="flex flex-col items-center gap-1 px-3 text-muted-foreground" title={`Reconnecting... (attempt ${reconnectAttempts})`}>
-          <WifiOff size={20} className="animate-pulse" />
-          <span className="text-[9px]">Offline</span>
-        </div>
-      )}
     </nav>
   );
 }
