@@ -252,6 +252,7 @@ export default function ChatList() {
             <MessageSquareText size={18} className="text-muted-foreground lg:size-5" />
             New Group
           </button>
+
           <button
             onClick={() => { setModalOpen(false); navigate('/friends'); }}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 lg:gap-3.5 lg:px-4 lg:py-3 lg:text-base"

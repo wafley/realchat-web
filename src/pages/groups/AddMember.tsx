@@ -53,7 +53,7 @@ export default function AddMember() {
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
       <button
-        onClick={() => navigate(`/groups/${id}`)}
+        onClick={() => navigate(-1)}
         className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft size={16} />

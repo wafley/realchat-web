@@ -74,7 +74,7 @@ export default function ChatHeader({
         {isDM && userId ? (
           <button onClick={() => navigate(`/profile/${userId}`)} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         ) : (
-          <h2 className="truncate text-sm font-semibold text-foreground lg:text-base">{chatName}</h2>
+          <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         )}
         {otherTyping ? (
           <p className="flex items-center gap-1 text-xs text-accent">
