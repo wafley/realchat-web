@@ -9,12 +9,16 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
 }
 
 export async function register(payload: RegisterPayload): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/register', payload);
+  const { data } = await api.post<AuthResponse>('/auth/register', {
+    username: payload.username,
+    email: payload.email,
+    password: payload.password,
+  });
   return data;
 }
 
 export async function getMe(): Promise<User> {
-  const { data } = await api.get<User>('/auth/me');
+  const { data } = await api.get<User>('/users/me');
   return data;
 }
 
@@ -47,7 +51,7 @@ export function loginWithFacebook(): void {
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
-  const { data } = await api.patch<User>('/auth/me', payload);
+  const { data } = await api.put<User>('/users/me', payload);
   return data;
 }
 
