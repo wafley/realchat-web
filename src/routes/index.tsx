@@ -32,6 +32,10 @@ export const router = createBrowserRouter([
     path: '/reset-password',
     lazy: () => import('@/pages/ResetPassword').then((m) => ({ Component: m.default })),
   },
+  {
+    path: '/verify-email',
+    lazy: () => import('@/pages/VerifyEmail').then((m) => ({ Component: m.default })),
+  },
     ],
   },
   {
