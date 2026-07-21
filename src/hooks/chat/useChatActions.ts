@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
+import { usePrivacyStore } from '@/store/privacyStore';
 import type { Message } from '@/types';
 
 interface UseChatActionsProps {
@@ -216,7 +217,9 @@ export function useChatActions(props: UseChatActionsProps) {
 
   useEffect(() => {
     if (!chatId) return;
-    markConversationAsRead(chatId);
+    if (usePrivacyStore.getState().readReceipts) {
+      markConversationAsRead(chatId);
+    }
     queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
       if (!prev) return prev;
       return prev.map((c) => (c.id === chatId ? { ...c, unread: 0 } : c));
@@ -551,16 +554,26 @@ export function useChatActions(props: UseChatActionsProps) {
     [deleteTarget, deleteMutation],
   );
 
-  const handleBlock = useCallback(() => {
-    blockUser(chatId);
-    setBlockConfirmOpen(false);
-    toast.success(`${chatName} has been blocked`);
+  const handleBlock = useCallback(async () => {
+    try {
+      await blockUser(chatId);
+      setBlockConfirmOpen(false);
+      toast.success(`${chatName} has been blocked`);
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch {
+      toast.error('Failed to block user');
+    }
   }, [chatId, chatName]);
 
-  const handleReport = useCallback(() => {
-    reportUser(chatId);
-    setReportConfirmOpen(false);
-    toast.success('Report submitted');
+  const handleReport = useCallback(async () => {
+    try {
+      await reportUser(chatId);
+      setReportConfirmOpen(false);
+      toast.success('Report submitted');
+    } catch {
+      toast.error('Failed to submit report');
+    }
   }, [chatId]);
 
   const handleToggleReaction = useCallback(

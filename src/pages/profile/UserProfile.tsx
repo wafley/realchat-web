@@ -4,6 +4,7 @@ import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, Alert
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
+import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
@@ -89,7 +90,7 @@ export default function UserProfile() {
                   />
                   {user.status === 'online' ? 'Online' : 'Offline'}
                 </span>
-                {user.status !== 'online' && user.lastSeen && (
+                {user.status !== 'online' && user.lastSeen && shouldShowLastSeen() && (
                   <p className="mt-1.5 text-xs text-muted-foreground">last seen {formatLastSeen(user.lastSeen)}</p>
                 )}
               </div>

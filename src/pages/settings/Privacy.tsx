@@ -53,6 +53,13 @@ export default function SettingsPrivacy() {
               </div>
               <div className="px-4 py-3">
                 <p className="mb-2 text-sm text-foreground">Last Seen & Online</p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {lastSeen === 'nobody'
+                    ? 'Your last seen is hidden from everyone. You also won\'t see others\' last seen.'
+                    : lastSeen === 'contacts'
+                      ? 'Only your contacts can see your last seen.'
+                      : 'Everyone can see when you were last online.'}
+                </p>
                 <div className="flex gap-1.5">
                   {LAST_SEEN_OPTIONS.map((opt) => (
                     <button
@@ -102,7 +109,14 @@ export default function SettingsPrivacy() {
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex items-center gap-3">
                   <MessageSquare size={18} className="text-muted-foreground" />
-                  <span className="text-sm text-foreground">Read receipts</span>
+                  <div>
+                    <span className="text-sm text-foreground">Read receipts</span>
+                    <p className="text-xs text-muted-foreground">
+                      {readReceipts
+                        ? 'Others can see when you read their messages'
+                        : 'You won\'t send read receipts, but you also can\'t see others\' read status'}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setReadReceipts(!readReceipts)}

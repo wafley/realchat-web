@@ -10,6 +10,7 @@ import ConnectionStatus from '@/components/layout/ConnectionStatus';
 import { useTypingStore } from '@/store/typingStore';
 import { getConversations, bulkDeleteConversations } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
+import { shouldShowLastSeen } from '@/utils/privacy';
 import type { Conversation } from '@/types';
 
 const tabs = [
@@ -388,7 +389,7 @@ export default function ChatList() {
                           <span className="text-accent">typing...</span>
                         ) : chat.online ? (
                           chat.lastMessage
-                        ) : chat.lastSeen ? (
+                        ) : chat.lastSeen && shouldShowLastSeen() ? (
                           <span className="text-muted-foreground">last seen {formatLastSeen(chat.lastSeen)}</span>
                         ) : (
                           chat.lastMessage
