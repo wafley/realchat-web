@@ -36,6 +36,7 @@ export default function Register() {
       });
       navigate('/', { replace: true });
     } catch (err) {
+      console.error('Register failed:', err);
       setError(parseAuthError(err));
     } finally {
       setLoading(false);
