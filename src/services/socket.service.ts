@@ -4,6 +4,7 @@ import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePrivacyStore } from '@/store/privacyStore';
+import { loadPrefs, showLocalNotification } from '@/services/notification';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, MessageStatus, PaginatedResponse, Group } from '@/types';
 
@@ -180,9 +181,28 @@ function onGroupMemberRole(data: { groupId: string }) {
   queryClient.invalidateQueries({ queryKey: ['group', data.groupId] });
 }
 
-function onNotification(_data: any) {
+function onNotification(data: any) {
   queryClient.invalidateQueries({ queryKey: ['notifications'] });
   queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
+
+  const prefs = loadPrefs();
+  const isGroup = data?.type === 'group' || data?.conversationType === 'group';
+
+  if (isGroup && !prefs.groups) return;
+  if (!isGroup && !prefs.messages) return;
+
+  const title = data?.title || 'New notification';
+  const body = data?.body || '';
+
+  showLocalNotification(title, { body });
+
+  if (prefs.sound) {
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch {}
+  }
 }
 
 // --- Init / Destroy ---
