@@ -154,3 +154,42 @@
     overscroll-behavior: none;
   }
 }
+
+/* Sonner toast glassmorphism overrides */
+[data-sonner-toaster] {
+  --border-radius: 12px;
+  font-family: inherit;
+  --normal-bg: rgba(24, 24, 27, 0.8);
+  --normal-border: rgba(63, 63, 70, 0.5);
+  --normal-text: #fafafa;
+  --success-bg: rgba(24, 24, 27, 0.8);
+  --success-border: rgba(16, 185, 129, 0.3);
+  --success-text: #fafafa;
+  --error-bg: rgba(24, 24, 27, 0.8);
+  --error-border: rgba(239, 68, 68, 0.3);
+  --error-text: #fafafa;
+  --info-bg: rgba(24, 24, 27, 0.8);
+  --info-border: rgba(59, 130, 246, 0.3);
+  --info-text: #fafafa;
+  --warning-bg: rgba(24, 24, 27, 0.8);
+  --warning-border: rgba(234, 179, 8, 0.3);
+  --warning-text: #fafafa;
+}
+
+.light [data-sonner-toaster] {
+  --normal-bg: rgba(255, 255, 255, 0.8);
+  --normal-border: rgba(228, 228, 231, 0.5);
+  --normal-text: #18181b;
+  --success-bg: rgba(255, 255, 255, 0.8);
+  --success-border: rgba(5, 150, 105, 0.3);
+  --success-text: #18181b;
+  --error-bg: rgba(255, 255, 255, 0.8);
+  --error-border: rgba(239, 68, 68, 0.3);
+  --error-text: #18181b;
+  --info-bg: rgba(255, 255, 255, 0.8);
+  --info-border: rgba(59, 130, 246, 0.3);
+  --info-text: #18181b;
+  --warning-bg: rgba(255, 255, 255, 0.8);
+  --warning-border: rgba(234, 179, 8, 0.3);
+  --warning-text: #18181b;
+}
