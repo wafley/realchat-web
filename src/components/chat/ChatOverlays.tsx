@@ -221,7 +221,7 @@ export default function ChatOverlays({
               <Reply size={15} className="text-muted-foreground" />
               Reply
             </button>
-            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.type === 'text' && (
+            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.type === 'text' && (Date.now() - new Date(contextMenu.msg.createdAt).getTime()) < 15 * 60 * 1000 && (
               <button
                 onClick={() => onContextMenuAction('edit')}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
@@ -274,7 +274,7 @@ export default function ChatOverlays({
                 Pin
               </button>
             )}
-            {contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0 && (
+            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0 && (
               <button
                 onClick={() => onContextMenuAction('read-receipts')}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
