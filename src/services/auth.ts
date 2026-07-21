@@ -71,6 +71,14 @@ export async function resetPassword(token: string, password: string): Promise<vo
   await api.post('/auth/reset-password', { token, password });
 }
 
+export async function verifyEmail(token: string): Promise<void> {
+  if (DEV_MODE) {
+    await new Promise((r) => setTimeout(r, 1000));
+    return;
+  }
+  await api.post('/auth/verify-email', { token });
+}
+
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   if (DEV_MODE) {
     if (currentPassword !== 'password123') throw new Error('Current password is incorrect');
