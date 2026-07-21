@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Ban, Loader2, User } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { getBlockedUsers, unblockUser } from '@/services/chat';
 import Modal from '@/components/ui/modal';
 
@@ -20,6 +21,10 @@ export default function BlockedUsers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
       setUnblockTarget(null);
+      toast.success('User unblocked');
+    },
+    onError: () => {
+      toast.error('Failed to unblock user');
     },
   });
 
