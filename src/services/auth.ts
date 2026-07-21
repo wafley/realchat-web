@@ -42,14 +42,6 @@ export function parseAuthError(err: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
-export function loginWithGoogle(): void {
-  window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
-}
-
-export function loginWithFacebook(): void {
-  window.location.href = `${import.meta.env.VITE_API_URL}/auth/facebook`;
-}
-
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
   const { data } = await api.put<User>('/users/me', payload);
   return data;
