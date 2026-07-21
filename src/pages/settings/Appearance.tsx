@@ -115,3 +115,8 @@ export default function SettingsAppearance() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
