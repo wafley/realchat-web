@@ -274,7 +274,7 @@ export default function ChatOverlays({
                 Pin
               </button>
             )}
-            {contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0 && (
+            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0 && (
               <button
                 onClick={() => onContextMenuAction('read-receipts')}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
