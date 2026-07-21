@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
+import { usePrivacyStore } from '@/store/privacyStore';
 import type { Message } from '@/types';
 
 interface UseChatActionsProps {
@@ -216,7 +217,9 @@ export function useChatActions(props: UseChatActionsProps) {
 
   useEffect(() => {
     if (!chatId) return;
-    markConversationAsRead(chatId);
+    if (usePrivacyStore.getState().readReceipts) {
+      markConversationAsRead(chatId);
+    }
     queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
       if (!prev) return prev;
       return prev.map((c) => (c.id === chatId ? { ...c, unread: 0 } : c));
