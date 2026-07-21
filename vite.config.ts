@@ -10,4 +10,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://10.239.49.156:3000',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://10.239.49.156:3000',
+        ws: true,
+      },
+    },
+  },
 });
