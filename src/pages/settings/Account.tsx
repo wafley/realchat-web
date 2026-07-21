@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
-import { queryClient } from '@/lib/queryClient';
 import Modal from '@/components/ui/modal';
 import { changePasswordSchema, type changePasswordSchema as ChangePasswordSchema } from '@/lib/validations';
 
@@ -41,11 +40,10 @@ export default function SettingsAccount() {
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteAccount(deletePassword),
-    onSuccess: () => {
-      localStorage.removeItem('accessToken');
-      queryClient.clear();
-      useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
+    onSuccess: async () => {
+      await useAuthStore.getState().logout();
       destroySocket();
+      toast.success('Account deleted');
       navigate('/login');
     },
     onError: (err) => toast.error(parseAuthError(err)),
