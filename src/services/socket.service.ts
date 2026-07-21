@@ -3,6 +3,7 @@ import { queryClient } from '@/lib/queryClient';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
+import { usePrivacyStore } from '@/store/privacyStore';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, MessageStatus, PaginatedResponse, Group } from '@/types';
 
@@ -73,8 +74,8 @@ function onMessageNew(msg: Message) {
     },
   );
 
-  // Auto-emit seen if this chat is currently open
-  if (currentChatId === chatId) {
+  // Auto-emit seen if this chat is currently open and read receipts enabled
+  if (currentChatId === chatId && usePrivacyStore.getState().readReceipts) {
     socketClient.emitMessageSeen(chatId);
   }
 }

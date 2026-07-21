@@ -109,7 +109,14 @@ export default function SettingsPrivacy() {
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex items-center gap-3">
                   <MessageSquare size={18} className="text-muted-foreground" />
-                  <span className="text-sm text-foreground">Read receipts</span>
+                  <div>
+                    <span className="text-sm text-foreground">Read receipts</span>
+                    <p className="text-xs text-muted-foreground">
+                      {readReceipts
+                        ? 'Others can see when you read their messages'
+                        : 'You won\'t send read receipts, but you also can\'t see others\' read status'}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setReadReceipts(!readReceipts)}
