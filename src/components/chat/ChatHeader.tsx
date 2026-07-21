@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users, User } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
+import { shouldShowLastSeen } from '@/utils/privacy';
 
 interface ChatHeaderProps {
   chatName: string;
@@ -87,7 +88,7 @@ export default function ChatHeader({
           </p>
         ) : isDM ? (
           <p className="text-xs text-muted-foreground">
-            {chatOnline ? 'Online' : lastSeen ? `last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
+            {chatOnline ? 'Online' : lastSeen && shouldShowLastSeen() ? `last seen ${formatLastSeen(lastSeen)}` : 'Offline'}
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">

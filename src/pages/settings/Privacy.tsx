@@ -53,6 +53,13 @@ export default function SettingsPrivacy() {
               </div>
               <div className="px-4 py-3">
                 <p className="mb-2 text-sm text-foreground">Last Seen & Online</p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {lastSeen === 'nobody'
+                    ? 'Your last seen is hidden from everyone. You also won\'t see others\' last seen.'
+                    : lastSeen === 'contacts'
+                      ? 'Only your contacts can see your last seen.'
+                      : 'Everyone can see when you were last online.'}
+                </p>
                 <div className="flex gap-1.5">
                   {LAST_SEEN_OPTIONS.map((opt) => (
                     <button
