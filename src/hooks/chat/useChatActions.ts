@@ -554,16 +554,26 @@ export function useChatActions(props: UseChatActionsProps) {
     [deleteTarget, deleteMutation],
   );
 
-  const handleBlock = useCallback(() => {
-    blockUser(chatId);
-    setBlockConfirmOpen(false);
-    toast.success(`${chatName} has been blocked`);
+  const handleBlock = useCallback(async () => {
+    try {
+      await blockUser(chatId);
+      setBlockConfirmOpen(false);
+      toast.success(`${chatName} has been blocked`);
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    } catch {
+      toast.error('Failed to block user');
+    }
   }, [chatId, chatName]);
 
-  const handleReport = useCallback(() => {
-    reportUser(chatId);
-    setReportConfirmOpen(false);
-    toast.success('Report submitted');
+  const handleReport = useCallback(async () => {
+    try {
+      await reportUser(chatId);
+      setReportConfirmOpen(false);
+      toast.success('Report submitted');
+    } catch {
+      toast.error('Failed to submit report');
+    }
   }, [chatId]);
 
   const handleToggleReaction = useCallback(
