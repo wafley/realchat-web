@@ -9,9 +9,14 @@ export default function AuthLayout() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center p-4"
+      className="relative flex min-h-screen items-center justify-center p-4"
       style={{ backgroundImage: 'url(/bg1.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#56586A' }}
     >
+      {/* Top-left branding */}
+      <div className="absolute left-0 top-0">
+        <img src="/icon1.png" alt="Hallo Wok" className="h-40 w-auto rounded-xl object-contain" />
+      </div>
+
       <div
         id="auth-content"
         className="auth-glass-card flex w-full max-w-[1100px] overflow-hidden"
