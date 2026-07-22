@@ -15,7 +15,7 @@ export default function AuthLayout() {
       <div
         id="auth-content"
         className="auth-glass-card flex w-full max-w-[1100px] overflow-hidden"
-        style={{ minHeight: 650, borderRadius: 28 }}
+        style={{ minHeight: 480, borderRadius: 28 }}
       >
         {/* LEFT: Form section */}
         <div className="flex w-full flex-col p-10 md:w-[55%]">
@@ -63,7 +63,7 @@ export default function AuthLayout() {
           </div>
         </div>
 
-        {/* RIGHT: Image section */}
+        {/* RIGHT: Hero section */}
         <div className="hidden md:block md:w-[45%]">
           <HeroImage />
         </div>
