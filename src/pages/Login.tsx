@@ -47,7 +47,7 @@ export default function Login() {
           label="Email"
           id="email"
           type="email"
-          placeholder="you@example.com"
+          placeholder="your@email.com"
           autoComplete="email"
           error={errors.email?.message}
           {...register('email')}
