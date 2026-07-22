@@ -18,15 +18,15 @@ export function HeroImage() {
       <div className="relative z-10 -mt-64 flex flex-col items-center text-center">
         <img src="/logo.png" alt="Hallo Wok" className="mb-1 h-56 w-56 rounded-3xl" />
 
-        <p className="mb-6 max-w-[260px] text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          Chat, connect, and share moments with the people who matter most.
+        <p className="mb-6 max-w-[380px] text-center text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          Connect and share meaningful moments with the people who matter most to you.
         </p>
 
         {/* Signature line */}
         <div className="flex items-center gap-3">
           <div className="h-px w-8" style={{ background: 'rgba(47,140,255,0.3)' }} />
           <span className="text-xs font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(47,140,255,0.5)' }}>
-            Secure Messaging
+            Feature
           </span>
           <div className="h-px w-8" style={{ background: 'rgba(47,140,255,0.3)' }} />
         </div>
