@@ -18,7 +18,7 @@ export default function AuthLayout() {
         style={{ minHeight: 650, borderRadius: 28 }}
       >
         {/* LEFT: Form section */}
-        <div className="flex w-full flex-col p-10 md:w-[45%]">
+        <div className="flex w-full flex-col p-10 md:w-[55%]">
           {/* Top: Logo + heading + badge */}
           <div className="mb-8">
             <h1 className="mb-3 text-3xl font-bold leading-tight" style={{ color: '#FFFFFF', fontSize: 32 }}>
@@ -64,7 +64,7 @@ export default function AuthLayout() {
         </div>
 
         {/* RIGHT: Image section */}
-        <div className="hidden md:block md:w-[55%]">
+        <div className="hidden md:block md:w-[45%]">
           <HeroImage />
         </div>
       </div>
