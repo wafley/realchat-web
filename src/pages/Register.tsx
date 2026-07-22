@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuthStore } from '@/store/authStore';
@@ -17,6 +17,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   const {
     register: registerField,
@@ -25,6 +26,8 @@ export default function Register() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
+
+  const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
   const onSubmit = async (data: RegisterFormData) => {
     setError('');
@@ -36,7 +39,11 @@ export default function Register() {
         fullName: data.fullName,
         password: data.password,
       });
-      navigate('/', { replace: true });
+      if (DEV_MODE) {
+        navigate('/', { replace: true });
+      } else {
+        setRegistered(true);
+      }
     } catch (err) {
       console.error('Register failed:', err);
       setError(parseAuthError(err));
@@ -44,6 +51,33 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  if (registered) {
+    return (
+      <div className="space-y-6 text-center">
+        <div className="rounded-full bg-accent/10 p-3 mx-auto w-fit">
+          <svg className="h-8 w-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-card-foreground">Check Your Email</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We've sent a verification link to your email address. Please check your inbox and verify your account.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/70">
+            Didn't see the email? Check your <span className="font-medium text-muted-foreground">spam / junk folder</span> — sometimes verification emails end up there.
+          </p>
+        </div>
+        <Link
+          to="/login"
+          className="inline-flex items-center justify-center gap-2 w-full rounded-md bg-[#2a313b] px-4 py-2 text-sm font-medium text-white shadow hover:bg-[#2a313b]/80"
+        >
+          Back to Sign In
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col">
