@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { verifyEmail, parseAuthError } from '@/services/auth';
@@ -8,13 +8,11 @@ export default function VerifyEmail() {
   const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [error, setError] = useState('');
+  const hasCalled = useRef(false);
 
   useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      setError('Invalid verification link');
-      return;
-    }
+    if (!token || hasCalled.current) return;
+    hasCalled.current = true;
 
     verifyEmail(token)
       .then(() => setStatus('success'))
