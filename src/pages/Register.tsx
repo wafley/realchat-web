@@ -53,7 +53,7 @@ export default function Register() {
           label="Username"
           id="username"
           type="text"
-          placeholder="johndoe"
+          placeholder="your_username"
           autoComplete="username"
           error={errors.username?.message}
           {...registerField('username')}
@@ -63,7 +63,7 @@ export default function Register() {
           label="Full Name"
           id="fullName"
           type="text"
-          placeholder="John Doe"
+          placeholder="Your Name"
           autoComplete="name"
           error={errors.fullName?.message}
           {...registerField('fullName')}
@@ -73,7 +73,7 @@ export default function Register() {
           label="Email"
           id="email"
           type="email"
-          placeholder="you@example.com"
+          placeholder="your@email.com"
           autoComplete="email"
           error={errors.email?.message}
           {...registerField('email')}
