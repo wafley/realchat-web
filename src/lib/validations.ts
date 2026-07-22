@@ -10,7 +10,8 @@ export const registerSchema = z
     username: z
       .string()
       .min(1, 'Username is required')
-      .min(3, 'Username must be at least 3 characters'),
+      .min(3, 'Username must be at least 3 characters')
+      .regex(/^[a-zA-Z0-9_-]+$/, 'Username must not contain spaces. Use _ or - instead'),
     fullName: z.string().min(1, 'Full name is required'),
     email: z.string().min(1, 'Email is required').email('Invalid email address'),
     password: z
