@@ -4,29 +4,31 @@ import { HeroImage } from '@/components/auth/HeroImage';
 export default function AuthLayout() {
   const { pathname } = useLocation();
   const isLogin = pathname === '/login';
+  const isRegister = pathname === '/register';
   const isForgot = pathname === '/forgot-password';
   const isReset = pathname === '/reset-password';
+  const isCentered = isRegister || isForgot || isReset;
 
   return (
     <div
-      className="relative flex min-h-screen items-center justify-center p-4"
+      className="relative flex min-h-screen items-end justify-center p-4 sm:items-center"
       style={{ backgroundImage: 'url(/bg1.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#56586A' }}
     >
       {/* Top-left branding */}
-      <div className="absolute left-0 top-0">
-        <img src="/icon1.png" alt="Hallo Wok" className="h-40 w-auto rounded-xl object-contain" />
+      <div className="absolute left-0 top-0 flex w-full justify-center sm:justify-start">
+        <img src="/icon1.png" alt="Hallo Wok" className="h-48 w-auto rounded-xl object-contain sm:h-40" />
       </div>
 
       <div
         id="auth-content"
-        className="auth-glass-card flex w-full max-w-[1100px] overflow-hidden"
+        className={`auth-glass-card flex overflow-hidden ${isCentered ? 'mx-auto w-full max-w-[650px]' : 'w-full max-w-[1100px]'}`}
         style={{ minHeight: 480, borderRadius: 28 }}
       >
         {/* LEFT: Form section */}
-        <div className="flex w-full flex-col p-10 md:w-[55%]">
+        <div className={`flex flex-col p-10 ${isCentered ? 'w-full' : 'w-full md:w-[55%]'}`}>
           {/* Top: Logo + heading + badge */}
           <div className="mb-8">
-            <h1 className="mb-3 text-3xl font-bold leading-tight" style={{ color: '#FFFFFF', fontSize: 32 }}>
+            <h1 className="mb-3 text-2xl font-bold leading-tight sm:text-3xl" style={{ color: '#FFFFFF' }}>
               {isLogin
                 ? 'Sign In to Hallo Wok'
                 : isForgot
@@ -69,9 +71,11 @@ export default function AuthLayout() {
         </div>
 
         {/* RIGHT: Hero section */}
-        <div className="hidden md:block md:w-[45%]">
-          <HeroImage />
-        </div>
+        {!isCentered && (
+          <div className="hidden md:block md:w-[45%]">
+            <HeroImage />
+          </div>
+        )}
       </div>
     </div>
   );
