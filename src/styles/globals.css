@@ -127,7 +127,7 @@
     background-color: var(--background);
     background-attachment: fixed;
     color: var(--foreground);
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   ::-webkit-scrollbar {
@@ -192,4 +192,89 @@
   --warning-bg: rgba(255, 255, 255, 0.8);
   --warning-border: rgba(234, 179, 8, 0.3);
   --warning-text: #18181b;
+}
+
+/* Auth page theme colors */
+:root {
+  --auth-bg: #56586A;
+  --auth-card: #262938;
+  --auth-input: #303345;
+  --auth-border: rgba(255, 255, 255, 0.08);
+  --auth-text: #FFFFFF;
+  --auth-text-secondary: #9EA5B4;
+  --auth-primary: #2F8CFF;
+  --auth-primary-from: #3095FF;
+  --auth-primary-to: #1678FF;
+}
+
+.auth-glass-card {
+  background: rgba(38, 41, 56, 0.55);
+  backdrop-filter: blur(32px) saturate(1.4);
+  -webkit-backdrop-filter: blur(32px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.auth-input-field {
+  background: #303345;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #FFFFFF;
+  transition: all 0.25s ease;
+}
+
+.auth-input-field::placeholder {
+  color: #9EA5B4;
+}
+
+.auth-input-field:focus {
+  outline: none;
+  border-color: #2F8CFF;
+  box-shadow: 0 0 0 3px rgba(47, 140, 255, 0.15);
+}
+
+.auth-btn-primary {
+  background: linear-gradient(135deg, #3095FF, #1678FF);
+  border: none;
+  border-radius: 9999px;
+  height: 48px;
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(47, 140, 255, 0.3);
+}
+
+.auth-btn-primary:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.auth-btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  height: 48px;
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.auth-btn-secondary:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.1);
+  filter: brightness(1.1);
 }
