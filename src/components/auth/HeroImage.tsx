@@ -1,5 +1,3 @@
-import { MessageSquare, Shield, Sparkles, ShieldBan, Zap, Globe } from 'lucide-react';
-
 export function HeroImage() {
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-r-[28px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
@@ -17,57 +15,17 @@ export function HeroImage() {
       />
 
       {/* Center content */}
-      <div className="relative z-10 -mt-32 flex flex-col items-center text-center">
-        <img src="/logo.png" alt="Hallo Wok" className="mb-1 h-56 w-56 rounded-3xl" />
+      <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="rounded-2xl">
+          <img src="/barcode.png" alt="QR Code" className="h-64 w-64" />
+        </div>
 
-        <p className="mb-6 max-w-[380px] text-center text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
-          Connect and share meaningful moments with the people who matter most to you.
+        <h3 className="mt-6 text-xl font-bold" style={{ color: '#FFFFFF' }}>
+          Scan to Preview
+        </h3>
+        <p className="mt-2 max-w-[280px] text-center text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          Scan this QR code to see the landing page on your phone
         </p>
-
-        {/* Signature line */}
-        <div className="flex items-center gap-3">
-          <div className="h-px w-8" style={{ background: 'rgba(47,140,255,0.3)' }} />
-          <span className="text-xs font-medium uppercase tracking-[0.2em]" style={{ color: 'rgba(47,140,255,0.5)' }}>
-            Feature
-          </span>
-          <div className="h-px w-8" style={{ background: 'rgba(47,140,255,0.3)' }} />
-        </div>
-
-        {/* Feature cards */}
-        <div className="mt-6 grid max-w-[420px] grid-cols-3 gap-2.5">
-          {[
-            { icon: MessageSquare, label: 'Realtime Chat', desc: 'Chat langsung tanpa delay' },
-            { icon: Shield, label: 'Secure', desc: 'Data kamu terjaga' },
-            { icon: Sparkles, label: 'Free', desc: 'Gratis tanpa biaya' },
-            { icon: ShieldBan, label: 'No Ads', desc: 'Bebas iklan mengganggu' },
-            { icon: Zap, label: 'Fast', desc: 'Ringan & cepat' },
-            { icon: Globe, label: 'Cross-Platform', desc: 'Akses dari mana saja' },
-          ].map((f) => (
-            <div
-              key={f.label}
-              className="flex flex-col items-center gap-1 rounded-xl px-3 py-3 text-center transition-all duration-250 ease-out"
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                color: 'rgba(255,255,255,0.4)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(47,140,255,0.1)'
-                e.currentTarget.style.borderColor = 'rgba(47,140,255,0.3)'
-                e.currentTarget.style.color = 'rgba(255,255,255,0.8)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
-              }}
-            >
-              <f.icon className="h-5 w-5" />
-              <span className="text-xs font-medium">{f.label}</span>
-              <span className="text-[10px] leading-tight" style={{ color: 'rgba(255,255,255,0.25)' }}>{f.desc}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Bottom glass bar */}
