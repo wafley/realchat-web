@@ -7,9 +7,9 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 const MOCK_USER: User = {
   id: 'dev-user-1',
-  email: 'dev@hallowok.com',
-  username: 'devuser',
-  fullName: 'Dev User',
+  email: 'mafzq6750@gmail.com',
+  username: 'Dev-Account',
+  fullName: 'Alxyzz',
   status: 'online',
   createdAt: new Date('2026-01-01'),
 };
