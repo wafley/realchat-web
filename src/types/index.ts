@@ -84,9 +84,9 @@ export interface Conversation {
 
 export interface FriendRequest {
   id: string;
-  sender: User;
-  receiver: User;
-  status: 'pending' | 'accepted' | 'rejected';
+  sender: { id: string; username: string; avatarUrl?: string };
+  receiver: { id: string; username: string; avatarUrl?: string };
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   createdAt: Date;
 }
 
