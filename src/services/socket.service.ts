@@ -212,6 +212,11 @@ export function initSocket(token?: string) {
 
   socketClient.connect(token);
 
+  const userId = useAuthStore.getState().user?.id;
+  if (userId) {
+    socketClient.joinRoom(`user:${userId}`);
+  }
+
   socketClient.on('message:new', onMessageNew);
   socketClient.on('message:edited', onMessageEdited);
   socketClient.on('message:deleted', onMessageDeleted);
