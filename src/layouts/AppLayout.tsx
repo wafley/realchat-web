@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useSocketStore } from '@/store/socketStore';
 import { initSocket, destroySocket } from '@/services/socket.service';
+import { useFriendSocket } from '@/hooks/useFriendSocket';
 
 export default function AppLayout() {
   const location = useLocation();
@@ -21,6 +22,8 @@ export default function AppLayout() {
       useSocketStore.getState().disconnect();
     };
   }, [isAuthenticated]);
+
+  useFriendSocket();
 
   return (
     <div className="flex h-screen flex-col lg:flex-row">

@@ -5,6 +5,5 @@ export function usePendingFriendRequestCount() {
   return useQuery({
     queryKey: ['pendingFriendRequestCount'],
     queryFn: getPendingRequestCount,
-    refetchInterval: 30_000,
   });
 }
