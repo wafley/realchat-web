@@ -85,7 +85,7 @@ export default function Requests() {
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors',
+              'relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors',
               tab === t
                 ? 'bg-accent text-accent-foreground'
                 : 'text-muted-foreground hover:bg-accent/10',
@@ -93,10 +93,10 @@ export default function Requests() {
           >
             {t === 'incoming' ? 'Masuk' : 'Terkirim'}
             {t === 'incoming' && incoming.length > 0 && (
-              <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-destructive" />
             )}
             {t === 'sent' && sent.length > 0 && (
-              <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground" />
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-muted-foreground" />
             )}
           </button>
         ))}
