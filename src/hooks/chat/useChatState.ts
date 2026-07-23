@@ -1,10 +1,10 @@
 import { useState, useRef, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Message } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
-import { getMessages, DM_USER_MAP } from '@/services/chat';
+import { getMessages, getConversations, DM_USER_MAP } from '@/services/chat';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 export function useChatState() {
@@ -55,9 +55,19 @@ export function useChatState() {
   const keyboardHeight = useKeyboardHeight();
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
-  const chatName = location.state?.name || 'Chat';
-  const chatOnline = location.state?.online ?? true;
-  const chatLastSeen = location.state?.lastSeen ?? null;
+  const { data: conversations = [] } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: getConversations,
+  });
+
+  const convFromList = useMemo(
+    () => conversations.find((c) => c.id === chatId),
+    [conversations, chatId],
+  );
+
+  const chatName = location.state?.name || convFromList?.name || 'Chat';
+  const chatOnline = location.state?.online ?? convFromList?.online ?? true;
+  const chatLastSeen = location.state?.lastSeen ?? convFromList?.lastSeen ?? null;
   const memberCount = location.state?.members ?? null;
   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? userId) : undefined;
 
