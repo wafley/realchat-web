@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, UserPlus, Loader2, UserCheck, User } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { searchPeople, sendFriendRequest } from '@/services/friends';
 import { toast } from 'sonner';
+import type { User as UserType } from '@/types';
 
 export default function AddFriend() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<{ id: string; name: string; username: string }[]>([]);
+  const [results, setResults] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(false);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -21,9 +24,7 @@ export default function AddFriend() {
     debounceRef.current = setTimeout(async () => {
       try {
         const users = await searchPeople(query.trim());
-        setResults(
-          users.map((u) => ({ id: u.id, name: u.fullName, username: u.username })),
-        );
+        setResults(users);
       } catch {
         toast.error('Failed to search users');
       } finally {
@@ -75,11 +76,20 @@ export default function AddFriend() {
                 key={user.id}
                 className="flex items-center gap-4 rounded-2xl border border-border px-4 py-3.5"
               >
-                <Avatar className="h-12 w-12 shrink-0">
-                  <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+                <div
+                  onClick={() => navigate(`/profile/${user.id}`)}
+                  className="relative shrink-0 cursor-pointer"
+                >
+                  <Avatar className="h-12 w-12">
+                    {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                    <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
+                  </Avatar>
+                </div>
+                <div
+                  onClick={() => navigate(`/profile/${user.id}`)}
+                  className="min-w-0 flex-1 cursor-pointer"
+                >
+                  <p className="truncate text-sm font-medium text-foreground hover:text-accent">{user.fullName}</p>
                   <p className="text-xs text-muted-foreground">@{user.username}</p>
                 </div>
                 <button
