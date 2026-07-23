@@ -1,24 +1,99 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, AlertCircle, User } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Mail, Info, Calendar, Loader2, AlertCircle, User, UserPlus, UserCheck, Clock, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
+import { getFriends, getPendingRequests, getSentRequests, sendFriendRequest, cancelFriendRequest, acceptFriendRequest, removeFriend } from '@/services/friends';
+import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-
+  const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
+
+  const isSelf = currentUser?.id === userId;
 
   const { data: user, isPending, isError } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => getUser(userId!),
     enabled: !!userId,
+  });
+
+  const { data: friends = [] } = useQuery({
+    queryKey: ['friends'],
+    queryFn: getFriends,
+    enabled: !!userId && !isSelf,
+  });
+
+  const { data: incomingRequests = [] } = useQuery({
+    queryKey: ['friendRequests', 'incoming'],
+    queryFn: getPendingRequests,
+    enabled: !!userId && !isSelf,
+  });
+
+  const { data: sentRequests = [] } = useQuery({
+    queryKey: ['friendRequests', 'sent'],
+    queryFn: getSentRequests,
+    enabled: !!userId && !isSelf,
+  });
+
+  const isFriend = friends.some((f) => f.id === userId);
+  const incomingFromUser = incomingRequests.find((r) => r.sender.id === userId);
+  const sentToUser = sentRequests.find((r) => r.receiver.id === userId);
+
+  type FriendStatus = 'self' | 'friend' | 'incoming' | 'sent' | 'none';
+  const friendStatus: FriendStatus = isSelf
+    ? 'self'
+    : isFriend
+      ? 'friend'
+      : incomingFromUser
+        ? 'incoming'
+        : sentToUser
+          ? 'sent'
+          : 'none';
+
+  const sendRequestMutation = useMutation({
+    mutationFn: () => sendFriendRequest(userId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
+      toast.success('Friend request sent!');
+    },
+    onError: () => toast.error('Failed to send request'),
+  });
+
+  const cancelRequestMutation = useMutation({
+    mutationFn: () => cancelFriendRequest(userId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
+      toast.success('Request cancelled');
+    },
+    onError: () => toast.error('Failed to cancel request'),
+  });
+
+  const acceptRequestMutation = useMutation({
+    mutationFn: () => acceptFriendRequest(incomingFromUser!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests', 'incoming'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
+      toast.success('Friend request accepted!');
+    },
+    onError: () => toast.error('Failed to accept request'),
+  });
+
+  const unfriendMutation = useMutation({
+    mutationFn: () => removeFriend(userId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      toast.success('Removed from friends');
+    },
+    onError: () => toast.error('Failed to remove friend'),
   });
 
   const blockMutation = useMutation({
@@ -114,6 +189,50 @@ export default function UserProfile() {
               </div>
 
               <div className="mx-6 mb-8 flex flex-col gap-2">
+                {!isSelf && (
+                  <>
+                    {friendStatus === 'none' && (
+                      <button
+                        onClick={() => sendRequestMutation.mutate()}
+                        disabled={sendRequestMutation.isPending}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+                      >
+                        {sendRequestMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                        {sendRequestMutation.isPending ? 'Sending...' : 'Add Friend'}
+                      </button>
+                    )}
+                    {friendStatus === 'sent' && (
+                      <button
+                        onClick={() => cancelRequestMutation.mutate()}
+                        disabled={cancelRequestMutation.isPending}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
+                      >
+                        {cancelRequestMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Clock size={16} />}
+                        {cancelRequestMutation.isPending ? 'Cancelling...' : 'Cancel Request'}
+                      </button>
+                    )}
+                    {friendStatus === 'incoming' && (
+                      <button
+                        onClick={() => acceptRequestMutation.mutate()}
+                        disabled={acceptRequestMutation.isPending}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+                      >
+                        {acceptRequestMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserCheck size={16} />}
+                        {acceptRequestMutation.isPending ? 'Accepting...' : 'Accept Request'}
+                      </button>
+                    )}
+                    {friendStatus === 'friend' && (
+                      <button
+                        onClick={() => unfriendMutation.mutate()}
+                        disabled={unfriendMutation.isPending}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                      >
+                        {unfriendMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <X size={16} />}
+                        {unfriendMutation.isPending ? 'Removing...' : 'Unfriend'}
+                      </button>
+                    )}
+                  </>
+                )}
                 <button
                   onClick={async () => {
                     try {

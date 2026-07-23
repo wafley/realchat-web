@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Search, MessageSquareText, Loader2, User } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getFriends } from '@/services/friends';
+import { Search, MessageSquareText, Loader2, User, UserMinus } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getFriends, removeFriend } from '@/services/friends';
 import { findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
+import type { User as UserType } from '@/types';
 
 export default function AllFriends() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [friends, setFriends] = useState<{ id: string; name: string; username: string; online: boolean }[]>([]);
+  const [friends, setFriends] = useState<UserType[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -18,9 +19,7 @@ export default function AllFriends() {
     (async () => {
       try {
         const data = await getFriends();
-        setFriends(
-          data.map((u) => ({ id: u.id, name: u.fullName, username: u.username, online: u.status === 'online' })),
-        );
+        setFriends(data);
       } catch {
         toast.error('Failed to load friends');
       } finally {
@@ -31,7 +30,7 @@ export default function AllFriends() {
 
   const filtered = friends.filter(
     (f) =>
-      f.name.toLowerCase().includes(search.toLowerCase()) ||
+      f.fullName.toLowerCase().includes(search.toLowerCase()) ||
       f.username.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -42,6 +41,16 @@ export default function AllFriends() {
       navigate(`/dm/${dmId}`, { state: { name, online } });
     } catch {
       toast.error('Failed to open conversation');
+    }
+  };
+
+  const handleUnfriend = async (userId: string, name: string) => {
+    try {
+      await removeFriend(userId);
+      setFriends((prev) => prev.filter((f) => f.id !== userId));
+      toast.success(`Removed ${name} from friends`);
+    } catch {
+      toast.error('Failed to remove friend');
     }
   };
 
@@ -85,9 +94,10 @@ export default function AllFriends() {
                     className="relative shrink-0 cursor-pointer"
                   >
                     <Avatar className="h-12 w-12">
+                      {friend.avatarUrl && <AvatarImage src={friend.avatarUrl} />}
                       <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
                     </Avatar>
-                    {friend.online && (
+                    {friend.status === 'online' && (
                       <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
                     )}
                   </div>
@@ -95,14 +105,20 @@ export default function AllFriends() {
                     onClick={() => navigate(`/profile/${friend.id}`)}
                     className="min-w-0 flex-1 cursor-pointer"
                   >
-                    <p className="truncate text-sm font-medium text-foreground hover:text-accent">{friend.name}</p>
+                    <p className="truncate text-sm font-medium text-foreground hover:text-accent">{friend.fullName}</p>
                     <p className="text-xs text-muted-foreground">@{friend.username}</p>
                   </div>
                   <button
-                    onClick={() => handleMessage(friend.id, friend.name, friend.online)}
+                    onClick={() => handleMessage(friend.id, friend.fullName, friend.status === 'online')}
                     className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent"
                   >
                     <MessageSquareText size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleUnfriend(friend.id, friend.fullName)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <UserMinus size={18} />
                   </button>
                 </div>
               ))
