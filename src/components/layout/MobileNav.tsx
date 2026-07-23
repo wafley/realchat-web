@@ -29,11 +29,9 @@ export default function MobileNav({ className }: MobileNavProps) {
           <Icon size={24} />
           {to === '/friends' && pendingCount != null && pendingCount > 0 && (
             <span
-              className="absolute right-1 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground"
+              className="absolute right-1.5 top-0 h-2.5 w-2.5 rounded-full border-2 border-sidebar bg-destructive"
               title={`${pendingCount} pending friend request(s)`}
-            >
-              {pendingCount > 99 ? '99+' : pendingCount}
-            </span>
+            />
           )}
           {label}
         </NavLink>
