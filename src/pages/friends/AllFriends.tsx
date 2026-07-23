@@ -30,7 +30,7 @@ export default function AllFriends() {
 
   const filtered = friends.filter(
     (f) =>
-      f.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      (f.fullName ?? '').toLowerCase().includes(search.toLowerCase()) ||
       f.username.toLowerCase().includes(search.toLowerCase()),
   );
 
