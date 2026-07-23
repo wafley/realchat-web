@@ -1,5 +1,6 @@
 import type { FriendRequest, User } from '@/types';
 import api from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { delay } from '@/mocks/utils';
 import {
@@ -23,7 +24,8 @@ export async function searchPeople(query: string): Promise<User[]> {
     );
   }
   const { data } = await api.get<User[]>('/users/search', { params: { q: query } });
-  return data;
+  const currentUserId = useAuthStore.getState().user?.id;
+  return data.filter((u) => u.id !== currentUserId);
 }
 
 export async function sendFriendRequest(userId: string): Promise<void> {
