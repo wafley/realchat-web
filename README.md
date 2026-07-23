@@ -28,7 +28,7 @@
 | 👥 **Friends system** | Add friends, manage requests, search users, block/unblock | ✅ |
 | 🏘️ **Group chats** | Create public/private groups, manage members & roles | ✅ |
 | 🎨 **Animated background** | Three.js GLSL ring shader — mouse parallax, click burst | ✅ |
-| 🔐 **Auth** | Email/password + Google & Facebook OAuth | ✅ |
+| 🔐 **Auth** | Email/password + email verification | ✅ |
 | 🎭 **User profiles** | Avatar, bio, status, last seen — full customization | ✅ |
 | ⚙️ **Settings hub** | General, notifications, privacy, appearance (dark mode), account, blocked users | ✅ |
 | 📎 **File sharing** | Drag‑and‑drop uploads with preview | ✅ |
@@ -110,50 +110,38 @@ npm run build
 
 # 5. Preview build
 npm run preview
+Dev mode — set VITE_DEV_MODE=true in .env to run fully offline with mock data. No backend needed.
 ```
 
-> **Dev mode** — set `VITE_DEV_MODE=true` in `.env` to run fully offline with mock data. No backend needed.
-
----
-
-## 📁 Project Structure
-
 ```
+
+📁 Project Structure
 src/
 ├── assets/              # SVGs, static images
 ├── components/
 │   ├── chat/            # ChatHeader, MessageList, ChatInput, PinnedBanner …
-│   ├── common/          # ThemeProvider, ProtectedRoute, OAuthButtons
+│   ├── common/          # ThemeProvider, ProtectedRoute, FloatingLines
 │   ├── layout/          # Sidebar, ChatList, MobileNav, LayoutSkeleton
 │   └── ui/              # button, input, avatar, badge, modal, skeleton
 ├── hooks/               # useKeyboardHeight, custom hooks
 ├── layouts/             # AuthLayout, AppLayout, ChatLayout, FriendsLayout
-├── lib/                 # utils, queryClient
+├── lib/                 # utils, queryClient, api, validations, socket
 ├── pages/               # Login, Register, ChatRoom, Groups, Friends, Settings …
 ├── services/            # API clients: chat.ts, user.ts, friends.ts, auth.ts
 ├── store/               # Zustand stores (auth, typing, theme)
 ├── styles/              # Tailwind globals
 ├── types/               # TypeScript interfaces
 └── utils/               # formatLastSeen, time helpers
+🌐 Environment Variables
+Variable
+VITE_API_URL
+VITE_SOCKET_URL
+VITE_DEV_MODE
 ```
-
----
-
-## 🌐 Environment Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_URL` | — | Backend REST API base URL |
-| `VITE_SOCKET_URL` | — | WebSocket server URL |
-| `VITE_DEV_MODE` | `false` | Run with mock data, no backend needed |
-| `VITE_GOOGLE_CLIENT_ID` | — | Google OAuth client ID |
-| `VITE_FACEBOOK_APP_ID` | — | Facebook OAuth app ID |
-
----
 
 <div align="center">
   <br>
-  <sub>Built with 🔥 by <strong>Alxyzz</strong></sub>
+  <sub>Built with 🤍 by <strong>Alxyzz</strong></sub>
   <br>
-  <sub>MIT License</sub>
+  <sub>Hallowok</sub>
 </div>
