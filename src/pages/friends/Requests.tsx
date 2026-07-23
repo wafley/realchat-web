@@ -19,7 +19,7 @@ export default function Requests() {
     setLoading(true);
     try {
       const data = await getPendingRequests();
-      setRequests(data.map((r) => ({ id: r.id, name: r.sender.fullName, username: r.sender.username })));
+      setRequests(data.map((r) => ({ id: r.id, name: r.sender.username, username: r.sender.username })));
     } catch {
       toast.error('Failed to load requests');
     } finally {
