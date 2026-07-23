@@ -106,6 +106,56 @@ class SocketClient {
   emitMessageSeen(conversationId: string): void {
     this.socket?.emit('message:seen', { conversationId });
   }
+
+  // --- Friend ---
+
+  onFriendRequestReceived(callback: EventCallback): void {
+    this.on('friend:request-received', callback);
+  }
+
+  offFriendRequestReceived(callback: EventCallback): void {
+    this.off('friend:request-received', callback);
+  }
+
+  onFriendRequestAccepted(callback: EventCallback): void {
+    this.on('friend:request-accepted', callback);
+  }
+
+  offFriendRequestAccepted(callback: EventCallback): void {
+    this.off('friend:request-accepted', callback);
+  }
+
+  onFriendRequestRejected(callback: EventCallback): void {
+    this.on('friend:request-rejected', callback);
+  }
+
+  offFriendRequestRejected(callback: EventCallback): void {
+    this.off('friend:request-rejected', callback);
+  }
+
+  onFriendRequestCancelled(callback: EventCallback): void {
+    this.on('friend:request-cancelled', callback);
+  }
+
+  offFriendRequestCancelled(callback: EventCallback): void {
+    this.off('friend:request-cancelled', callback);
+  }
+
+  onFriendRemoved(callback: EventCallback): void {
+    this.on('friend:removed', callback);
+  }
+
+  offFriendRemoved(callback: EventCallback): void {
+    this.off('friend:removed', callback);
+  }
+
+  onFriendListUpdated(callback: EventCallback): void {
+    this.on('friend:list-updated', callback);
+  }
+
+  offFriendListUpdated(callback: EventCallback): void {
+    this.off('friend:list-updated', callback);
+  }
 }
 
 export const socketClient = new SocketClient();
