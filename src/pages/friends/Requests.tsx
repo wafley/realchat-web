@@ -93,14 +93,10 @@ export default function Requests() {
           >
             {t === 'incoming' ? 'Masuk' : 'Terkirim'}
             {t === 'incoming' && incoming.length > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
-                {incoming.length}
-              </span>
+              <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
             )}
             {t === 'sent' && sent.length > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground">
-                {sent.length}
-              </span>
+              <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground" />
             )}
           </button>
         ))}
