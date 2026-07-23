@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import type { FriendRequest, User } from '@/types';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -23,9 +24,17 @@ export async function searchPeople(query: string): Promise<User[]> {
         (u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)),
     );
   }
-  const { data } = await api.get<User[]>('/users/search', { params: { q: query } });
-  const currentUserId = useAuthStore.getState().user?.id;
-  return data.filter((u) => u.id !== currentUserId);
+  try {
+    const { data } = await api.get<User[]>('/users/search', { params: { q: query } });
+    const currentUserId = useAuthStore.getState().user?.id;
+    return data.filter((u) => u.id !== currentUserId);
+  } catch (err: any) {
+    if (err?.response?.status === 429) {
+      toast.error('Too many requests. Try again later.');
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function sendFriendRequest(userId: string): Promise<void> {
@@ -36,7 +45,15 @@ export async function sendFriendRequest(userId: string): Promise<void> {
     MOCK_SENT_REQUESTS.push({ id: `sent-${Date.now()}`, sender: MOCK_USERS[7]!, receiver: user, status: 'pending', createdAt: new Date() });
     return;
   }
-  await api.post('/friends/request', { userId });
+  try {
+    await api.post('/friends/request', { userId });
+  } catch (err: any) {
+    if (err?.response?.status === 429) {
+      toast.error('Too many friend requests. Try again later.');
+      return;
+    }
+    throw err;
+  }
 }
 
 export async function cancelFriendRequest(userId: string): Promise<void> {
