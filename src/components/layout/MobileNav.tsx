@@ -43,13 +43,13 @@ export default function MobileNav({ className }: MobileNavProps) {
           )
         }
       >
-        <Avatar className="h-6 w-6">
+        <Avatar className="h-7 w-7">
           {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-          <AvatarFallback className="text-[10px]">
-            <User size={14} />
+          <AvatarFallback className="text-[11px]">
+            <User size={16} />
           </AvatarFallback>
         </Avatar>
-        <span className="text-[10px]">Profile</span>
+        <span className="text-[11px]">Profile</span>
       </NavLink>
     </nav>
   );
