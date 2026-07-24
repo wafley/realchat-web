@@ -183,7 +183,7 @@ function onGroupMemberRole(data: { groupId: string }) {
 
 function onNotification(data: any) {
   queryClient.invalidateQueries({ queryKey: ['notifications'] });
-  queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
+  queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
 
   const prefs = loadPrefs();
   const isGroup = data?.type === 'group' || data?.conversationType === 'group';
