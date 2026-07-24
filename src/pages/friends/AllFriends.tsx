@@ -1,32 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, MessageSquareText, Loader2, User, UserMinus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFriends, unfollow } from '@/services/friends';
 import { findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
-import type { User as UserType } from '@/types';
 
 export default function AllFriends() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [friends, setFriends] = useState<UserType[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await getFriends();
-        setFriends(data);
-      } catch {
-        toast.error('Failed to load friends');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const { data: friends = [], isLoading } = useQuery({
+    queryKey: ['friends'],
+    queryFn: getFriends,
+  });
+
+  const unfollowMutation = useMutation({
+    mutationFn: (userId: string) => unfollow(userId),
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['friends'] });
+      const prev = queryClient.getQueryData(['friends']);
+      queryClient.setQueryData(['friends'], (old: any[]) => old?.filter((f: any) => f.id !== userId) ?? []);
+      return { prev };
+    },
+    onError: (_err, _userId, context) => {
+      if (context?.prev) queryClient.setQueryData(['friends'], context.prev);
+      toast.error('Failed to unfollow');
+    },
+    onSuccess: (_data, _userId) => {
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+    },
+  });
 
   const filtered = friends.filter(
     (f) =>
@@ -44,18 +50,13 @@ export default function AllFriends() {
     }
   };
 
-  const handleUnfollow = async (userId: string, name: string) => {
-    try {
-      await unfollow(userId);
-      setFriends((prev) => prev.filter((f) => f.id !== userId));
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
-      toast.success(`Unfollowed ${name}`);
-    } catch {
-      toast.error('Failed to unfollow');
-    }
+  const handleUnfollow = (userId: string, name: string) => {
+    unfollowMutation.mutate(userId, {
+      onSuccess: () => toast.success(`Unfollowed ${name}`),
+    });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-1 items-center justify-center">
         <Loader2 size={24} className="animate-spin text-muted-foreground" />
