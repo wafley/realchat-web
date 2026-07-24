@@ -100,7 +100,9 @@ class SocketClient {
   // --- Message ---
 
   sendMessage(conversationId: string, content: string, replyTo?: { id: string }): void {
-    this.socket?.emit('message:send', { conversationId, content, replyTo });
+    const payload: Record<string, any> = { conversationId, content };
+    if (replyTo) payload.replyToId = replyTo.id;
+    this.socket?.emit('message:send', payload);
   }
 
   emitMessageSeen(conversationId: string): void {
@@ -141,20 +143,12 @@ class SocketClient {
     this.off('friend:request-cancelled', callback);
   }
 
-  onFriendRemoved(callback: EventCallback): void {
-    this.on('friend:removed', callback);
+  onFriendUnfriended(callback: EventCallback): void {
+    this.on('friend:unfriended', callback);
   }
 
-  offFriendRemoved(callback: EventCallback): void {
-    this.off('friend:removed', callback);
-  }
-
-  onFriendListUpdated(callback: EventCallback): void {
-    this.on('friend:list-updated', callback);
-  }
-
-  offFriendListUpdated(callback: EventCallback): void {
-    this.off('friend:list-updated', callback);
+  offFriendUnfriended(callback: EventCallback): void {
+    this.off('friend:unfriended', callback);
   }
 }
 
