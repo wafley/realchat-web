@@ -37,26 +37,26 @@ export async function searchPeople(query: string): Promise<User[]> {
   }
 }
 
-export async function sendFriendRequest(userId: string): Promise<void> {
+export async function sendFollowRequest(userId: string): Promise<void> {
   if (DEV_MODE) {
     await delay(300);
     const user = MOCK_USERS.find((u) => u.id === userId);
     if (!user) throw new Error('User not found');
-    MOCK_SENT_REQUESTS.push({ id: `sent-${Date.now()}`, sender: MOCK_USERS[7]!, receiver: user, status: 'pending', createdAt: new Date() });
+    MOCK_SENT_REQUESTS.push({ id: `sent-${Date.now()}`, sender: MOCK_USERS[7]!, receiver: user, status: 'PENDING', createdAt: new Date() });
     return;
   }
   try {
     await api.post('/friends/request', { userId });
   } catch (err: any) {
     if (err?.response?.status === 429) {
-      toast.error('Too many friend requests. Try again later.');
+      toast.error('Too many requests. Try again later.');
       return;
     }
     throw err;
   }
 }
 
-export async function cancelFriendRequest(userId: string): Promise<void> {
+export async function cancelFollowRequest(userId: string): Promise<void> {
   if (DEV_MODE) {
     await delay(200);
     const idx = MOCK_SENT_REQUESTS.findIndex((r) => r.receiver.id === userId);
@@ -74,7 +74,7 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
     const idx = MOCK_FRIEND_REQUESTS.findIndex((r) => r.id === requestId);
     if (idx !== -1) MOCK_FRIEND_REQUESTS.splice(idx, 1);
     if (!MOCK_FRIENDS.some((f) => f.id === req.sender.id)) {
-      MOCK_FRIENDS.push(req.sender);
+      MOCK_FRIENDS.push({ id: req.sender.id, username: req.sender.username, fullName: req.sender.username, email: req.sender.username + '@mock.com', status: 'online', createdAt: new Date() });
     }
     return;
   }
@@ -100,7 +100,7 @@ export async function getFriends(): Promise<User[]> {
   return data;
 }
 
-export async function getPendingRequests(): Promise<FriendRequest[]> {
+export async function getIncomingFollowRequests(): Promise<FriendRequest[]> {
   if (DEV_MODE) {
     await delay(200);
     return [...MOCK_FRIEND_REQUESTS];
@@ -109,7 +109,7 @@ export async function getPendingRequests(): Promise<FriendRequest[]> {
   return data;
 }
 
-export async function getSentRequests(): Promise<FriendRequest[]> {
+export async function getSentFollowRequests(): Promise<FriendRequest[]> {
   if (DEV_MODE) {
     await delay(200);
     return [...MOCK_SENT_REQUESTS];
@@ -118,16 +118,7 @@ export async function getSentRequests(): Promise<FriendRequest[]> {
   return data;
 }
 
-export async function getPendingRequestCount(): Promise<number> {
-  if (DEV_MODE) {
-    await delay(100);
-    return MOCK_FRIEND_REQUESTS.length;
-  }
-  const { data } = await api.get<FriendRequest[]>('/friends/requests');
-  return data.length;
-}
-
-export async function removeFriend(userId: string): Promise<void> {
+export async function unfollow(userId: string): Promise<void> {
   if (DEV_MODE) {
     await delay(200);
     const idx = MOCK_FRIENDS.findIndex((f) => f.id === userId);

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, MessageSquareText, Loader2, User, UserMinus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getFriends, removeFriend } from '@/services/friends';
+import { getFriends, unfollow } from '@/services/friends';
 import { findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/types';
@@ -44,13 +44,13 @@ export default function AllFriends() {
     }
   };
 
-  const handleUnfriend = async (userId: string, name: string) => {
+  const handleUnfollow = async (userId: string, name: string) => {
     try {
-      await removeFriend(userId);
+      await unfollow(userId);
       setFriends((prev) => prev.filter((f) => f.id !== userId));
-      toast.success(`Removed ${name} from friends`);
+      toast.success(`Unfollowed ${name}`);
     } catch {
-      toast.error('Failed to remove friend');
+      toast.error('Failed to unfollow');
     }
   };
 
@@ -114,12 +114,13 @@ export default function AllFriends() {
                   >
                     <MessageSquareText size={18} />
                   </button>
-                  <button
-                    onClick={() => handleUnfriend(friend.id, friend.fullName)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <UserMinus size={18} />
-                  </button>
+                <button
+                  onClick={() => handleUnfollow(user.id, user.fullName)}
+                  className="flex shrink-0 items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-white"
+                >
+                  <UserMinus size={16} />
+                  Unfollow
+                </button>
                 </div>
               ))
             )}
