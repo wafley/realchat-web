@@ -4,12 +4,11 @@ import { useAuthStore } from '@/store/authStore';
 import { LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
-import { usePendingFriendRequestCount } from '@/hooks/usePendingFriendRequestCount';
+import NotificationBell from '@/components/layout/NotificationBell';
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { data: pendingCount } = usePendingFriendRequestCount();
 
   return (
     <aside className="hidden w-16 flex-col items-center border-r border-border bg-sidebar py-3 lg:flex lg:w-20">
@@ -30,14 +29,9 @@ export default function Sidebar() {
             title={label}
           >
             <Icon size={22} />
-            {to === '/friends' && pendingCount != null && pendingCount > 0 && (
-              <span
-                className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar bg-destructive"
-                title={`${pendingCount} pending friend request(s)`}
-              />
-            )}
           </NavLink>
         ))}
+        <NotificationBell />
       </nav>
 
       <div className="flex-1" />
