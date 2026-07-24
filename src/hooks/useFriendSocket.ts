@@ -13,29 +13,27 @@ export function useFriendSocket() {
     const invalidateRequests = () => {
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'incoming'] });
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
     };
 
     const onReceived = () => invalidateRequests();
     const onAccepted = () => { invalidateFriends(); invalidateRequests(); };
     const onRejected = () => invalidateRequests();
     const onCancelled = () => invalidateRequests();
-    const onRemoved = () => invalidateFriends();
-    const onListUpdated = () => invalidateFriends();
+    const onUnfriended = () => invalidateFriends();
 
     socketClient.onFriendRequestReceived(onReceived);
     socketClient.onFriendRequestAccepted(onAccepted);
     socketClient.onFriendRequestRejected(onRejected);
     socketClient.onFriendRequestCancelled(onCancelled);
-    socketClient.onFriendRemoved(onRemoved);
-    socketClient.onFriendListUpdated(onListUpdated);
+    socketClient.onFriendUnfriended(onUnfriended);
 
     return () => {
       socketClient.offFriendRequestReceived(onReceived);
       socketClient.offFriendRequestAccepted(onAccepted);
       socketClient.offFriendRequestRejected(onRejected);
       socketClient.offFriendRequestCancelled(onCancelled);
-      socketClient.offFriendRemoved(onRemoved);
-      socketClient.offFriendListUpdated(onListUpdated);
+      socketClient.offFriendUnfriended(onUnfriended);
     };
   }, [queryClient]);
 }
