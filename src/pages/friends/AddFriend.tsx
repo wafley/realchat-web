@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, UserPlus, Loader2, UserCheck, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { searchPeople, sendFriendRequest } from '@/services/friends';
+import { searchPeople, sendFollowRequest } from '@/services/friends';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/types';
 
@@ -37,20 +37,20 @@ export default function AddFriend() {
     };
   }, [query]);
 
-  const handleAdd = async (userId: string) => {
+  const handleFollow = async (userId: string) => {
     try {
-      await sendFriendRequest(userId);
+      await sendFollowRequest(userId);
       setSentIds((prev) => new Set(prev).add(userId));
-      toast.success('Friend request sent!');
+      toast.success('Follow request sent!');
     } catch {
-      toast.error('Failed to send request');
+      toast.error('Failed to send follow');
     }
   };
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
       <p className="mb-4 text-sm text-muted-foreground">
-        Search for people by name or username to add them as a friend.
+        Search for people by name or username to follow them.
       </p>
       <div className="relative mb-4">
         <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -93,7 +93,7 @@ export default function AddFriend() {
                   <p className="text-xs text-muted-foreground">@{user.username}</p>
                 </div>
                 <button
-                  onClick={() => handleAdd(user.id)}
+                  onClick={() => handleFollow(user.id)}
                   disabled={isSent}
                   className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-colors ${
                     isSent
@@ -102,7 +102,7 @@ export default function AddFriend() {
                   }`}
                 >
                   {isSent ? <UserCheck size={16} /> : <UserPlus size={16} />}
-                  {isSent ? 'Sent' : 'Add Friend'}
+                  {isSent ? 'Requested' : 'Follow'}
                 </button>
               </div>
             );

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Pencil, Mail, Info, Calendar, User } from 'lucide-react';
+import { Pencil, Mail, Info, Calendar, User, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const infoItems = [
@@ -18,8 +18,14 @@ export default function ProfileView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-6 py-4 md:hidden">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4 md:hidden">
         <h1 className="text-xl font-bold text-foreground">Profile</h1>
+        <button
+          onClick={() => navigate('/settings')}
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+        >
+          <Settings size={20} />
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl">

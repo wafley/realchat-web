@@ -6,12 +6,14 @@ export interface NavItem {
   icon: LucideIcon;
   label: string;
   end?: boolean;
+  desktopHidden?: boolean;
+  mobileHidden?: boolean;
 }
 
 export const navItems: NavItem[] = [
   { to: '/', icon: House, label: 'Home', end: true },
-  { to: '/friends', icon: UserPlus, label: 'Friends' },
   { to: '/search', icon: Search, label: 'Search' },
-  { to: '/profile', icon: User, label: 'Profile' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/friends', icon: UserPlus, label: 'Following' },
+  { to: '/profile', icon: User, label: 'Profile', desktopHidden: true },
+  { to: '/settings', icon: Settings, label: 'Settings', mobileHidden: true },
 ];

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Search, MessageSquareText, Loader2, User, UserMinus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getFriends, removeFriend } from '@/services/friends';
+import { getFriends, unfollow } from '@/services/friends';
 import { findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/types';
@@ -44,13 +44,14 @@ export default function AllFriends() {
     }
   };
 
-  const handleUnfriend = async (userId: string, name: string) => {
+  const handleUnfollow = async (userId: string, name: string) => {
     try {
-      await removeFriend(userId);
+      await unfollow(userId);
       setFriends((prev) => prev.filter((f) => f.id !== userId));
-      toast.success(`Removed ${name} from friends`);
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      toast.success(`Unfollowed ${name}`);
     } catch {
-      toast.error('Failed to remove friend');
+      toast.error('Failed to unfollow');
     }
   };
 
@@ -66,7 +67,7 @@ export default function AllFriends() {
     <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
       {friends.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          No friends yet. Use the Add Friend tab to find people.
+          No mutual follows yet. Use Find People to follow someone.
         </p>
       ) : (
         <>
@@ -74,7 +75,7 @@ export default function AllFriends() {
             <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search friends..."
+              placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-12 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -82,7 +83,7 @@ export default function AllFriends() {
           </div>
           <div className="space-y-3">
             {filtered.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No friends found</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">No results found</p>
             ) : (
               filtered.map((friend) => (
                 <div
@@ -115,8 +116,9 @@ export default function AllFriends() {
                     <MessageSquareText size={18} />
                   </button>
                   <button
-                    onClick={() => handleUnfriend(friend.id, friend.fullName)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => handleUnfollow(friend.id, friend.fullName)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-destructive transition-colors hover:bg-destructive/10"
+                    title="Unfollow"
                   >
                     <UserMinus size={18} />
                   </button>
