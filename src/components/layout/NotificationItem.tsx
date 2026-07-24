@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, UserCheck, UserMinus, MessageCircle, Users } from 'lucide-react';
+import { UserPlus, UserCheck, UserMinus, MessageCircle, Users, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useMarkNotificationRead } from '@/hooks/useNotifications';
@@ -14,12 +14,19 @@ interface NotificationItemProps {
   notification: Notification;
 }
 
-const typeIcon: Record<Notification['type'], typeof UserPlus> = {
+const typeIcon: Record<string, typeof UserPlus> = {
   follow_request: UserPlus,
+  friend_request: UserPlus,
+  FRIEND_REQUEST: UserPlus,
   follow_accepted: UserCheck,
+  friend_accepted: UserCheck,
+  FRIEND_ACCEPTED: UserCheck,
   unfollow: UserMinus,
+  UNFOLLOW: UserMinus,
   message: MessageCircle,
+  MESSAGE: MessageCircle,
   group: Users,
+  GROUP: Users,
 };
 
 export default function NotificationItem({ notification }: NotificationItemProps) {
@@ -27,15 +34,35 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const markRead = useMarkNotificationRead();
   const [actionLoading, setActionLoading] = useState<'accept' | 'reject' | null>(null);
 
-  const Icon = typeIcon[notification.type];
+  const Icon = (notification?.type && typeIcon[notification.type]) || Bell;
+
+  const sender = notification.sender || (notification as any).user || (notification as any).data?.sender || (notification as any).data?.user;
+  const avatarUrl = sender?.avatarUrl || (notification as any).avatarUrl || (notification as any).data?.avatarUrl;
+  const senderName = sender?.fullName || sender?.username || (notification as any).senderName || (notification as any).data?.senderName;
+
+  const isFollowRequest =
+    notification?.type === 'follow_request' ||
+    notification?.type === 'friend_request' ||
+    notification?.type === 'FRIEND_REQUEST' ||
+    (typeof notification?.type === 'string' && notification.type.toLowerCase().includes('request')) ||
+    (typeof notification?.title === 'string' && notification.title.toLowerCase().includes('friend request'));
+
+  const requestId =
+    notification.followRequestId ||
+    (notification as any).requestId ||
+    (notification as any).friendRequestId ||
+    (notification as any).data?.requestId ||
+    (notification as any).data?.followRequestId ||
+    (notification as any).data?.id ||
+    sender?.id;
 
   const handleClick = () => {
     if (!notification.read) {
       markRead.mutate(notification.id);
     }
 
-    if (notification.type === 'follow_accepted' && notification.sender) {
-      navigate(`/profile/${notification.sender.id}`);
+    if ((notification.type === 'follow_accepted' || notification.type === 'friend_accepted') && sender) {
+      navigate(`/profile/${sender.id}`);
     } else if (notification.type === 'message' && notification.conversationId) {
       navigate(`/dm/${notification.conversationId}`);
     } else if (notification.type === 'group' && notification.conversationId) {
@@ -45,12 +72,16 @@ export default function NotificationItem({ notification }: NotificationItemProps
 
   const handleAccept = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!notification.followRequestId) return;
+    if (!requestId) {
+      toast.error('Missing request ID');
+      return;
+    }
     setActionLoading('accept');
     try {
-      await acceptFriendRequest(notification.followRequestId);
+      await acceptFriendRequest(requestId);
       markRead.mutate(notification.id);
       queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
       toast.success('Follow request accepted!');
     } catch {
       toast.error('Failed to accept');
@@ -61,11 +92,15 @@ export default function NotificationItem({ notification }: NotificationItemProps
 
   const handleReject = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!notification.followRequestId) return;
+    if (!requestId) {
+      toast.error('Missing request ID');
+      return;
+    }
     setActionLoading('reject');
     try {
-      await rejectFriendRequest(notification.followRequestId);
+      await rejectFriendRequest(requestId);
       markRead.mutate(notification.id);
+      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
       toast.success('Request rejected');
     } catch {
       toast.error('Failed to reject');
@@ -84,7 +119,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
     >
       <div className="relative shrink-0">
         <Avatar className="h-10 w-10">
-          {notification.sender?.avatarUrl && <AvatarImage src={notification.sender.avatarUrl} />}
+          {avatarUrl && <AvatarImage src={avatarUrl} />}
           <AvatarFallback className="text-xs">
             <Icon size={16} />
           </AvatarFallback>
@@ -95,13 +130,16 @@ export default function NotificationItem({ notification }: NotificationItemProps
       </div>
       <div className="min-w-0 flex-1">
         <p className={cn('text-sm leading-snug', notification.read ? 'text-muted-foreground' : 'text-foreground')}>
-          {notification.title}
+          {senderName ? `${senderName} wants to follow you` : notification.title}
         </p>
+        {notification.body && (
+          <p className="mt-0.5 text-xs text-muted-foreground truncate">{notification.body}</p>
+        )}
         <p className="mt-0.5 text-xs text-muted-foreground">
           {new Date(notification.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
-      {notification.type === 'follow_request' && !notification.read && (
+      {isFollowRequest && !notification.read && (
         <div className="flex shrink-0 gap-1.5">
           <button
             onClick={handleAccept}

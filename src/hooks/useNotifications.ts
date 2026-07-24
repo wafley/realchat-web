@@ -22,8 +22,15 @@ export function useNotifications() {
 
   useEffect(() => {
     if (query.data) {
-      setNotifications(query.data);
-      setUnreadCount(query.data.filter((n) => !n.read).length);
+      const list = Array.isArray(query.data)
+        ? query.data
+        : Array.isArray((query.data as any)?.notifications)
+          ? (query.data as any).notifications
+          : Array.isArray((query.data as any)?.items)
+            ? (query.data as any).items
+            : [];
+      setNotifications(list);
+      setUnreadCount(list.filter((n: Notification) => !n.read).length);
     }
   }, [query.data, setNotifications, setUnreadCount]);
 
