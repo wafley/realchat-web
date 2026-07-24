@@ -90,6 +90,8 @@ export default function UserProfile() {
     mutationFn: () => unfollow(userId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
       toast.success('Unfollowed');
     },
     onError: () => toast.error('Failed to unfollow'),
