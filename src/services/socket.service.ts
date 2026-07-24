@@ -4,9 +4,11 @@ import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { usePrivacyStore } from '@/store/privacyStore';
+import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, MessageStatus, PaginatedResponse, Group } from '@/types';
+import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -185,11 +187,21 @@ function onNotification(data: any) {
   queryClient.invalidateQueries({ queryKey: ['notifications'] });
   queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
 
+  const notification = data?.notification ?? data;
+  useNotificationStore.getState().addNotification({
+    ...notification,
+    read: notification.isRead ?? notification.read ?? false,
+  });
+
   const prefs = loadPrefs();
   const isGroup = data?.type === 'group' || data?.conversationType === 'group';
 
   if (isGroup && !prefs.groups) return;
   if (!isGroup && !prefs.messages) return;
+
+  const convs = queryClient.getQueryData<Conversation[]>(['conversations']);
+  const conv = convs?.find((c) => c.id === data?.conversationId);
+  if (conv?.muted) return;
 
   const title = data?.title || 'New notification';
   const body = data?.body || '';
