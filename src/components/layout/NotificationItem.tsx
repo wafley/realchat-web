@@ -133,7 +133,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
           <p className="mt-0.5 text-xs text-muted-foreground truncate">{notification.body}</p>
         )}
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {new Date(notification.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          {new Date(notification.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
         </p>
       </div>
       {isFollowRequest && !notification.read && requestId && (
@@ -143,14 +143,14 @@ export default function NotificationItem({ notification }: NotificationItemProps
             disabled={actionLoading !== null}
             className="flex h-8 items-center justify-center rounded-lg bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
           >
-            {actionLoading === 'accept' ? <Loader2 size={14} className="animate-spin" /> : 'Terima'}
+            {actionLoading === 'accept' ? <Loader2 size={14} className="animate-spin" /> : 'Accept'}
           </button>
           <button
             onClick={handleReject}
             disabled={actionLoading !== null}
             className="flex h-8 items-center justify-center rounded-lg border border-input px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
           >
-            {actionLoading === 'reject' ? <Loader2 size={14} className="animate-spin" /> : 'Tolak'}
+            {actionLoading === 'reject' ? <Loader2 size={14} className="animate-spin" /> : 'Reject'}
           </button>
         </div>
       )}
