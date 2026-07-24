@@ -93,7 +93,8 @@ export function useNotificationSocket() {
 
     function onNewNotification(data: { notification: Notification }) {
       if (data?.notification) {
-        addNotification(data.notification);
+        const n = data.notification as any;
+        addNotification({ ...n, read: n.isRead ?? n.read ?? false });
         queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
       }

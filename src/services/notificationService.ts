@@ -11,10 +11,11 @@ export async function getNotifications(): Promise<Notification[]> {
     return [...MOCK_NOTIFICATIONS];
   }
   const { data } = await api.get<any>('/notifications');
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.notifications)) return data.notifications;
-  if (data && Array.isArray(data.items)) return data.items;
-  return [];
+  let list: any[] = [];
+  if (Array.isArray(data)) list = data;
+  else if (data && Array.isArray(data.notifications)) list = data.notifications;
+  else if (data && Array.isArray(data.items)) list = data.items;
+  return list.map((n: any) => ({ ...n, read: n.isRead ?? n.read ?? false }));
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
