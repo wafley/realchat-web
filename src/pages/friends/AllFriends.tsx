@@ -48,6 +48,7 @@ export default function AllFriends() {
     try {
       await unfollow(userId);
       setFriends((prev) => prev.filter((f) => f.id !== userId));
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
       toast.success(`Unfollowed ${name}`);
     } catch {
       toast.error('Failed to unfollow');
@@ -114,13 +115,13 @@ export default function AllFriends() {
                   >
                     <MessageSquareText size={18} />
                   </button>
-                <button
-                  onClick={() => handleUnfollow(user.id, user.fullName)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-destructive transition-colors hover:bg-destructive/10"
-                  title="Unfollow"
-                >
-                  <UserMinus size={18} />
-                </button>
+                  <button
+                    onClick={() => handleUnfollow(friend.id, friend.fullName)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-destructive transition-colors hover:bg-destructive/10"
+                    title="Unfollow"
+                  >
+                    <UserMinus size={18} />
+                  </button>
                 </div>
               ))
             )}
