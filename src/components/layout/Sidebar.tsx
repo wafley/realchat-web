@@ -13,7 +13,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden w-16 flex-col items-center border-r border-border bg-sidebar py-3 lg:flex lg:w-20">
       <nav role="navigation" aria-label="Main navigation" className="flex flex-col items-center gap-3 lg:gap-4">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {navItems.filter((item) => !item.desktopHidden).map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -37,12 +37,14 @@ export default function Sidebar() {
       <div className="flex-1" />
 
       <div className="flex flex-col items-center gap-3 lg:gap-4">
-        <Avatar className="h-8 w-8 lg:h-10 lg:w-10">
-          {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-          <AvatarFallback className="text-xs lg:text-sm">
-            <User size={16} />
-          </AvatarFallback>
-        </Avatar>
+        <NavLink to="/profile" title="Profile">
+          <Avatar className="h-8 w-8 lg:h-10 lg:w-10 cursor-pointer ring-2 ring-transparent transition-all hover:ring-accent/40">
+            {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+            <AvatarFallback className="text-xs lg:text-sm">
+              <User size={16} />
+            </AvatarFallback>
+          </Avatar>
+        </NavLink>
         <button
           onClick={logout}
           aria-label="Logout"
