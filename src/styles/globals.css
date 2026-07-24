@@ -3,64 +3,64 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #161e2b;
-  --foreground: #f8fafc;
-  --card: #161616;
-  --card-foreground: #f8fafc;
-  --popover: #161e2b;
-  --popover-foreground: #f8fafc;
-  --primary: #161e2b;
-  --primary-foreground: #f8fafc;
-  --secondary: #334155;
-  --secondary-foreground: #f8fafc;
-  --sidebar: #161e2b;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --accent: #4285f4;
-  --accent-foreground: #ffffff;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --primary: #10b981;
+  --primary-foreground: #fafafa;
+  --secondary: #06b6d4;
+  --secondary-foreground: #fafafa;
+  --sidebar: #18181b;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #3b82f6;
+  --accent-foreground: #fafafa;
   --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
-  --border: #2c2c2c;
-  --input: #1e1e1e;
-  --ring: #94a3b8;
+  --destructive-foreground: #fafafa;
+  --border: #3f3f46;
+  --input: #27272a;
+  --ring: #3b82f6;
   --radius: 0.625rem;
-  --chat-incoming-bg: #334155;
-  --chat-incoming-foreground: #f8fafc;
-  --chat-outgoing-bg: #4285f4;
-  --chat-outgoing-foreground: #ffffff;
+  --chat-incoming-bg: #27272a;
+  --chat-incoming-foreground: #fafafa;
+  --chat-outgoing-bg: #3b82f6;
+  --chat-outgoing-foreground: #fafafa;
   --chat-tile-overlay: rgba(0, 0, 0, 0.6);
-  --scrollbar-track: #1a1a1a;
-  --scrollbar-thumb: #3a3a3a;
+  --scrollbar-track: #27272a;
+  --scrollbar-thumb: #3f3f46;
 }
 
 .light {
-  --background: #f5f7fb;
-  --foreground: #1a1a1a;
+  --background: #fafafa;
+  --foreground: #18181b;
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #18181b;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #161e2b;
+  --popover-foreground: #18181b;
+  --primary: #059669;
   --primary-foreground: #ffffff;
-  --secondary: #eaeff5;
-  --secondary-foreground: #1a1a1a;
-  --sidebar: #eaeff5;
-  --muted: #f0f2f5;
-  --muted-foreground: #64748b;
-  --accent: #0084ff;
+  --secondary: #0891b2;
+  --secondary-foreground: #ffffff;
+  --sidebar: #ffffff;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #3b82f6;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #475569;
-  --chat-incoming-bg: #f0f2f5;
-  --chat-incoming-foreground: #1a1a1a;
-  --chat-outgoing-bg: #0084ff;
+  --border: #e4e4e7;
+  --input: #f4f4f5;
+  --ring: #3b82f6;
+  --chat-incoming-bg: #f4f4f5;
+  --chat-incoming-foreground: #18181b;
+  --chat-outgoing-bg: #3b82f6;
   --chat-outgoing-foreground: #ffffff;
-  --chat-tile-overlay: rgba(245, 247, 251, 0.85);
-  --scrollbar-track: #eaeff5;
-  --scrollbar-thumb: #c5cdd8;
+  --chat-tile-overlay: rgba(250, 250, 250, 0.85);
+  --scrollbar-track: #f4f4f5;
+  --scrollbar-thumb: #d4d4d8;
 }
 
 @theme inline {
@@ -169,7 +169,7 @@
   --error-border: rgba(239, 68, 68, 0.3);
   --error-text: #fafafa;
   --info-bg: rgba(24, 24, 27, 0.8);
-  --info-border: rgba(59, 130, 246, 0.3);
+  --info-border: rgba(16, 185, 129, 0.3);
   --info-text: #fafafa;
   --warning-bg: rgba(24, 24, 27, 0.8);
   --warning-border: rgba(234, 179, 8, 0.3);
@@ -187,7 +187,7 @@
   --error-border: rgba(239, 68, 68, 0.3);
   --error-text: #18181b;
   --info-bg: rgba(255, 255, 255, 0.8);
-  --info-border: rgba(59, 130, 246, 0.3);
+  --info-border: rgba(5, 150, 105, 0.3);
   --info-text: #18181b;
   --warning-bg: rgba(255, 255, 255, 0.8);
   --warning-border: rgba(234, 179, 8, 0.3);
@@ -202,9 +202,9 @@
   --auth-border: rgba(255, 255, 255, 0.08);
   --auth-text: #FFFFFF;
   --auth-text-secondary: #9EA5B4;
-  --auth-primary: #2F8CFF;
-  --auth-primary-from: #3095FF;
-  --auth-primary-to: #1678FF;
+  --auth-primary: #3b82f6;
+  --auth-primary-from: #3b82f6;
+  --auth-primary-to: #2563eb;
 }
 
 .auth-glass-card {
@@ -232,12 +232,12 @@
 
 .auth-input-field:focus {
   outline: none;
-  border-color: #2F8CFF;
-  box-shadow: 0 0 0 3px rgba(47, 140, 255, 0.15);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .auth-btn-primary {
-  background: linear-gradient(135deg, #3095FF, #1678FF);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   border: none;
   border-radius: 9999px;
   height: 48px;
@@ -246,7 +246,7 @@
   font-size: 15px;
   cursor: pointer;
   transition: all 0.25s ease;
-  box-shadow: 0 4px 15px rgba(47, 140, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
 }
 
 .auth-btn-primary:hover {
