@@ -43,9 +43,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const isFollowRequest =
     notification?.type === 'follow_request' ||
     notification?.type === 'friend_request' ||
-    notification?.type === 'FRIEND_REQUEST' ||
-    (typeof notification?.type === 'string' && notification.type.toLowerCase().includes('request')) ||
-    (typeof notification?.title === 'string' && notification.title.toLowerCase().includes('friend request'));
+    notification?.type === 'FRIEND_REQUEST';
 
   const requestId =
     notification.followRequestId ||
@@ -53,8 +51,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
     (notification as any).friendRequestId ||
     (notification as any).data?.requestId ||
     (notification as any).data?.followRequestId ||
-    (notification as any).data?.id ||
-    sender?.id;
+    (notification as any).data?.id;
 
   const handleClick = () => {
     if (!notification.read) {
@@ -139,7 +136,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
           {new Date(notification.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
-      {isFollowRequest && !notification.read && (
+      {isFollowRequest && !notification.read && requestId && (
         <div className="flex shrink-0 gap-1.5">
           <button
             onClick={handleAccept}
