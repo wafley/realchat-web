@@ -40,13 +40,6 @@ class SocketClient {
       }
     });
 
-    // Re-register internal listeners after reconnect
-    this.socket.on('connect', () => {
-      this.listeners.forEach((callbacks, event) => {
-        callbacks.forEach((cb) => this.socket?.on(event, cb));
-      });
-    });
-
     return this.socket;
   }
 
