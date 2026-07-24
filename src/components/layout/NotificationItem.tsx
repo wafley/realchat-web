@@ -6,12 +6,12 @@ import { useMarkNotificationRead } from '@/hooks/useNotifications';
 import { acceptFriendRequest, rejectFriendRequest } from '@/services/friends';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
-import type { Notification } from '@/types';
+import type { AppNotification } from '@/services/notificationService';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface NotificationItemProps {
-  notification: Notification;
+  notification: AppNotification;
 }
 
 const typeIcon: Record<string, typeof UserPlus> = {

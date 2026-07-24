@@ -5,11 +5,10 @@ import { socketClient } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
 import {
   getNotifications,
-  getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
+  type AppNotification,
 } from '@/services/notificationService';
-import type { Notification } from '@/types';
 
 export function useNotifications() {
   const setNotifications = useNotificationStore((s) => s.setNotifications);
@@ -22,35 +21,11 @@ export function useNotifications() {
 
   useEffect(() => {
     if (query.data) {
-      const list = Array.isArray(query.data)
-        ? query.data
-        : Array.isArray((query.data as any)?.notifications)
-          ? (query.data as any).notifications
-          : Array.isArray((query.data as any)?.items)
-            ? (query.data as any).items
-            : [];
+      const list = Array.isArray(query.data) ? query.data : [];
       setNotifications(list);
-      setUnreadCount(list.filter((n: Notification) => !n.read).length);
+      setUnreadCount(list.filter((n: AppNotification) => !n.read).length);
     }
   }, [query.data, setNotifications, setUnreadCount]);
-
-  return query;
-}
-
-export function useUnreadNotificationCount() {
-  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
-
-  const query = useQuery({
-    queryKey: ['unreadNotificationCount'],
-    queryFn: getUnreadNotificationCount,
-    refetchInterval: false,
-  });
-
-  useEffect(() => {
-    if (query.data != null) {
-      setUnreadCount(query.data);
-    }
-  }, [query.data, setUnreadCount]);
 
   return query;
 }
@@ -63,7 +38,6 @@ export function useMarkNotificationRead() {
     mutationFn: markNotificationRead,
     onSuccess: (_data, id) => {
       markStoreRead(id);
-      queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
@@ -77,32 +51,32 @@ export function useMarkAllNotificationsRead() {
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
       markAllStoreRead();
-      queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
 
 export function useNotificationSocket() {
-  const addNotification = useNotificationStore((s) => s.addNotification);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) return;
 
-    function onNewNotification(data: { notification: Notification }) {
-      if (data?.notification) {
-        const n = data.notification as any;
-        addNotification({ ...n, read: n.isRead ?? n.read ?? false });
-        queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      }
-    }
-
-    socketClient.on('notification:new', onNewNotification);
-    return () => {
-      socketClient.off('notification:new', onNewNotification);
+    const onFriendEvent = () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     };
-  }, [addNotification, queryClient]);
+
+    socketClient.on('friend:request-received', onFriendEvent);
+    socketClient.on('friend:request-accepted', onFriendEvent);
+    socketClient.on('friend:request-cancelled', onFriendEvent);
+    socketClient.on('friend:request-rejected', onFriendEvent);
+
+    return () => {
+      socketClient.off('friend:request-received', onFriendEvent);
+      socketClient.off('friend:request-accepted', onFriendEvent);
+      socketClient.off('friend:request-cancelled', onFriendEvent);
+      socketClient.off('friend:request-rejected', onFriendEvent);
+    };
+  }, [queryClient]);
 }

@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import type { Notification } from '@/types';
+import type { AppNotification } from '@/services/notificationService';
 
 interface NotificationState {
-  notifications: Notification[];
+  notifications: AppNotification[];
   unreadCount: number;
   isOpen: boolean;
-  setNotifications: (notifications: Notification[]) => void;
-  addNotification: (notification: Notification) => void;
+  setNotifications: (notifications: AppNotification[]) => void;
+  addNotification: (notification: AppNotification) => void;
   setUnreadCount: (count: number) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;

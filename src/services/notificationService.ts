@@ -1,48 +1,55 @@
-import type { Notification } from '@/types';
+import type { FriendRequest } from '@/types';
 import api from '@/lib/api';
 import { MOCK_NOTIFICATIONS } from '@/mocks/notifications';
 import { delay } from '@/mocks/utils';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
-export async function getNotifications(): Promise<Notification[]> {
+export interface AppNotification {
+  id: string;
+  type: 'follow_request' | 'follow_accepted' | 'unfollow' | 'message' | 'group';
+  title: string;
+  body?: string;
+  read: boolean;
+  followRequestId?: string;
+  conversationId?: string;
+  sender?: { id: string; username: string; avatarUrl?: string; fullName?: string };
+  createdAt: Date;
+}
+
+export async function getNotifications(): Promise<AppNotification[]> {
   if (DEV_MODE) {
     await delay(200);
     return [...MOCK_NOTIFICATIONS];
   }
-  const { data } = await api.get<any>('/notifications');
-  let list: any[] = [];
-  if (Array.isArray(data)) list = data;
-  else if (data && Array.isArray(data.notifications)) list = data.notifications;
-  else if (data && Array.isArray(data.items)) list = data.items;
-  return list.map((n: any) => ({ ...n, read: n.isRead ?? n.read ?? false }));
-}
-
-export async function getUnreadNotificationCount(): Promise<number> {
-  if (DEV_MODE) {
-    await delay(100);
-    return MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
-  }
-  const { data } = await api.get<any>('/notifications/unread-count');
-  if (typeof data === 'number') return data;
-  return data?.count ?? data?.unreadCount ?? 0;
+  const { data } = await api.get<FriendRequest[]>('/friends/requests');
+  const list = Array.isArray(data) ? data : [];
+  return list
+    .filter((r) => r.status === 'PENDING')
+    .map((r) => ({
+      id: r.id,
+      type: 'follow_request' as const,
+      title: `${r.sender.username} wants to follow you`,
+      body: '',
+      read: false,
+      followRequestId: r.id,
+      sender: r.sender,
+      createdAt: r.createdAt,
+    }));
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
   if (DEV_MODE) {
     await delay(100);
-    const notif = MOCK_NOTIFICATIONS.find((n) => n.id === id);
-    if (notif) notif.read = true;
     return;
   }
-  await api.put(`/notifications/${id}/read`);
+  // No dedicated endpoint — mark locally via query invalidation
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
   if (DEV_MODE) {
     await delay(100);
-    MOCK_NOTIFICATIONS.forEach((n) => { n.read = true; });
     return;
   }
-  await api.put('/notifications/read-all');
+  // No dedicated endpoint — mark locally via query invalidation
 }
