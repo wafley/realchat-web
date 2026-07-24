@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Users, UserPlus } from 'lucide-react';
 
 const menuItems = [
-  { to: '/friends', icon: Users, label: 'All Friends', end: true },
+  { to: '/friends', icon: Users, label: 'Following', end: true },
   { to: '/friends/add', icon: UserPlus, label: 'Find People' },
 ];
 

@@ -76,6 +76,7 @@ export function useMarkAllNotificationsRead() {
 
 export function useNotificationSocket() {
   const addNotification = useNotificationStore((s) => s.addNotification);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const userId = useAuthStore.getState().user?.id;
@@ -84,6 +85,8 @@ export function useNotificationSocket() {
     function onNewNotification(data: { notification: Notification }) {
       if (data?.notification) {
         addNotification(data.notification);
+        queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
       }
     }
 
@@ -91,5 +94,5 @@ export function useNotificationSocket() {
     return () => {
       socketClient.off('notification:new', onNewNotification);
     };
-  }, [addNotification]);
+  }, [addNotification, queryClient]);
 }
