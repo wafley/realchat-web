@@ -19,9 +19,11 @@ export default function NotificationBell() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+      if (target instanceof Element && target.closest('[data-notification-bell]')) {
+        return;
       }
+      setOpen(false);
     }
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
@@ -32,22 +34,22 @@ export default function NotificationBell() {
   const badgeText = unreadCount > 99 ? '99+' : unreadCount > 0 ? String(unreadCount) : '';
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative" ref={panelRef} data-notification-bell>
       <button
         onClick={toggleOpen}
-        className="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:h-12 lg:w-12"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-12 lg:w-12 lg:border-none lg:hover:bg-accent/10 lg:hover:text-foreground"
         title="Notifications"
       >
-        <Bell size={22} />
+        <Bell size={20} className="lg:size-[22px]" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-sidebar bg-destructive px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-background bg-destructive px-1 text-[9px] font-bold text-white lg:h-5 lg:min-w-5 lg:border-sidebar lg:text-[10px]">
             {badgeText}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="fixed top-0 left-0 max-lg:bottom-[68px] lg:left-20 z-50 flex h-[calc(100vh-68px)] lg:h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200">
+        <div data-notification-bell className="fixed top-0 left-0 max-lg:bottom-[68px] lg:left-20 z-50 flex h-[calc(100vh-68px)] lg:h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200">
           <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
             <h3 className="text-base font-bold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
