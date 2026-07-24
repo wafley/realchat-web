@@ -129,5 +129,17 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
+export interface Notification {
+  id: string;
+  type: 'follow_request' | 'follow_accepted' | 'unfollow' | 'message' | 'group';
+  title: string;
+  body?: string;
+  read: boolean;
+  followRequestId?: string;
+  conversationId?: string;
+  sender?: { id: string; username: string; avatarUrl?: string };
+  createdAt: Date;
+}
+
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';
