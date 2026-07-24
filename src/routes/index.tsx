@@ -94,10 +94,6 @@ export const router = createBrowserRouter([
                 path: 'friends/add',
                 lazy: () => import('@/pages/friends/AddFriend').then((m) => ({ Component: m.default })),
               },
-              {
-                path: 'friends/requests',
-                lazy: () => import('@/pages/friends/Requests').then((m) => ({ Component: m.default })),
-              },
             ],
           },
           {
