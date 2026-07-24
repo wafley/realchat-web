@@ -208,7 +208,10 @@ export function useChatActions(props: UseChatActionsProps) {
         emitTypingStop(chatId);
       }, 3000);
     }, 1500);
+    const handleBeforeUnload = () => emitTypingStop(chatId);
+    window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
       emitTypingStop(chatId);
