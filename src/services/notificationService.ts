@@ -10,8 +10,11 @@ export async function getNotifications(): Promise<Notification[]> {
     await delay(200);
     return [...MOCK_NOTIFICATIONS];
   }
-  const { data } = await api.get<Notification[]>('/notifications');
-  return data;
+  const { data } = await api.get<any>('/notifications');
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.notifications)) return data.notifications;
+  if (data && Array.isArray(data.items)) return data.items;
+  return [];
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
@@ -19,8 +22,9 @@ export async function getUnreadNotificationCount(): Promise<number> {
     await delay(100);
     return MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
   }
-  const { data } = await api.get<{ count: number }>('/notifications/unread-count');
-  return data?.count ?? 0;
+  const { data } = await api.get<any>('/notifications/unread-count');
+  if (typeof data === 'number') return data;
+  return data?.count ?? data?.unreadCount ?? 0;
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
