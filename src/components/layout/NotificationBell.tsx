@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotificationStore } from '@/store/notificationStore';
-import { useNotifications, useUnreadNotificationCount, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
+import { useNotifications, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
 import NotificationItem from './NotificationItem';
 
 export default function NotificationBell() {
@@ -14,7 +14,6 @@ export default function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useNotifications();
-  useUnreadNotificationCount();
   const markAllRead = useMarkAllNotificationsRead();
 
   useEffect(() => {

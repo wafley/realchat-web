@@ -64,6 +64,7 @@ export function useMarkNotificationRead() {
     onSuccess: (_data, id) => {
       markStoreRead(id);
       queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
@@ -77,6 +78,7 @@ export function useMarkAllNotificationsRead() {
     onSuccess: () => {
       markAllStoreRead();
       queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
