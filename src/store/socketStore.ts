@@ -20,20 +20,24 @@ export const useSocketStore = create<SocketState>((set) => ({
 
     socketClient.connect(token);
 
-    socketClient.on('connect', () => {
+    const socket = socketClient.getSocket();
+    if (!socket) return;
+
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.io.off('reconnect_attempt');
+
+    socket.on('connect', () => {
       set({ isConnected: true, reconnectAttempts: 0 });
     });
 
-    socketClient.on('disconnect', () => {
+    socket.on('disconnect', () => {
       set({ isConnected: false });
     });
 
-    const socket = socketClient.getSocket();
-    if (socket) {
-      socket.io.on('reconnect_attempt', (attempt: number) => {
-        set({ reconnectAttempts: attempt });
-      });
-    }
+    socket.io.on('reconnect_attempt', (attempt: number) => {
+      set({ reconnectAttempts: attempt });
+    });
   },
 
   disconnect: () => {

@@ -37,6 +37,11 @@ export function parseAuthError(err: unknown): string {
     if (typeof data?.message === 'string') return data.message;
     if (typeof data?.error === 'string') return data.error;
     if (Array.isArray(data?.message)) return (data.message as string[]).join(', ');
+    if (data?.errors && typeof data.errors === 'object') {
+      return Object.values(data.errors as Record<string, string[]>)
+        .flat()
+        .join(', ');
+    }
   }
   if (err instanceof Error) return err.message;
   return 'Something went wrong. Please try again.';

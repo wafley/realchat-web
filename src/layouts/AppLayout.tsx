@@ -7,7 +7,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useSocketStore } from '@/store/socketStore';
 import { initSocket, destroySocket } from '@/services/socket.service';
 import { useFriendSocket } from '@/hooks/useFriendSocket';
-import { useNotificationSocket } from '@/hooks/useNotifications';
 
 export default function AppLayout() {
   const location = useLocation();
@@ -25,7 +24,6 @@ export default function AppLayout() {
   }, [isAuthenticated]);
 
   useFriendSocket();
-  useNotificationSocket();
 
   return (
     <div className="flex h-screen flex-col lg:flex-row">

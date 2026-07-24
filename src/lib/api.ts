@@ -46,6 +46,7 @@ api.interceptors.response.use(
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) {
       localStorage.removeItem('accessToken');
+      window.dispatchEvent(new CustomEvent('auth:force-logout'));
       window.location.href = '/login';
       return Promise.reject(error);
     }
@@ -83,6 +84,7 @@ api.interceptors.response.use(
       processQueue(refreshError, null);
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      window.dispatchEvent(new CustomEvent('auth:force-logout'));
       window.location.href = '/login';
       return Promise.reject(refreshError);
     } finally {

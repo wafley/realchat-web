@@ -40,10 +40,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const avatarUrl = sender?.avatarUrl || (notification as any).avatarUrl || (notification as any).data?.avatarUrl;
   const senderName = sender?.fullName || sender?.username || (notification as any).senderName || (notification as any).data?.senderName;
 
-  const isFollowRequest =
-    notification?.type === 'follow_request' ||
-    notification?.type === 'friend_request' ||
-    notification?.type === 'FRIEND_REQUEST';
+  const isFollowRequest = /friend.*request|follow.*request/i.test(notification?.type ?? '');
 
   const requestId =
     notification.followRequestId ||

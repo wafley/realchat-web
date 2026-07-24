@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNotificationStore } from '@/store/notificationStore';
-import { socketClient } from '@/lib/socket';
-import { useAuthStore } from '@/store/authStore';
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -83,26 +81,4 @@ export function useMarkAllNotificationsRead() {
   });
 }
 
-export function useNotificationSocket() {
-  const addNotification = useNotificationStore((s) => s.addNotification);
-  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return;
-
-    function onNewNotification(data: { notification: Notification }) {
-      if (data?.notification) {
-        const n = data.notification as any;
-        addNotification({ ...n, read: n.isRead ?? n.read ?? false });
-        queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      }
-    }
-
-    socketClient.on('notification:new', onNewNotification);
-    return () => {
-      socketClient.off('notification:new', onNewNotification);
-    };
-  }, [addNotification, queryClient]);
-}

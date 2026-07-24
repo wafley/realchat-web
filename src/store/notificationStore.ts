@@ -18,12 +18,18 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
   unreadCount: 0,
   isOpen: false,
-  setNotifications: (notifications) => set({ notifications }),
+  setNotifications: (notifications) =>
+    set({
+      notifications: notifications.map((n) => ({ ...n, read: n.isRead ?? n.read ?? false })),
+    }),
   addNotification: (notification) =>
-    set((state) => ({
-      notifications: [notification, ...state.notifications],
-      unreadCount: state.unreadCount + (notification.read ? 0 : 1),
-    })),
+    set((state) => {
+      const normalized = { ...notification, read: notification.isRead ?? notification.read ?? false };
+      return {
+        notifications: [normalized, ...state.notifications],
+        unreadCount: state.unreadCount + (normalized.read ? 0 : 1),
+      };
+    }),
   setUnreadCount: (count) => set({ unreadCount: count }),
   markAsRead: (id) =>
     set((state) => ({
