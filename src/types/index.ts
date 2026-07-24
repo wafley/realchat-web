@@ -134,6 +134,7 @@ export interface Notification {
   type: 'follow_request' | 'follow_accepted' | 'unfollow' | 'message' | 'group';
   title: string;
   body?: string;
+  isRead?: boolean;
   read: boolean;
   followRequestId?: string;
   conversationId?: string;
