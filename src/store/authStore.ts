@@ -34,6 +34,14 @@ function devLogin(set: (partial: Partial<AuthState>) => void) {
   set({ user: MOCK_USER, token, isAuthenticated: true, isLoading: false });
 }
 
+window.addEventListener('auth:force-logout', () => {
+  const state = useAuthStore.getState();
+  if (state.isAuthenticated) {
+    queryClient.clear();
+    useAuthStore.setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
+  }
+});
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: localStorage.getItem('accessToken'),
