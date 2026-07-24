@@ -13,7 +13,6 @@ export function useFriendSocket() {
     const invalidateRequests = () => {
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'incoming'] });
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
-      queryClient.invalidateQueries({ queryKey: ['pendingFriendRequestCount'] });
     };
 
     const onReceived = () => invalidateRequests();
