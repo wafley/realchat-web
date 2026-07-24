@@ -15,10 +15,15 @@ export function useFriendSocket() {
       queryClient.invalidateQueries({ queryKey: ['friendRequests', 'sent'] });
     };
 
-    const onReceived = () => invalidateRequests();
-    const onAccepted = () => { invalidateFriends(); invalidateRequests(); };
-    const onRejected = () => invalidateRequests();
-    const onCancelled = () => invalidateRequests();
+    const invalidateNotifications = () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unreadNotificationCount'] });
+    };
+
+    const onReceived = () => { invalidateRequests(); invalidateNotifications(); };
+    const onAccepted = () => { invalidateFriends(); invalidateRequests(); invalidateNotifications(); };
+    const onRejected = () => { invalidateRequests(); invalidateNotifications(); };
+    const onCancelled = () => { invalidateRequests(); invalidateNotifications(); };
     const onRemoved = () => invalidateFriends();
     const onListUpdated = () => invalidateFriends();
 
