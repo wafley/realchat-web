@@ -116,10 +116,10 @@ export default function AllFriends() {
                   </button>
                 <button
                   onClick={() => handleUnfollow(user.id, user.fullName)}
-                  className="flex shrink-0 items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive hover:text-white"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-destructive transition-colors hover:bg-destructive/10"
+                  title="Unfollow"
                 >
-                  <UserMinus size={16} />
-                  Unfollow
+                  <UserMinus size={18} />
                 </button>
                 </div>
               ))
