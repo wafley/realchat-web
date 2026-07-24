@@ -7,6 +7,7 @@ export interface NavItem {
   label: string;
   end?: boolean;
   desktopHidden?: boolean;
+  mobileHidden?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -14,5 +15,5 @@ export const navItems: NavItem[] = [
   { to: '/friends', icon: UserPlus, label: 'Following' },
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/profile', icon: User, label: 'Profile', desktopHidden: true },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/settings', icon: Settings, label: 'Settings', mobileHidden: true },
 ];
