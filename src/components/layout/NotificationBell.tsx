@@ -47,25 +47,35 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-full top-0 z-50 ml-4 h-screen w-[30rem] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h3 className="text-sm font-bold text-foreground">Notifications</h3>
+        <div className="fixed top-0 left-0 max-lg:bottom-[68px] lg:left-20 z-50 flex h-[calc(100vh-68px)] lg:h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200">
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
+            <h3 className="text-base font-bold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllRead.mutate()}
-                className="text-xs text-accent hover:text-accent/80"
+                className="text-xs font-semibold text-accent hover:underline"
               >
                 Mark all as read
               </button>
             )}
           </div>
-          <div className="overflow-y-auto h-[calc(100vh-3rem)]">
+          <div className="flex-1 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No notifications yet</p>
+              <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted/30">
+                  <Bell size={24} className="text-muted-foreground" />
+                </div>
+                <p className="font-semibold text-foreground">No notifications yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  When someone interacts with you, you'll see it here.
+                </p>
+              </div>
             ) : (
-              notifications.map((n) => (
-                <NotificationItem key={n.id} notification={n} />
-              ))
+              <div className="divide-y divide-border/40">
+                {notifications.map((n) => (
+                  <NotificationItem key={n.id} notification={n} />
+                ))}
+              </div>
             )}
           </div>
         </div>
