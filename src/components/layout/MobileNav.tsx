@@ -4,7 +4,6 @@ import { navItems } from '@/lib/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import NotificationBell from '@/components/layout/NotificationBell';
 
 interface MobileNavProps {
   className?: string;
@@ -52,7 +51,6 @@ export default function MobileNav({ className }: MobileNavProps) {
         </Avatar>
         <span className="text-[10px]">Profile</span>
       </NavLink>
-      <NotificationBell />
     </nav>
   );
 }

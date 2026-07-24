@@ -6,7 +6,7 @@ import { Search, Plus, MessageSquareText, Users, User, UserPlus, AlertCircle, Re
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
-import ConnectionStatus from '@/components/layout/ConnectionStatus';
+import NotificationBell from '@/components/layout/NotificationBell';
 import { useTypingStore } from '@/store/typingStore';
 import { getConversations, bulkDeleteConversations } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
@@ -240,7 +240,9 @@ export default function ChatList() {
           >
             <Plus size={20} />
           </button>
-          <ConnectionStatus />
+          <div className="lg:hidden">
+            <NotificationBell />
+          </div>
         </div>
       )}
 
