@@ -47,7 +47,7 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-full top-0 z-50 ml-4 w-[30rem] max-h-[70vh] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+        <div className="absolute left-full top-0 z-50 ml-4 h-screen w-[30rem] overflow-hidden rounded-xl border border-border bg-card shadow-xl">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h3 className="text-sm font-bold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
@@ -59,7 +59,7 @@ export default function NotificationBell() {
               </button>
             )}
           </div>
-          <div className="overflow-y-auto max-h-[calc(70vh-3rem)]">
+          <div className="overflow-y-auto h-[calc(100vh-3rem)]">
             {notifications.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">No notifications yet</p>
             ) : (
