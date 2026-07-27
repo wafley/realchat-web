@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserCheck, Heart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
@@ -8,6 +8,7 @@ import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
 import { followUser, unfollowUser, getRelationship } from '@/services/friends';
+import { getUserPosts } from '@/services/posts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -60,6 +61,12 @@ export default function UserProfile() {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
     onError: () => toast.error('Failed to block user'),
+  });
+
+  const { data: userPosts = [] } = useQuery({
+    queryKey: ['userPosts', userId],
+    queryFn: () => getUserPosts(userId!),
+    enabled: !!userId,
   });
 
   return (
@@ -178,6 +185,31 @@ export default function UserProfile() {
                   {blockMutation.isPending ? 'Blocking...' : 'Block User'}
                 </button>
               </div>
+
+              <hr className="my-6 border-border" />
+
+              {userPosts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {userPosts.map((post) => (
+                    <div key={post.id} className="group relative aspect-square overflow-hidden rounded-md bg-muted">
+                      <img
+                        src={post.imageUrl}
+                        alt={post.caption || 'Post'}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Heart size={18} className="fill-white text-white" />
+                        <span className="text-sm font-bold text-white">{post.likes}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-sm text-muted-foreground">No posts yet</p>
+                </div>
+              )}
             </>
           )}
         </div>

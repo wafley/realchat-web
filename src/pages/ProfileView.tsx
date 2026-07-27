@@ -2,9 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, User, Share2 } from 'lucide-react';
+import { ArrowLeft, User, Share2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFollowing, getFollowers } from '@/services/friends';
+import { getUserPosts } from '@/services/posts';
 
 export default function ProfileView() {
   const navigate = useNavigate();
@@ -18,6 +19,12 @@ export default function ProfileView() {
   const { data: followers = [] } = useQuery({
     queryKey: ['followers'],
     queryFn: getFollowers,
+  });
+
+  const { data: myPosts = [] } = useQuery({
+    queryKey: ['userPosts', user?.id],
+    queryFn: () => getUserPosts(user!.id),
+    enabled: !!user?.id,
   });
 
   function copyProfileLink() {
@@ -97,6 +104,29 @@ export default function ProfileView() {
             </button>
           </div>
           <hr className="my-6 border-border" />
+
+          {myPosts.length > 0 ? (
+            <div className="grid grid-cols-3 gap-1 md:gap-2">
+              {myPosts.map((post) => (
+                <div key={post.id} className="group relative aspect-square overflow-hidden rounded-md bg-muted">
+                  <img
+                    src={post.imageUrl}
+                    alt={post.caption || 'Post'}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Heart size={18} className="fill-white text-white" />
+                    <span className="text-sm font-bold text-white">{post.likes}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-sm text-muted-foreground">No posts yet</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
