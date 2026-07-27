@@ -8,7 +8,7 @@ import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
-import { followUser, unfollowUser, getRelationship } from '@/services/friends';
+import { followUser, unfollowUser, getRelationship, getUserFollowers, getUserFollowing } from '@/services/friends';
 import { getUserPosts } from '@/services/posts';
 import type { Post } from '@/types';
 import PostDetailModal from '@/components/post/PostDetailModal';
@@ -36,12 +36,38 @@ export default function UserProfile() {
     enabled: !!userId && !isSelf,
   });
 
+  const { data: followingCount = 0 } = useQuery({
+    queryKey: ['userFollowingCount', userId],
+    queryFn: async () => {
+      const list = await getUserFollowing(userId!);
+      return list.length;
+    },
+    enabled: !!userId,
+  });
+
+  const { data: followersCount = 0 } = useQuery({
+    queryKey: ['userFollowersCount', userId],
+    queryFn: async () => {
+      const list = await getUserFollowers(userId!);
+      return list.length;
+    },
+    enabled: !!userId,
+  });
+
+  const invalidateCounts = () => {
+    queryClient.invalidateQueries({ queryKey: ['following'] });
+    queryClient.invalidateQueries({ queryKey: ['followers'] });
+    queryClient.invalidateQueries({ queryKey: ['userFollowingCount', userId] });
+    queryClient.invalidateQueries({ queryKey: ['userFollowersCount', userId] });
+  };
+
   const followMutation = useMutation({
     mutationFn: () => followUser(userId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['relationship', userId] });
       queryClient.invalidateQueries({ queryKey: ['follow'] });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
+      invalidateCounts();
       toast.success('Followed!');
     },
     onError: () => toast.error('Failed to follow'),
@@ -53,6 +79,7 @@ export default function UserProfile() {
       queryClient.invalidateQueries({ queryKey: ['relationship', userId] });
       queryClient.invalidateQueries({ queryKey: ['follow'] });
       queryClient.invalidateQueries({ queryKey: ['user', userId] });
+      invalidateCounts();
       toast.success('Unfollowed');
     },
     onError: () => toast.error('Failed to unfollow'),
@@ -132,11 +159,11 @@ export default function UserProfile() {
 
               <div className="mt-4 flex items-center gap-8 text-sm text-foreground">
                 <button onClick={() => navigate(`/profile/${user.id}/followers`)}>
-                  <span className="font-semibold">0</span>
+                  <span className="font-semibold">{followersCount}</span>
                   <span className="ml-1 text-muted-foreground">followers</span>
                 </button>
                 <button onClick={() => navigate(`/profile/${user.id}/following`)}>
-                  <span className="font-semibold">0</span>
+                  <span className="font-semibold">{followingCount}</span>
                   <span className="ml-1 text-muted-foreground">following</span>
                 </button>
               </div>
