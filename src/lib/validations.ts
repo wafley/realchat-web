@@ -31,7 +31,8 @@ export const editProfileSchema = z.object({
     .string()
     .trim()
     .min(1, 'Username is required')
-    .min(3, 'Username must be at least 3 characters'),
+    .min(3, 'Username must be at least 3 characters')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Username must not contain spaces. Use _ or - instead'),
   bio: z.string().max(200, 'Bio must be 200 characters or less').optional(),
 });
 
