@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Loader2, User, ArrowLeft } from 'lucide-react';
+import { Search, Loader2, User, ArrowLeft, MessageSquareText } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { getFollowing, getFollowers, getUserFollowing, getUserFollowers, followUser, unfollowUser } from '@/services/friends';
+import { findOrCreateConversation } from '@/services/chat';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -39,10 +40,24 @@ export default function FollowPage() {
     enabled: !!targetUserId,
   });
 
+  const { data: myFollowing = [] } = useQuery({
+    queryKey: ['following'],
+    queryFn: getFollowing,
+    enabled: isOwn,
+  });
+
+  const isFollowing = (uid: string) => myFollowing.some((f) => f.id === uid);
+
+  const invalidateCounts = () => {
+    queryClient.invalidateQueries({ queryKey: ['following'] });
+    queryClient.invalidateQueries({ queryKey: ['followers'] });
+  };
+
   const followMutation = useMutation({
     mutationFn: (uid: string) => followUser(uid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['follow'] });
+      invalidateCounts();
     },
     onError: () => toast.error('Failed to follow'),
   });
@@ -51,6 +66,7 @@ export default function FollowPage() {
     mutationFn: (uid: string) => unfollowUser(uid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['follow'] });
+      invalidateCounts();
     },
     onError: () => toast.error('Failed to unfollow'),
   });
@@ -161,7 +177,7 @@ export default function FollowPage() {
                     <p className="truncate text-sm font-semibold text-foreground">{u.fullName}</p>
                     <p className="truncate text-xs text-muted-foreground">{u.bio || u.username}</p>
                   </div>
-                  {!isMe && isOwn && (
+                   {!isMe && isOwn && (
                     isFollowingTab ? (
                       <button
                         onClick={() => unfollowMutation.mutate(u.id)}
@@ -170,13 +186,28 @@ export default function FollowPage() {
                       >
                         {isUnfollowPending ? '...' : 'Following'}
                       </button>
+                    ) : isFollowing(u.id) ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const dmId = await findOrCreateConversation(u.id);
+                            navigate(`/dm/${dmId}`, { state: { name: u.fullName, online: u.status === 'online' } });
+                          } catch {
+                            toast.error('Failed to open conversation');
+                          }
+                        }}
+                        className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent/10"
+                      >
+                        <MessageSquareText size={14} className="inline-block" />
+                        <span className="ml-1">Message</span>
+                      </button>
                     ) : (
                       <button
                         onClick={() => followMutation.mutate(u.id)}
                         disabled={isFollowPending}
                         className="shrink-0 rounded-lg bg-accent px-4 py-1.5 text-xs font-semibold text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
                       >
-                        {isFollowPending ? '...' : 'Follow'}
+                        {isFollowPending ? '...' : 'Follow Back'}
                       </button>
                     )
                   )}
