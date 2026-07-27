@@ -1,5 +1,5 @@
-import FollowList from '@/pages/profile/FollowList';
+import FollowPage from '@/pages/profile/FollowPage';
 
 export default function FollowingPage() {
-  return <FollowList type="following" />;
+  return <FollowPage />;
 }

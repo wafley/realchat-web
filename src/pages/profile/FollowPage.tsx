@@ -1,30 +1,35 @@
 import { useState, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Loader2, User, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 import { getFollowing, getFollowers, getUserFollowing, getUserFollowers, followUser, unfollowUser } from '@/services/friends';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
-interface FollowListProps {
-  type: 'following' | 'followers';
-}
-
-export default function FollowList({ type }: FollowListProps) {
+export default function FollowPage() {
   const navigate = useNavigate();
   const { userId } = useParams();
+  const location = useLocation();
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
 
   const targetUserId = userId || currentUser?.id || '';
   const isOwn = !userId || userId === currentUser?.id;
-  const isFollowingType = type === 'following';
+
+  const isFollowingTab = location.pathname.endsWith('/following');
+  const type: 'following' | 'followers' = isFollowingTab ? 'following' : 'followers';
+
+  const switchTab = (t: 'following' | 'followers') => {
+    const base = userId ? `/profile/${userId}` : '/profile';
+    navigate(t === 'following' ? `${base}/following` : `${base}/followers`);
+  };
 
   const queryFn = isOwn
-    ? (isFollowingType ? getFollowing : getFollowers)
-    : (isFollowingType
+    ? (isFollowingTab ? getFollowing : getFollowers)
+    : (isFollowingTab
         ? () => getUserFollowing(targetUserId)
         : () => getUserFollowers(targetUserId));
 
@@ -68,8 +73,6 @@ export default function FollowList({ type }: FollowListProps) {
     }
   };
 
-  const title = isFollowingType ? 'Following' : 'Followers';
-
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -77,6 +80,11 @@ export default function FollowList({ type }: FollowListProps) {
       </div>
     );
   }
+
+  const tabs = [
+    { key: 'followers' as const, label: 'Followers', count: 0 },
+    { key: 'following' as const, label: 'Following', count: 0 },
+  ];
 
   return (
     <div className="mx-auto w-full flex-1 overflow-y-auto">
@@ -87,10 +95,6 @@ export default function FollowList({ type }: FollowListProps) {
         >
           <ArrowLeft size={20} />
         </button>
-        <div>
-          <h2 className="text-base font-bold text-foreground">{title}</h2>
-          <p className="text-xs text-muted-foreground">{users.length} {isFollowingType ? 'following' : 'followers'}</p>
-        </div>
         <div className="relative ml-auto max-w-[180px]">
           <input
             type="text"
@@ -102,9 +106,29 @@ export default function FollowList({ type }: FollowListProps) {
         </div>
       </div>
 
+      <div className="flex border-b border-border">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => switchTab(tab.key)}
+            className={cn(
+              'relative flex-1 px-4 py-3 text-center text-sm font-semibold transition-colors',
+              type === tab.key
+                ? 'text-foreground'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {tab.label}
+            {type === tab.key && (
+              <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-accent" />
+            )}
+          </button>
+        ))}
+      </div>
+
       {users.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          {isFollowingType ? 'Not following anyone yet.' : 'No followers yet.'}
+          {isFollowingTab ? 'Not following anyone yet.' : 'No followers yet.'}
         </p>
       ) : (
         <div>
@@ -138,7 +162,7 @@ export default function FollowList({ type }: FollowListProps) {
                     <p className="truncate text-xs text-muted-foreground">{u.bio || u.username}</p>
                   </div>
                   {!isMe && isOwn && (
-                    isFollowingType ? (
+                    isFollowingTab ? (
                       <button
                         onClick={() => unfollowMutation.mutate(u.id)}
                         disabled={isUnfollowPending}

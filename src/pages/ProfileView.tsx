@@ -69,18 +69,18 @@ export default function ProfileView() {
 
             <div className="mt-5 flex items-center gap-6">
               <button
-                onClick={() => navigate('/profile/following')}
-                className="text-center transition-opacity hover:opacity-70"
-              >
-                <p className="text-base font-bold text-foreground">{following.length}</p>
-                <p className="text-xs text-muted-foreground">Following</p>
-              </button>
-              <button
                 onClick={() => navigate('/profile/followers')}
                 className="text-center transition-opacity hover:opacity-70"
               >
                 <p className="text-base font-bold text-foreground">{followers.length}</p>
                 <p className="text-xs text-muted-foreground">Followers</p>
+              </button>
+              <button
+                onClick={() => navigate('/profile/following')}
+                className="text-center transition-opacity hover:opacity-70"
+              >
+                <p className="text-base font-bold text-foreground">{following.length}</p>
+                <p className="text-xs text-muted-foreground">Following</p>
               </button>
             </div>
           </div>
