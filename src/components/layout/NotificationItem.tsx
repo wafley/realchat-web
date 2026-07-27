@@ -3,7 +3,7 @@ import { UserPlus, UserCheck, UserMinus, MessageCircle, Users, Bell } from 'luci
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useMarkNotificationRead } from '@/hooks/useNotifications';
-import { acceptFriendRequest, rejectFriendRequest } from '@/services/friends';
+import { followUser } from '@/services/friends';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
 import type { Notification } from '@/types';
@@ -18,6 +18,7 @@ const typeIcon: Record<string, typeof UserPlus> = {
   follow_request: UserPlus,
   friend_request: UserPlus,
   FRIEND_REQUEST: UserPlus,
+  new_follower: UserPlus,
   follow_accepted: UserCheck,
   friend_accepted: UserCheck,
   FRIEND_ACCEPTED: UserCheck,
@@ -40,7 +41,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const avatarUrl = sender?.avatarUrl || (notification as any).avatarUrl || (notification as any).data?.avatarUrl;
   const senderName = sender?.fullName || sender?.username || (notification as any).senderName || (notification as any).data?.senderName;
 
-  const isFollowRequest = /friend.*request|follow.*request/i.test(notification?.type ?? '');
+  const isFollowNotif = /friend.*request|follow.*request|new_follower/i.test(notification?.type ?? '');
 
   const requestId =
     notification.followRequestId ||
@@ -64,40 +65,20 @@ export default function NotificationItem({ notification }: NotificationItemProps
     }
   };
 
-  const handleAccept = async (e: React.MouseEvent) => {
+  const handleFollowBack = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!requestId) {
-      toast.error('Missing request ID');
+    if (!sender?.id) {
+      toast.error('Missing user');
       return;
     }
     setActionLoading('accept');
     try {
-      await acceptFriendRequest(requestId);
+      await followUser(sender.id);
       markRead.mutate(notification.id);
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
-      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
-      toast.success('Follow request accepted!');
+      queryClient.invalidateQueries({ queryKey: ['follow'] });
+      toast.success('Followed back!');
     } catch {
-      toast.error('Failed to accept');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleReject = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!requestId) {
-      toast.error('Missing request ID');
-      return;
-    }
-    setActionLoading('reject');
-    try {
-      await rejectFriendRequest(requestId);
-      markRead.mutate(notification.id);
-      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
-      toast.success('Request rejected');
-    } catch {
-      toast.error('Failed to reject');
+      toast.error('Failed to follow back');
     } finally {
       setActionLoading(null);
     }
@@ -133,21 +114,14 @@ export default function NotificationItem({ notification }: NotificationItemProps
           {new Date(notification.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}
         </p>
       </div>
-      {isFollowRequest && !notification.read && requestId && (
+      {isFollowNotif && !notification.read && sender?.id && (
         <div className="flex shrink-0 gap-1.5">
           <button
-            onClick={handleAccept}
+            onClick={handleFollowBack}
             disabled={actionLoading !== null}
             className="flex h-8 items-center justify-center rounded-lg bg-accent px-3 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
           >
-            {actionLoading === 'accept' ? <Loader2 size={14} className="animate-spin" /> : 'Accept'}
-          </button>
-          <button
-            onClick={handleReject}
-            disabled={actionLoading !== null}
-            className="flex h-8 items-center justify-center rounded-lg border border-input px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-          >
-            {actionLoading === 'reject' ? <Loader2 size={14} className="animate-spin" /> : 'Reject'}
+            {actionLoading === 'accept' ? <Loader2 size={14} className="animate-spin" /> : 'Follow Back'}
           </button>
         </div>
       )}

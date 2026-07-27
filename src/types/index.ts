@@ -82,14 +82,6 @@ export interface Conversation {
   muted?: boolean;
 }
 
-export interface FriendRequest {
-  id: string;
-  sender: { id: string; username: string; avatarUrl?: string };
-  receiver: { id: string; username: string; avatarUrl?: string };
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-  createdAt: Date;
-}
-
 export interface AuthResponse {
   user: User;
   accessToken: string;
@@ -131,12 +123,10 @@ export interface PaginatedResponse<T> {
 
 export interface Notification {
   id: string;
-  type: 'follow_request' | 'follow_accepted' | 'unfollow' | 'message' | 'group';
+  type: 'new_follower' | 'message' | 'group';
   title: string;
   body?: string;
-  isRead?: boolean;
   read: boolean;
-  followRequestId?: string;
   conversationId?: string;
   sender?: { id: string; username: string; avatarUrl?: string };
   createdAt: Date;

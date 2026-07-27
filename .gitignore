@@ -62,6 +62,12 @@ Desktop.ini
 *.swo
 
 # =========================
+# Working Notes
+# =========================
+pr-description.md
+backend-spec-follow.md
+
+# =========================
 # Prisma
 # =========================
 prisma/dev.db

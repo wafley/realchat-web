@@ -1,9 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { User } from 'lucide-react';
+import { User, UserCheck, Users } from 'lucide-react';
 
 const menuItems = [
   { to: '/profile', icon: User, label: 'Profile', end: true },
+  { to: '/profile/following', icon: UserCheck, label: 'Following' },
+  { to: '/profile/followers', icon: Users, label: 'Followers' },
 ];
 
 export default function ProfileLayout() {
