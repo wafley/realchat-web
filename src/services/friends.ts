@@ -68,6 +68,24 @@ export async function getFollowers(): Promise<User[]> {
   return data;
 }
 
+export async function getUserFollowing(userId: string): Promise<User[]> {
+  if (DEV_MODE) {
+    await delay(200);
+    return [...MOCK_FOLLOWING];
+  }
+  const { data } = await api.get<User[]>(`/users/${userId}/following`);
+  return data;
+}
+
+export async function getUserFollowers(userId: string): Promise<User[]> {
+  if (DEV_MODE) {
+    await delay(200);
+    return [...MOCK_FOLLOWERS];
+  }
+  const { data } = await api.get<User[]>(`/users/${userId}/followers`);
+  return data;
+}
+
 export async function getRelationship(userId: string): Promise<'none' | 'following' | 'follows_you' | 'mutual'> {
   if (DEV_MODE) {
     await delay(100);
