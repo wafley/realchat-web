@@ -2,12 +2,14 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image, Loader2, X } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 import { createPost } from '@/services/posts';
 import { toast } from 'sonner';
 
 export default function CreatePostPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [caption, setCaption] = useState('');
@@ -17,6 +19,7 @@ export default function CreatePostPage() {
     mutationFn: () => createPost(imageUrl, caption || undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['userPosts', user?.id] });
       toast.success('Post created!');
       navigate('/feed');
     },
