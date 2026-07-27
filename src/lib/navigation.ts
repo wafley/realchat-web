@@ -11,7 +11,7 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { to: '/', icon: MessageSquare, label: 'Home', end: true },
+  { to: '/', icon: MessageSquare, label: 'Chat', end: true },
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/create', icon: Plus, label: 'Create' },
   { to: '/feed', icon: LayoutGrid, label: 'Feed' },
