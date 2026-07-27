@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, UserPlus, Loader2, UserCheck, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { searchPeople, sendFollowRequest } from '@/services/friends';
+import { searchPeople, followUser } from '@/services/friends';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/types';
 
@@ -39,11 +39,11 @@ export default function AddFriend() {
 
   const handleFollow = async (userId: string) => {
     try {
-      await sendFollowRequest(userId);
+      await followUser(userId);
       setSentIds((prev) => new Set(prev).add(userId));
-      toast.success('Follow request sent!');
+      toast.success('Followed!');
     } catch {
-      toast.error('Failed to send follow');
+      toast.error('Failed to follow');
     }
   };
 
