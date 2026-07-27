@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { getFollowing, getFollowers } from '@/services/friends';
 
 export default function ProfileView() {
@@ -18,6 +19,12 @@ export default function ProfileView() {
     queryKey: ['followers'],
     queryFn: getFollowers,
   });
+
+  function copyProfileLink() {
+    if (!user?.id) return;
+    navigator.clipboard.writeText(`${window.location.origin}/profile/${user.id}`);
+    toast.success('Profile link copied!');
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -61,7 +68,7 @@ export default function ProfileView() {
             </div>
           </div>
 
-          <p className="mt-3 text-sm text-muted-foreground">{user?.bio || 'No bio yet'}</p>
+          <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user?.bio || 'No bio yet'}</p>
           <div className="mt-4 flex items-center gap-8">
             <button onClick={() => navigate('/profile/followers')} className="text-sm text-foreground">
               <span className="font-semibold">{followers.length}</span>
@@ -72,12 +79,24 @@ export default function ProfileView() {
               <span className="ml-1 text-muted-foreground">following</span>
             </button>
           </div>
-          <button
-            onClick={() => navigate('/profile/edit')}
-            className="mt-4 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
-          >
-            Edit Profile
-          </button>
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              onClick={() => navigate('/profile/edit')}
+              className="flex-1 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
+            >
+              Edit Profile
+            </button>
+            <button
+              onClick={copyProfileLink}
+              className="flex-1 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Share2 size={16} />
+                Share Profile
+              </span>
+            </button>
+          </div>
+          <hr className="my-6 border-border" />
         </div>
       </div>
     </div>

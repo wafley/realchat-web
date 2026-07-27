@@ -117,7 +117,7 @@ export default function UserProfile() {
                 </div>
               </div>
 
-              <p className="mt-3 text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
 
               <div className="mt-4 flex items-center gap-8 text-sm text-foreground">
                 <button onClick={() => navigate(`/profile/${user.id}/followers`)}>
