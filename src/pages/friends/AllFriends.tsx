@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, MessageSquareText, Loader2, User, UserMinus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getFriends, unfollow } from '@/services/friends';
+import { getFollowing, unfollowUser } from '@/services/friends';
 import { findOrCreateConversation } from '@/services/chat';
 import { toast } from 'sonner';
 
@@ -13,24 +13,24 @@ export default function AllFriends() {
   const [search, setSearch] = useState('');
 
   const { data: friends = [], isLoading } = useQuery({
-    queryKey: ['friends'],
-    queryFn: getFriends,
+    queryKey: ['following'],
+    queryFn: getFollowing,
   });
 
   const unfollowMutation = useMutation({
-    mutationFn: (userId: string) => unfollow(userId),
+    mutationFn: (userId: string) => unfollowUser(userId),
     onMutate: async (userId) => {
-      await queryClient.cancelQueries({ queryKey: ['friends'] });
-      const prev = queryClient.getQueryData(['friends']);
-      queryClient.setQueryData(['friends'], (old: any[]) => old?.filter((f: any) => f.id !== userId) ?? []);
+      await queryClient.cancelQueries({ queryKey: ['following'] });
+      const prev = queryClient.getQueryData(['following']);
+      queryClient.setQueryData(['following'], (old: any[]) => old?.filter((f: any) => f.id !== userId) ?? []);
       return { prev };
     },
     onError: (_err, _userId, context) => {
-      if (context?.prev) queryClient.setQueryData(['friends'], context.prev);
+      if (context?.prev) queryClient.setQueryData(['following'], context.prev);
       toast.error('Failed to unfollow');
     },
     onSuccess: (_data, _userId) => {
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['following'] });
     },
   });
 
