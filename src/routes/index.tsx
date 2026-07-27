@@ -130,6 +130,18 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            path: 'feed',
+            lazy: () => import('@/pages/feed/FeedPage').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'create',
+            lazy: () => import('@/pages/create/CreatePostPage').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'post/:postId',
+            lazy: () => import('@/pages/post/PostDetailPage').then((m) => ({ Component: m.default })),
+          },
+          {
             path: 'search',
             lazy: () => import('@/pages/Search').then((m) => ({ Component: m.default })),
           },

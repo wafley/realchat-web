@@ -132,5 +132,15 @@ export interface Notification {
   createdAt: Date;
 }
 
+export interface Post {
+  id: string;
+  userId: string;
+  imageUrl: string;
+  caption?: string;
+  likes: number;
+  createdAt: Date;
+  user?: User;
+}
+
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';
