@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Pencil, Mail, Info, Calendar, User, Settings } from 'lucide-react';
+import { getFollowing, getFollowers } from '@/services/friends';
 import { cn } from '@/lib/utils';
 
 const infoItems = [
@@ -15,6 +17,16 @@ const infoItems = [
 export default function ProfileView() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+
+  const { data: following = [] } = useQuery({
+    queryKey: ['following'],
+    queryFn: getFollowing,
+  });
+
+  const { data: followers = [] } = useQuery({
+    queryKey: ['followers'],
+    queryFn: getFollowers,
+  });
 
   return (
     <div className="flex h-full flex-col">
@@ -54,6 +66,23 @@ export default function ProfileView() {
               <span className="h-2 w-2 rounded-full bg-green-500" />
               Online
             </span>
+
+            <div className="mt-5 flex items-center gap-6">
+              <button
+                onClick={() => navigate('/profile/following')}
+                className="text-center transition-opacity hover:opacity-70"
+              >
+                <p className="text-base font-bold text-foreground">{following.length}</p>
+                <p className="text-xs text-muted-foreground">Following</p>
+              </button>
+              <button
+                onClick={() => navigate('/profile/followers')}
+                className="text-center transition-opacity hover:opacity-70"
+              >
+                <p className="text-base font-bold text-foreground">{followers.length}</p>
+                <p className="text-xs text-muted-foreground">Followers</p>
+              </button>
+            </div>
           </div>
 
           <div className="mx-6 mb-8 overflow-hidden rounded-xl bg-card">
