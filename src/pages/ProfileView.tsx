@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
@@ -6,10 +7,13 @@ import { ArrowLeft, User, Share2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFollowing, getFollowers } from '@/services/friends';
 import { getUserPosts } from '@/services/posts';
+import type { Post } from '@/types';
+import PostDetailModal from '@/components/post/PostDetailModal';
 
 export default function ProfileView() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const { data: following = [] } = useQuery({
     queryKey: ['following'],
@@ -108,7 +112,11 @@ export default function ProfileView() {
           {myPosts.length > 0 ? (
             <div className="grid grid-cols-3 gap-1 md:gap-2">
               {myPosts.map((post) => (
-                <div key={post.id} className="group relative aspect-square overflow-hidden rounded-md bg-muted">
+                <button
+                  key={post.id}
+                  onClick={() => setSelectedPost(post)}
+                  className="group relative aspect-square overflow-hidden rounded-md bg-muted"
+                >
                   <img
                     src={post.imageUrl}
                     alt={post.caption || 'Post'}
@@ -119,7 +127,7 @@ export default function ProfileView() {
                     <Heart size={18} className="fill-white text-white" />
                     <span className="text-sm font-bold text-white">{post.likes}</span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -129,6 +137,10 @@ export default function ProfileView() {
           )}
         </div>
       </div>
+
+      {selectedPost && (
+        <PostDetailModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+      )}
     </div>
   );
 }

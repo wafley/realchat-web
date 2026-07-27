@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserCheck, Heart } from 'lucide-react';
@@ -9,6 +10,8 @@ import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
 import { followUser, unfollowUser, getRelationship } from '@/services/friends';
 import { getUserPosts } from '@/services/posts';
+import type { Post } from '@/types';
+import PostDetailModal from '@/components/post/PostDetailModal';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -16,6 +19,7 @@ export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const queryClient = useQueryClient();
 
   const isSelf = currentUser?.id === userId;
@@ -191,7 +195,11 @@ export default function UserProfile() {
               {userPosts.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1 md:gap-2">
                   {userPosts.map((post) => (
-                    <div key={post.id} className="group relative aspect-square overflow-hidden rounded-md bg-muted">
+                    <button
+                      key={post.id}
+                      onClick={() => setSelectedPost(post)}
+                      className="group relative aspect-square overflow-hidden rounded-md bg-muted"
+                    >
                       <img
                         src={post.imageUrl}
                         alt={post.caption || 'Post'}
@@ -202,7 +210,7 @@ export default function UserProfile() {
                         <Heart size={18} className="fill-white text-white" />
                         <span className="text-sm font-bold text-white">{post.likes}</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -214,6 +222,10 @@ export default function UserProfile() {
           )}
         </div>
       </div>
+
+      {selectedPost && (
+        <PostDetailModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+      )}
     </div>
   );
 }

@@ -51,6 +51,16 @@ export async function createPost(imageUrl: string, caption?: string): Promise<Po
   return data;
 }
 
+export async function getPost(postId: string): Promise<Post | undefined> {
+  if (DEV_MODE) {
+    await delay(150);
+    const post = MOCK_POSTS.find((p) => p.id === postId);
+    return post ? populateUser([post])[0] : undefined;
+  }
+  const { data } = await api.get<Post>(`/posts/${postId}`);
+  return data;
+}
+
 export async function deletePost(postId: string): Promise<void> {
   if (DEV_MODE) {
     await delay(200);
