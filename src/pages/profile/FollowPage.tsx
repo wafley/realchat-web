@@ -184,7 +184,7 @@ export default function FollowPage() {
                         disabled={isUnfollowPending}
                         className="shrink-0 rounded-lg border border-border px-4 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-destructive/50 hover:text-destructive disabled:opacity-50"
                       >
-                        {isUnfollowPending ? '...' : 'Following'}
+                        {isUnfollowPending ? '...' : 'Unfollow'}
                       </button>
                     ) : isFollowing(u.id) ? (
                       <button
