@@ -142,5 +142,12 @@ export interface Post {
   user?: User;
 }
 
+export interface Contact {
+  userId: string;
+  user: User;
+  customName?: string;
+  addedAt: Date;
+}
+
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';
