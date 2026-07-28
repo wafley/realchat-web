@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User } from '@/types';
+import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { MOCK_CONTACTS } from '@/mocks/contacts';
 import { delay } from '@/mocks/utils';
@@ -721,6 +721,40 @@ export async function clearChat(chatId: string): Promise<void> {
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to clear chat');
   }
+}
+
+export function searchAllMessages(query: string): SearchMessageResult[] {
+  if (DEV_MODE) {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    const results: SearchMessageResult[] = [];
+
+    for (const [convId, messages] of Object.entries(MOCK_MESSAGES)) {
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === convId);
+      if (!conv) continue;
+
+      for (const msg of messages) {
+        if (msg.content.toLowerCase().includes(q)) {
+          results.push({
+            messageId: msg.id,
+            conversationId: convId,
+            conversationName: conv.name,
+            conversationType: conv.type,
+            senderId: msg.senderId,
+            senderName: senderName(msg.senderId),
+            content: msg.content,
+            createdAt: msg.createdAt,
+          });
+        }
+      }
+    }
+
+    return results.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }
+
+  return [];
 }
 
 export type { ChatConversation };
