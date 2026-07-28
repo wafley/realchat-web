@@ -26,7 +26,7 @@ export default function ChatList() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
@@ -235,7 +235,7 @@ export default function ChatList() {
             />
           </div>
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
             aria-label="New chat"
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
           >
@@ -247,7 +247,7 @@ export default function ChatList() {
         </div>
       )}
 
-      <ContactPopover open={modalOpen} onClose={() => setModalOpen(false)} />
+      <ContactPopover anchorEl={anchorEl} onClose={() => setAnchorEl(null)} />
 
       <div className="flex border-b border-border">
         {tabs.map(({ id, label, icon: Icon }) => (
