@@ -59,9 +59,10 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
       const totalPages = Math.max(1, Math.ceil(total / limit));
       const start = Math.max(0, total - page * limit);
       const end = total - (page - 1) * limit;
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       const data = all.slice(start, end).map((m) => ({
         ...m,
-        status: m.status ?? (m.senderId === DEV_USER_ID ? 'read' as const : undefined),
+        status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : undefined),
         readBy: m.readBy ?? populateReadBy(m, chatId, isDM),
         sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
       }));
