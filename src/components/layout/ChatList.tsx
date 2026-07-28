@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, Users, User, UserPlus, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
+import { Search, Plus, MessageSquareText, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
+import ContactPopover from '@/components/layout/ContactPopover';
 import NotificationBell from '@/components/layout/NotificationBell';
 import { useTypingStore } from '@/store/typingStore';
 import { getConversations, bulkDeleteConversations } from '@/services/chat';
@@ -246,25 +247,7 @@ export default function ChatList() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Chat">
-        <div className="space-y-1">
-          <button
-            onClick={() => { setModalOpen(false); navigate('/groups/create'); }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 lg:gap-3.5 lg:px-4 lg:py-3 lg:text-base"
-          >
-            <MessageSquareText size={18} className="text-muted-foreground lg:size-5" />
-            New Group
-          </button>
-
-          <button
-            onClick={() => { setModalOpen(false); navigate('/friends'); }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 lg:gap-3.5 lg:px-4 lg:py-3 lg:text-base"
-          >
-            <UserPlus size={18} className="text-muted-foreground lg:size-5" />
-            New Direct Message
-          </button>
-        </div>
-      </Modal>
+      <ContactPopover open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <div className="flex border-b border-border">
         {tabs.map(({ id, label, icon: Icon }) => (
