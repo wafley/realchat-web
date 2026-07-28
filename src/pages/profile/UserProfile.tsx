@@ -1,13 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
-import { followUser, unfollowUser, getRelationship, getUserFollowers, getUserFollowing } from '@/services/friends';
+import { addContact, removeContact, getContacts } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -25,59 +25,30 @@ export default function UserProfile() {
     enabled: !!userId,
   });
 
-  const { data: relationship = 'none' } = useQuery({
-    queryKey: ['relationship', userId],
-    queryFn: () => getRelationship(userId!),
-    enabled: !!userId && !isSelf,
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: getContacts,
+    enabled: !isSelf,
   });
 
-  const { data: followingCount = 0 } = useQuery({
-    queryKey: ['userFollowingCount', userId],
-    queryFn: async () => {
-      const list = await getUserFollowing(userId!);
-      return list.length;
-    },
-    enabled: !!userId,
-  });
+  const isContact = !!userId && contacts.some((c) => c.userId === userId);
 
-  const { data: followersCount = 0 } = useQuery({
-    queryKey: ['userFollowersCount', userId],
-    queryFn: async () => {
-      const list = await getUserFollowers(userId!);
-      return list.length;
-    },
-    enabled: !!userId,
-  });
-
-  const invalidateCounts = () => {
-    queryClient.invalidateQueries({ queryKey: ['following'] });
-    queryClient.invalidateQueries({ queryKey: ['followers'] });
-    queryClient.invalidateQueries({ queryKey: ['userFollowingCount', userId] });
-    queryClient.invalidateQueries({ queryKey: ['userFollowersCount', userId] });
-  };
-
-  const followMutation = useMutation({
-    mutationFn: () => followUser(userId!),
+  const addContactMutation = useMutation({
+    mutationFn: () => addContact(userId!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['relationship', userId] });
-      queryClient.invalidateQueries({ queryKey: ['follow'] });
-      queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      invalidateCounts();
-      toast.success('Followed!');
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast.success('Contact added!');
     },
-    onError: () => toast.error('Failed to follow'),
+    onError: () => toast.error('Failed to add contact'),
   });
 
-  const unfollowMutation = useMutation({
-    mutationFn: () => unfollowUser(userId!),
+  const removeContactMutation = useMutation({
+    mutationFn: () => removeContact(userId!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['relationship', userId] });
-      queryClient.invalidateQueries({ queryKey: ['follow'] });
-      queryClient.invalidateQueries({ queryKey: ['user', userId] });
-      invalidateCounts();
-      toast.success('Unfollowed');
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      toast.success('Contact removed');
     },
-    onError: () => toast.error('Failed to unfollow'),
+    onError: () => toast.error('Failed to remove contact'),
   });
 
   const blockMutation = useMutation({
@@ -146,41 +117,29 @@ export default function UserProfile() {
 
               <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
 
-              <div className="mt-4 flex items-center gap-8 text-sm text-foreground">
-                <button onClick={() => navigate(`/profile/${user.id}/followers`)}>
-                  <span className="font-semibold">{followersCount}</span>
-                  <span className="ml-1 text-muted-foreground">followers</span>
-                </button>
-                <button onClick={() => navigate(`/profile/${user.id}/following`)}>
-                  <span className="font-semibold">{followingCount}</span>
-                  <span className="ml-1 text-muted-foreground">following</span>
-                </button>
-              </div>
+
 
               <div className="mt-6 flex flex-col gap-2">
                 {!isSelf && (
-                  <>
-                    {(relationship === 'none' || relationship === 'follows_you') && (
-                      <button
-                        onClick={() => followMutation.mutate()}
-                        disabled={followMutation.isPending}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
-                      >
-                        {followMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-                        {followMutation.isPending ? 'Following...' : 'Follow'}
-                      </button>
-                    )}
-                    {(relationship === 'following' || relationship === 'mutual') && (
-                      <button
-                        onClick={() => unfollowMutation.mutate()}
-                        disabled={unfollowMutation.isPending}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                      >
-                        {unfollowMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserCheck size={16} />}
-                        {unfollowMutation.isPending ? 'Unfollowing...' : 'Unfollow'}
-                      </button>
-                    )}
-                  </>
+                  isContact ? (
+                    <button
+                      onClick={() => removeContactMutation.mutate()}
+                      disabled={removeContactMutation.isPending}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                    >
+                      {removeContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserMinus size={16} />}
+                      {removeContactMutation.isPending ? 'Removing...' : 'Remove Contact'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => addContactMutation.mutate()}
+                      disabled={addContactMutation.isPending}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+                    >
+                      {addContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                      {addContactMutation.isPending ? 'Adding...' : 'Add Contact'}
+                    </button>
+                  )
                 )}
                 <button
                   onClick={async () => {
