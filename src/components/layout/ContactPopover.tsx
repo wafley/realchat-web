@@ -197,7 +197,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
             </div>
           </div>
         ) : (
-          <>
+          <div className="flex min-h-0 flex-1 flex-col">
             <div className="p-3">
               <div className="relative">
                 <Search
@@ -216,96 +216,100 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
               </div>
             </div>
 
-            {showActions && (
-              <div className="border-t border-border px-1 pb-1">
-                <button
-                  onClick={() => setShowNewContactForm(true)}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
-                >
-                  <UserPlus size={18} className="text-muted-foreground" />
-                  New Contact
-                </button>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {showActions && (
+                <div className="border-t border-border px-1 pb-1">
+                  <button
+                    onClick={() => setShowNewContactForm(true)}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+                  >
+                    <UserPlus size={18} className="text-muted-foreground" />
+                    New Contact
+                  </button>
 
-                <button
-                  onClick={() => { onClose(); navigate('/groups/create'); }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
-                >
-                  <MessageSquareText size={18} className="text-muted-foreground" />
-                  Create New Group
-                </button>
-              </div>
-            )}
-
-            {searching ? (
-              <div className="flex items-center justify-center border-t border-border py-6">
-                <Loader2 size={18} className="animate-spin text-muted-foreground" />
-              </div>
-            ) : showResults ? (
-              <div className="max-h-48 overflow-y-auto border-t border-border px-1 pb-1">
-                {results.length === 0 ? (
-                  <p className="py-4 text-center text-xs text-muted-foreground">No users found</p>
-                ) : (
-                  results.map((user) => {
-                    const isContact = contacts?.some((c) => c.userId === user.id);
-                    return (
-                      <button
-                        key={user.id}
-                        onClick={() => handleSelectUser(user)}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
-                      >
-                        <Avatar className="h-8 w-8">
-                          {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                          <AvatarFallback className="text-xs">
-                            <User size={13} />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1 text-left">
-                          <div className="truncate text-sm font-medium">{user.fullName}</div>
-                          <div className="truncate text-xs text-muted-foreground">@{user.username}</div>
-                        </div>
-                        {isContact && (
-                          <span className="shrink-0 text-[10px] text-muted-foreground">contact</span>
-                        )}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            ) : showContacts ? (
-              <div className="border-t border-border px-1 pb-1">
-                <p className="px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
-                  Contacts
-                </p>
-                <div className="max-h-48 space-y-0.5 overflow-y-auto">
-                  {contacts.map((contact) => {
-                    const displayName = contact.customName || contact.user.fullName;
-                    return (
-                      <button
-                        key={contact.userId}
-                        onClick={() => handleSelectUser(contact.user)}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
-                      >
-                        <Avatar className="h-8 w-8">
-                          {contact.user.avatarUrl && <AvatarImage src={contact.user.avatarUrl} />}
-                          <AvatarFallback className="text-xs">
-                            <User size={13} />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1 text-left">
-                          <div className="truncate text-sm font-medium">{displayName}</div>
-                          {contact.customName && (
-                            <div className="truncate text-xs text-muted-foreground">
-                              @{contact.user.username}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                  <button
+                    onClick={() => { onClose(); navigate('/groups/create'); }}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+                  >
+                    <MessageSquareText size={18} className="text-muted-foreground" />
+                    Create New Group
+                  </button>
                 </div>
-              </div>
-            ) : null}
-          </>
+              )}
+
+              {searching ? (
+                <div className="flex items-center justify-center border-t border-border py-6">
+                  <Loader2 size={18} className="animate-spin text-muted-foreground" />
+                </div>
+              ) : showResults ? (
+                <div className="border-t border-border px-1 pb-1">
+                  {results.length === 0 ? (
+                    <p className="py-4 text-center text-xs text-muted-foreground">No users found</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {results.map((user) => {
+                        const isContact = contacts?.some((c) => c.userId === user.id);
+                        return (
+                          <button
+                            key={user.id}
+                            onClick={() => handleSelectUser(user)}
+                            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+                          >
+                            <Avatar className="h-8 w-8">
+                              {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                              <AvatarFallback className="text-xs">
+                                <User size={13} />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1 text-left">
+                              <div className="truncate text-sm font-medium">{user.fullName}</div>
+                              <div className="truncate text-xs text-muted-foreground">@{user.username}</div>
+                            </div>
+                            {isContact && (
+                              <span className="shrink-0 text-[10px] text-muted-foreground">contact</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : showContacts ? (
+                <div className="border-t border-border px-1 pb-1">
+                  <p className="px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+                    Contacts
+                  </p>
+                  <div className="space-y-0.5">
+                    {contacts.map((contact) => {
+                      const displayName = contact.customName || contact.user.fullName;
+                      return (
+                        <button
+                          key={contact.userId}
+                          onClick={() => handleSelectUser(contact.user)}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+                        >
+                          <Avatar className="h-8 w-8">
+                            {contact.user.avatarUrl && <AvatarImage src={contact.user.avatarUrl} />}
+                            <AvatarFallback className="text-xs">
+                              <User size={13} />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1 text-left">
+                            <div className="truncate text-sm font-medium">{displayName}</div>
+                            {contact.customName && (
+                              <div className="truncate text-xs text-muted-foreground">
+                                @{contact.user.username}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
         )}
       </div>
     </>
