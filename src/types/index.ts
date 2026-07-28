@@ -123,7 +123,7 @@ export interface PaginatedResponse<T> {
 
 export interface Notification {
   id: string;
-  type: 'new_follower' | 'message' | 'group';
+  type: 'contact_added' | 'message' | 'group';
   title: string;
   body?: string;
   read: boolean;
@@ -140,6 +140,13 @@ export interface Post {
   likes: number;
   createdAt: Date;
   user?: User;
+}
+
+export interface Contact {
+  userId: string;
+  user: User;
+  customName?: string;
+  addedAt: Date;
 }
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';

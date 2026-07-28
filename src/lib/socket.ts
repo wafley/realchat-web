@@ -100,23 +100,6 @@ class SocketClient {
     this.socket?.emit('message:seen', { conversationId });
   }
 
-  // --- Follow ---
-
-  onFollowed(callback: EventCallback): void {
-    this.on('follow:new', callback);
-  }
-
-  offFollowed(callback: EventCallback): void {
-    this.off('follow:new', callback);
-  }
-
-  onUnfollowed(callback: EventCallback): void {
-    this.on('follow:remove', callback);
-  }
-
-  offUnfollowed(callback: EventCallback): void {
-    this.off('follow:remove', callback);
-  }
 }
 
 export const socketClient = new SocketClient();

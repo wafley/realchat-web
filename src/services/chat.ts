@@ -28,11 +28,11 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
     if (existing) return existing[0];
     const newId = `dm${dmIdCounter++}`;
     DM_USER_MAP[newId] = userId;
-    const user = MOCK_CONVERSATIONS.find((c) => c.id === Object.keys(DM_USER_MAP).find((k) => DM_USER_MAP[k] === userId));
-    const name = user?.name ?? userId;
+    const mockUser = MOCK_USERS.find((u) => u.id === userId);
     MOCK_CONVERSATIONS.push({
       id: newId,
-      name,
+      name: mockUser?.fullName ?? userId,
+      avatarUrl: mockUser?.avatarUrl,
       type: 'dm',
       lastMessage: '',
       lastTime: 'Now',

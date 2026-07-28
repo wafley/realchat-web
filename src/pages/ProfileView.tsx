@@ -4,21 +4,11 @@ import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, User, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getFollowing, getFollowers } from '@/services/friends';
+
 
 export default function ProfileView() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-
-  const { data: following = [] } = useQuery({
-    queryKey: ['following'],
-    queryFn: getFollowing,
-  });
-
-  const { data: followers = [] } = useQuery({
-    queryKey: ['followers'],
-    queryFn: getFollowers,
-  });
 
   function copyProfileLink() {
     if (!user?.id) return;
@@ -69,16 +59,6 @@ export default function ProfileView() {
           </div>
 
           <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user?.bio || 'No bio yet'}</p>
-          <div className="mt-4 flex items-center gap-8">
-            <button onClick={() => navigate('/profile/followers')} className="text-sm text-foreground">
-              <span className="font-semibold">{followers.length}</span>
-              <span className="ml-1 text-muted-foreground">followers</span>
-            </button>
-            <button onClick={() => navigate('/profile/following')} className="text-sm text-foreground">
-              <span className="font-semibold">{following.length}</span>
-              <span className="ml-1 text-muted-foreground">following</span>
-            </button>
-          </div>
           <div className="mt-4 flex items-center gap-2">
             <button
               onClick={() => navigate('/profile/edit')}
