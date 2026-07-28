@@ -39,7 +39,7 @@ export default function UserProfile() {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast.success('Contact added!');
     },
-    onError: () => toast.error('Failed to add contact'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to add contact'),
   });
 
   const removeContactMutation = useMutation({

@@ -87,8 +87,8 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
         await addContact(user.id);
         queryClient.invalidateQueries({ queryKey: ['contacts'] });
         toast.success('Contact added!');
-      } catch {
-        toast.error('Failed to add contact');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to add contact');
       }
     }
     handleStartDM(user.id);
@@ -111,8 +111,8 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       setNewCustomName('');
       toast.success('Contact added!');
       handleStartDM(user.id);
-    } catch {
-      setNewContactError('Failed to add contact');
+    } catch (err) {
+      setNewContactError(err instanceof Error ? err.message : 'Failed to add contact');
     } finally {
       setNewContactLoading(false);
     }
