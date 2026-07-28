@@ -70,18 +70,19 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
     }, 300);
   }, []);
 
-  const handleStartDM = async (userId: string) => {
+  const handleStartDM = async (userId: string, displayName?: string) => {
     try {
       const convId = await findOrCreateConversation(userId);
       onClose();
-      navigate(`/dm/${convId}`);
+      navigate(`/dm/${convId}`, { state: { name: displayName } });
     } catch {
       toast.error('Failed to start conversation');
     }
   };
 
   const handleSelectUser = (user: UserType) => {
-    handleStartDM(user.id);
+    const contact = contacts?.find((c) => c.userId === user.id);
+    handleStartDM(user.id, contact?.customName || user.fullName);
   };
 
   const handleNewContact = async () => {
@@ -101,7 +102,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       setNewUsername('');
       setNewCustomName('');
       toast.success('Contact added!');
-      handleStartDM(user.id);
+      handleStartDM(user.id, newCustomName.trim() || user.fullName);
     } catch (err) {
       setNewContactError(err instanceof Error ? err.message : 'Failed to add contact');
     } finally {

@@ -1,6 +1,7 @@
 import api from '@/lib/api';
 import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
+import { MOCK_CONTACTS } from '@/mocks/contacts';
 import { delay } from '@/mocks/utils';
 import {
   MOCK_CONVERSATIONS,
@@ -29,9 +30,10 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
     const newId = `dm${dmIdCounter++}`;
     DM_USER_MAP[newId] = userId;
     const mockUser = MOCK_USERS.find((u) => u.id === userId);
+    const mockContact = MOCK_CONTACTS.find((c) => c.userId === userId);
     MOCK_CONVERSATIONS.push({
       id: newId,
-      name: mockUser?.fullName ?? userId,
+      name: mockContact?.customName || mockUser?.fullName || userId,
       avatarUrl: mockUser?.avatarUrl,
       type: 'dm',
       lastMessage: '',
