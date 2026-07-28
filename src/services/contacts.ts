@@ -14,7 +14,6 @@ export async function searchPeople(query: string): Promise<User[]> {
     return MOCK_USERS.filter(
       (u) =>
         u.id !== DEV_USER_ID &&
-        !MOCK_CONTACTS.some((c) => c.userId === u.id) &&
         (u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)),
     );
   }
