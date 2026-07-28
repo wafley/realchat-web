@@ -1,5 +1,6 @@
 import type { Message } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from './users';
+import { MOCK_CONTACTS } from './contacts';
 
 interface ChatConversation {
   id: string;
@@ -15,19 +16,86 @@ interface ChatConversation {
   muted?: boolean;
 }
 
-const MOCK_CONVERSATIONS: ChatConversation[] = [
+const GROUP_CONVERSATIONS: ChatConversation[] = [
   { id: '1', name: 'General', type: 'group', lastMessage: 'Hey everyone!', lastTime: '2m', unread: 3, online: true, members: 12, muted: false },
   { id: '2', name: 'Random', type: 'group', lastMessage: 'Anyone free for lunch?', lastTime: '1h', online: true, members: 10, muted: false },
   { id: '3', name: 'Project Alpha', type: 'group', lastMessage: 'Deploy is done ✅', lastTime: '3h', unread: 1, online: true, members: 6, muted: false },
   { id: '4', name: 'Design Team', type: 'group', lastMessage: 'New mockups uploaded', lastTime: 'Yesterday', online: false, lastSeen: new Date(Date.now() - 86400000), members: 5, muted: false },
-  { id: 'dm1', name: 'Aang Gacor', type: 'dm', lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2, online: true, lastSeen: new Date(), muted: false },
-  { id: 'dm2', name: 'Bambang', type: 'dm', lastMessage: 'The server migration is complete', lastTime: '09:00', online: true, lastSeen: new Date(Date.now() - 60000), muted: false },
-  { id: 'dm3', name: 'Cici', type: 'dm', lastMessage: "I'll be out tomorrow", lastTime: '16:00', online: false, lastSeen: new Date(Date.now() - 7200000), muted: false },
-  { id: 'dm4', name: 'Dewi', type: 'dm', lastMessage: 'The deadline has been extended', lastTime: '14:00', online: true, lastSeen: new Date(Date.now() - 1800000), muted: false },
-  { id: 'dm5', name: 'Eko', type: 'dm', lastMessage: 'Can you review my PR?', lastTime: '11:06', online: false, lastSeen: new Date(Date.now() - 3600000), muted: false },
 ];
 
+const FIRST_FIVE_OVERRIDES: Record<string, { lastMessage: string; lastTime: string; unread?: number }> = {
+  aang: { lastMessage: 'Hey, can you check the latest design?', lastTime: '10:15', unread: 2 },
+  bambang: { lastMessage: 'The server migration is complete', lastTime: '09:00' },
+  cici: { lastMessage: "I'll be out tomorrow", lastTime: '16:00' },
+  dewi: { lastMessage: 'The deadline has been extended', lastTime: '14:00' },
+  eko: { lastMessage: 'Can you review my PR?', lastTime: '11:06' },
+};
+
+const TIME_LABELS = ['1m', '5m', '12m', '30m', '1h', '2h', '5h', '8h', '12h', '1d', '2d', '3d'];
+
+const DM_CONVERSATIONS: ChatConversation[] = MOCK_CONTACTS.map((contact, i) => {
+  const o = FIRST_FIVE_OVERRIDES[contact.userId];
+  return {
+    id: `dm-${contact.userId}`,
+    name: contact.customName || contact.user.fullName,
+    type: 'dm' as const,
+    lastMessage: o?.lastMessage ?? '',
+    lastTime: o?.lastTime ?? TIME_LABELS[Math.min(i, TIME_LABELS.length - 1)] ?? 'Now',
+    ...(o?.unread ? { unread: o.unread } : {}),
+    online: contact.user.status === 'online',
+    lastSeen: contact.user.lastSeen,
+    muted: false,
+  };
+});
+
+const MOCK_CONVERSATIONS: ChatConversation[] = [...GROUP_CONVERSATIONS, ...DM_CONVERSATIONS];
+
 const MOCK_GROUP_OVERRIDES = new Map<string, { name?: string; description?: string; avatarUrl?: string }>();
+
+const EXISTING_DM_MESSAGES: Record<string, Message[]> = {
+  'dm-aang': [
+    { id: 'da1', groupId: 'dm-aang', senderId: 'aang', content: 'Hey, bisa cek design terbaru?', type: 'text', createdAt: new Date('2026-07-10T10:15') },
+    { id: 'da2', groupId: 'dm-aang', senderId: DEV_USER_ID, content: 'Siap, gw cek dulu', type: 'text', createdAt: new Date('2026-07-10T10:17') },
+    { id: 'da3', groupId: 'dm-aang', senderId: 'aang', content: 'Thanks! Filenya di shared folder', type: 'text', createdAt: new Date('2026-07-10T10:18') },
+  ],
+  'dm-bambang': [
+    { id: 'db1', groupId: 'dm-bambang', senderId: 'bambang', content: 'Migrasi server udah selesai', type: 'text', createdAt: new Date('2026-07-10T09:00') },
+    { id: 'db2', groupId: 'dm-bambang', senderId: DEV_USER_ID, content: 'Kerja bagus! Ada downtime?', type: 'text', createdAt: new Date('2026-07-10T09:05') },
+    { id: 'db3', groupId: 'dm-bambang', senderId: 'bambang', content: 'Sama sekali nggak, lancar jaya', type: 'text', createdAt: new Date('2026-07-10T09:06') },
+    { id: 'db4', groupId: 'dm-bambang', senderId: DEV_USER_ID, content: 'Thanks infonya!', type: 'text', createdAt: new Date('2026-07-10T09:10') },
+  ],
+  'dm-cici': [
+    { id: 'dc1', groupId: 'dm-cici', senderId: 'cici', content: 'Gw cuti besok', type: 'text', createdAt: new Date('2026-07-10T16:00') },
+    { id: 'dc2', groupId: 'dm-cici', senderId: DEV_USER_ID, content: 'Ok siap, noted', type: 'text', createdAt: new Date('2026-07-10T16:05') },
+    { id: 'dc3', groupId: 'dm-cici', senderId: 'cici', content: 'Sampai ketemu besok ya', type: 'text', createdAt: new Date('2026-07-10T16:06') },
+  ],
+  'dm-dewi': [
+    { id: 'dd1', groupId: 'dm-dewi', senderId: 'dewi', content: 'Deadline-nya diundur', type: 'text', createdAt: new Date('2026-07-10T14:00') },
+    { id: 'dd2', groupId: 'dm-dewi', senderId: DEV_USER_ID, content: 'Perfect, jadi kita lebih santai', type: 'text', createdAt: new Date('2026-07-10T14:05') },
+    { id: 'dd3', groupId: 'dm-dewi', senderId: 'dewi', content: 'Sip 👍', type: 'text', createdAt: new Date('2026-07-10T14:06') },
+  ],
+  'dm-eko': [
+    { id: 'de1', groupId: 'dm-eko', senderId: 'eko', content: 'Gw submit PR buat review', type: 'text', createdAt: new Date('2026-07-10T11:00') },
+    { id: 'de2', groupId: 'dm-eko', senderId: DEV_USER_ID, content: 'Nanti gw cek abis standup', type: 'text', createdAt: new Date('2026-07-10T11:05') },
+    { id: 'de3', groupId: 'dm-eko', senderId: 'eko', content: 'PR-nya direview dong', type: 'text', createdAt: new Date('2026-07-10T11:06') },
+  ],
+};
+
+const SEED_MESSAGES: Record<string, Message[]> = {};
+for (const contact of MOCK_CONTACTS) {
+  if (FIRST_FIVE_OVERRIDES[contact.userId]) continue;
+  const dmId = `dm-${contact.userId}`;
+  SEED_MESSAGES[dmId] = [
+    {
+      id: `s-${contact.userId}`,
+      groupId: dmId,
+      senderId: contact.userId,
+      content: 'Hi! 👋',
+      type: 'text',
+      createdAt: new Date(Date.now() - (MOCK_CONTACTS.indexOf(contact) + 1) * 7200000),
+    },
+  ];
+}
 
 const MOCK_MESSAGES: Record<string, Message[]> = {
   '1': [
@@ -53,53 +121,21 @@ const MOCK_MESSAGES: Record<string, Message[]> = {
     { id: 'd1', groupId: '4', senderId: 'dewi', content: 'Mockup baru udah diupload', type: 'text', createdAt: new Date('2026-07-09T14:00') },
     { id: 'd2', groupId: '4', senderId: DEV_USER_ID, content: 'Keren! Skema warnanya keren banget', type: 'text', createdAt: new Date('2026-07-09T14:05') },
   ],
-  'dm1': [
-    { id: 'da1', groupId: 'dm1', senderId: 'aang', content: 'Hey, bisa cek design terbaru?', type: 'text', createdAt: new Date('2026-07-10T10:15') },
-    { id: 'da2', groupId: 'dm1', senderId: DEV_USER_ID, content: 'Siap, gw cek dulu', type: 'text', createdAt: new Date('2026-07-10T10:17') },
-    { id: 'da3', groupId: 'dm1', senderId: 'aang', content: 'Thanks! Filenya di shared folder', type: 'text', createdAt: new Date('2026-07-10T10:18') },
-  ],
-  'dm2': [
-    { id: 'db1', groupId: 'dm2', senderId: 'bambang', content: 'Migrasi server udah selesai', type: 'text', createdAt: new Date('2026-07-10T09:00') },
-    { id: 'db2', groupId: 'dm2', senderId: DEV_USER_ID, content: 'Kerja bagus! Ada downtime?', type: 'text', createdAt: new Date('2026-07-10T09:05') },
-    { id: 'db3', groupId: 'dm2', senderId: 'bambang', content: 'Sama sekali nggak, lancar jaya', type: 'text', createdAt: new Date('2026-07-10T09:06') },
-    { id: 'db4', groupId: 'dm2', senderId: DEV_USER_ID, content: 'Thanks infonya!', type: 'text', createdAt: new Date('2026-07-10T09:10') },
-  ],
-  'dm3': [
-    { id: 'dc1', groupId: 'dm3', senderId: 'cici', content: 'Gw cuti besok', type: 'text', createdAt: new Date('2026-07-10T16:00') },
-    { id: 'dc2', groupId: 'dm3', senderId: DEV_USER_ID, content: 'Ok siap, noted', type: 'text', createdAt: new Date('2026-07-10T16:05') },
-    { id: 'dc3', groupId: 'dm3', senderId: 'cici', content: 'Sampai ketemu besok ya', type: 'text', createdAt: new Date('2026-07-10T16:06') },
-  ],
-  'dm4': [
-    { id: 'dd1', groupId: 'dm4', senderId: 'dewi', content: 'Deadline-nya diundur', type: 'text', createdAt: new Date('2026-07-10T14:00') },
-    { id: 'dd2', groupId: 'dm4', senderId: DEV_USER_ID, content: 'Perfect, jadi kita lebih santai', type: 'text', createdAt: new Date('2026-07-10T14:05') },
-    { id: 'dd3', groupId: 'dm4', senderId: 'dewi', content: 'Sip 👍', type: 'text', createdAt: new Date('2026-07-10T14:06') },
-  ],
-  'dm5': [
-    { id: 'de1', groupId: 'dm5', senderId: 'eko', content: 'Gw submit PR buat review', type: 'text', createdAt: new Date('2026-07-10T11:00') },
-    { id: 'de2', groupId: 'dm5', senderId: DEV_USER_ID, content: 'Nanti gw cek abis standup', type: 'text', createdAt: new Date('2026-07-10T11:05') },
-    { id: 'de3', groupId: 'dm5', senderId: 'eko', content: 'PR-nya direview dong', type: 'text', createdAt: new Date('2026-07-10T11:06') },
-  ],
+  ...EXISTING_DM_MESSAGES,
+  ...SEED_MESSAGES,
 };
 
 const MOCK_SENDER_MAP: Record<string, string> = {
   [DEV_USER_ID]: 'You',
-  'aang': 'Aang Gacor',
-  'bambang': 'Bambang',
-  'cici': 'Cici',
-  'dewi': 'Dewi',
-  'eko': 'Eko',
   'deploy-bot': 'Deploy Bot',
+  ...Object.fromEntries(MOCK_USERS.map((u) => [u.id, u.fullName])),
 };
 
-const GROUP_MEMBER_IDS = ['aang', 'bambang', 'cici', 'dewi', 'eko'];
+const GROUP_MEMBER_IDS = MOCK_USERS.filter((u) => u.id !== DEV_USER_ID).map((u) => u.id);
 
-const DM_USER_MAP: Record<string, string> = {
-  'dm1': 'aang',
-  'dm2': 'bambang',
-  'dm3': 'cici',
-  'dm4': 'dewi',
-  'dm5': 'eko',
-};
+const DM_USER_MAP: Record<string, string> = Object.fromEntries(
+  MOCK_CONTACTS.map((c) => [`dm-${c.userId}`, c.userId]),
+);
 
 function populateReadBy(msg: Message, chatId: string, isDM: boolean): string[] | undefined {
   if (msg.type === 'system') return undefined;
