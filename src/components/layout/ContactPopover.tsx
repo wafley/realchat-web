@@ -96,6 +96,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       }
       await addContact(user.id, newCustomName.trim() || undefined);
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       setShowNewContactForm(false);
       setNewUsername('');
       setNewCustomName('');
