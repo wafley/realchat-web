@@ -78,7 +78,7 @@ export function useChatMutations({
         (prev) => {
           if (!prev) return prev;
           const updated = prev.map((c) =>
-            c.id === chatId ? { ...c, lastMessage: preview, lastTime: 'now' } : c,
+            c.id === chatId ? { ...c, lastMessage: preview, lastTime: new Date().toISOString() } : c,
           );
           const idx = updated.findIndex((c) => c.id === chatId);
           if (idx <= 0) return updated;
