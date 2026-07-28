@@ -20,6 +20,13 @@ const tabs = [
   { id: 'groups', label: 'Groups', icon: Users },
 ] as const;
 
+function formatTime(time?: string): string {
+  if (!time) return '';
+  const date = new Date(time);
+  if (isNaN(date.getTime())) return time;
+  return formatLastSeen(date) ?? time;
+}
+
 export default function ChatList() {
   const navigate = useNavigate();
   const { groupId, userId } = useParams();
@@ -320,7 +327,7 @@ export default function ChatList() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{chat.name}</span>
-                          <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{chat.lastTime}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatTime(chat.lastTime)}</span>
                         </div>
                         <p className="truncate text-xs text-muted-foreground lg:text-sm">{chat.lastMessage}</p>
                       </div>
@@ -447,7 +454,7 @@ export default function ChatList() {
                         {chat.name}
                       </span>
                       <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">
-                        {chat.lastTime}
+                        {formatTime(chat.lastTime)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

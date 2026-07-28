@@ -105,7 +105,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       if (conv) {
         conv.lastMessage = caption ? `📷 ${caption}` : '📷 Photo';
-        conv.lastTime = 'now';
+        conv.lastTime = new Date().toISOString();
       }
       return msg;
     }
@@ -146,7 +146,7 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       MOCK_MESSAGES[chatId].push(msg);
       if (conv) {
         conv.lastMessage = content;
-        conv.lastTime = 'now';
+        conv.lastTime = new Date().toISOString();
       }
       return msg;
     }
@@ -169,7 +169,7 @@ export async function editMessage(chatId: string, messageId: string, content: st
       if (idx === -1) throw new Error('Message not found');
       msgs[idx] = { ...msgs[idx], content, edited: true, updatedAt: new Date() };
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      if (conv) { conv.lastMessage = content; conv.lastTime = 'now'; }
+      if (conv) { conv.lastMessage = content; conv.lastTime = new Date().toISOString(); }
       return { ...msgs[idx] };
     }
 
@@ -295,7 +295,7 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
       MOCK_MESSAGES[targetChatId].push(forwarded);
       if (targetConv) {
         targetConv.lastMessage = msg.content ? `↗ ${msg.content}` : '↗ Forwarded message';
-        targetConv.lastTime = 'now';
+        targetConv.lastTime = new Date().toISOString();
       }
       return forwarded;
     }
@@ -387,7 +387,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       if (conv) {
         conv.lastMessage = isVideo ? '🎬 Video' : `📎 ${file.name}`;
-        conv.lastTime = 'now';
+        conv.lastTime = new Date().toISOString();
       }
       return msg;
     }
