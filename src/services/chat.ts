@@ -127,13 +127,14 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
     if (DEV_MODE) {
       await delay(200);
       msgCounter++;
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       const msg: Message = {
         id: `msg-${msgCounter}`,
         groupId: chatId,
         senderId: DEV_USER_ID,
         content,
         type: 'text',
-        status: 'sent',
+        status: conv?.online ? 'delivered' as const : 'sent' as const,
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -142,7 +143,6 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
         MOCK_MESSAGES[chatId] = [];
       }
       MOCK_MESSAGES[chatId].push(msg);
-      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       if (conv) {
         conv.lastMessage = content;
         conv.lastTime = 'now';
