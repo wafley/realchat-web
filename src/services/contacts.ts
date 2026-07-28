@@ -14,13 +14,15 @@ export async function searchPeople(query: string): Promise<User[]> {
     return MOCK_USERS.filter(
       (u) =>
         u.id !== DEV_USER_ID &&
+        MOCK_CONTACTS.some((c) => c.userId === u.id) &&
         (u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)),
     );
   }
   try {
     const { data } = await api.get<User[]>('/users/search', { params: { q: query } });
     const currentUserId = useAuthStore.getState().user?.id;
-    return data.filter((u) => u.id !== currentUserId);
+    const contactIds = (await getContacts()).map((c) => c.userId);
+    return data.filter((u) => u.id !== currentUserId && contactIds.includes(u.id));
   } catch {
     throw new Error('Failed to search users');
   }

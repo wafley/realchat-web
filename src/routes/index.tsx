@@ -114,10 +114,6 @@ export const router = createBrowserRouter([
             lazy: () => import('@/pages/post/PostDetailPage').then((m) => ({ Component: m.default })),
           },
           {
-            path: 'search',
-            lazy: () => import('@/pages/Search').then((m) => ({ Component: m.default })),
-          },
-          {
             element: <SettingsLayout />,
             children: [
               {
