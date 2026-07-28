@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, Users, User as UserIcon, MessageSquare, FileText, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { searchUsers, searchGroups, searchMessages } from '@/services/search';
+import { searchGroups, searchMessages } from '@/services/search';
 import type { User, Group } from '@/types';
 import { cn } from '@/lib/utils';
 
-type Tab = 'users' | 'groups' | 'messages';
+type Tab = 'groups' | 'messages';
 
 interface MessageResult {
   id: string;
@@ -22,8 +22,7 @@ interface MessageResult {
 export default function SearchPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('users');
-  const [users, setUsers] = useState<User[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('groups');
   const [groups, setGroups] = useState<Group[]>([]);
   const [messages, setMessages] = useState<MessageResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +31,6 @@ export default function SearchPage() {
 
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
-      setUsers([]);
       setGroups([]);
       setMessages([]);
       setHasSearched(false);
@@ -41,12 +39,10 @@ export default function SearchPage() {
     setLoading(true);
     setHasSearched(true);
     try {
-      const [u, g, m] = await Promise.all([
-        searchUsers(q),
+      const [g, m] = await Promise.all([
         searchGroups(q),
         searchMessages(q) as Promise<MessageResult[]>,
       ]);
-      setUsers(u);
       setGroups(g);
       setMessages(m);
     } catch {
@@ -64,8 +60,7 @@ export default function SearchPage() {
     };
   }, [query, doSearch]);
 
-  const tabs: { key: Tab; label: string; icon: typeof Users; count: number }[] = [
-    { key: 'users', label: 'Users', icon: Users, count: users.length },
+  const tabs: { key: Tab; label: string; icon: typeof MessageSquare; count: number }[] = [
     { key: 'groups', label: 'Groups', icon: MessageSquare, count: groups.length },
     { key: 'messages', label: 'Messages', icon: FileText, count: messages.length },
   ];
@@ -76,7 +71,7 @@ export default function SearchPage() {
         <SearchIcon size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search users, groups, or messages..."
+          placeholder="Search groups or messages..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
@@ -116,36 +111,9 @@ export default function SearchPage() {
       ) : !query.trim() ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <SearchIcon size={40} className="mb-3 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">Search for users, groups, or messages</p>
+          <p className="text-sm text-muted-foreground">Search for groups or messages</p>
         </div>
-      ) : !hasSearched ? null : activeTab === 'users' ? (
-        users.length === 0 ? (
-          <EmptyState text="No users found" />
-        ) : (
-          <div className="space-y-2">
-            {users.map((user) => (
-              <button
-                key={user.id}
-                onClick={() => navigate(`/profile/${user.id}`)}
-                className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left transition-colors hover:bg-accent/5"
-              >
-                <div className="relative shrink-0">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="text-sm font-bold"><UserIcon size={18} /></AvatarFallback>
-                  </Avatar>
-                  {user.status === 'online' && (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{user.fullName}</p>
-                  <p className="text-xs text-muted-foreground">@{user.username}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )
-      ) : activeTab === 'groups' ? (
+      ) : !hasSearched ? null : activeTab === 'groups' ? (
         groups.length === 0 ? (
           <EmptyState text="No groups found" />
         ) : (
