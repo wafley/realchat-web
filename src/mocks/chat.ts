@@ -137,15 +137,15 @@ const DM_USER_MAP: Record<string, string> = Object.fromEntries(
   MOCK_CONTACTS.map((c) => [`dm-${c.userId}`, c.userId]),
 );
 
-function populateReadBy(msg: Message, chatId: string, isDM: boolean): string[] | undefined {
+function populateReadBy(msg: Message): string[] | undefined {
   if (msg.type === 'system') return undefined;
-  if (isDM) {
-    const otherId = DM_USER_MAP[chatId];
-    if (!otherId) return undefined;
-    return msg.senderId === DEV_USER_ID ? [otherId] : [DEV_USER_ID];
-  }
-  if (msg.senderId === DEV_USER_ID) return [...GROUP_MEMBER_IDS];
+  if (msg.senderId === DEV_USER_ID) return undefined;
   return [DEV_USER_ID];
+}
+
+function updateConversationName(userId: string, name: string): void {
+  const conv = MOCK_CONVERSATIONS.find((c) => c.id === `dm-${userId}`);
+  if (conv) conv.name = name;
 }
 
 export type { ChatConversation };
@@ -157,4 +157,5 @@ export {
   GROUP_MEMBER_IDS,
   DM_USER_MAP,
   populateReadBy,
+  updateConversationName,
 };

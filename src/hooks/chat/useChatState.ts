@@ -65,11 +65,11 @@ export function useChatState() {
     [conversations, chatId],
   );
 
-  const chatName = location.state?.name || convFromList?.name || 'Chat';
+  const chatName = convFromList?.name || location.state?.name || 'Chat';
   const chatOnline = location.state?.online ?? convFromList?.online ?? true;
   const chatLastSeen = location.state?.lastSeen ?? convFromList?.lastSeen ?? null;
   const memberCount = location.state?.members ?? null;
-  const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? userId) : undefined;
+  const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
 
   const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);
 

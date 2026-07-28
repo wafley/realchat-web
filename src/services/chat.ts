@@ -63,7 +63,7 @@ export async function getMessages(chatId: string, isDM: boolean, page: number = 
       const data = all.slice(start, end).map((m) => ({
         ...m,
         status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : undefined),
-        readBy: m.readBy ?? populateReadBy(m, chatId, isDM),
+        readBy: m.readBy ?? populateReadBy(m),
         sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
       }));
       return { data, total, page, limit, totalPages };
@@ -128,13 +128,14 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       await delay(200);
       msgCounter++;
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      const online = conv?.online ?? true;
       const msg: Message = {
         id: `msg-${msgCounter}`,
         groupId: chatId,
         senderId: DEV_USER_ID,
         content,
         type: 'text',
-        status: conv?.online ? 'delivered' as const : 'sent' as const,
+        status: online ? 'delivered' as const : 'sent' as const,
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -196,6 +197,8 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
           fileName: undefined,
           replyTo: undefined,
         };
+      } else {
+        msgs.splice(idx, 1);
       }
       return;
     }
@@ -218,6 +221,7 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
         msgs.forEach((m) => {
           if (m.senderId !== DEV_USER_ID && !m.readBy?.includes(DEV_USER_ID)) {
             m.readBy = [...(m.readBy ?? []), DEV_USER_ID];
+            m.status = 'read';
           }
         });
       }
@@ -258,6 +262,7 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
         const idx = MOCK_CONVERSATIONS.findIndex((c) => c.id === id);
         if (idx !== -1) MOCK_CONVERSATIONS.splice(idx, 1);
         delete MOCK_MESSAGES[id];
+        delete DM_USER_MAP[id];
       });
       return;
     }
@@ -273,6 +278,7 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
     if (DEV_MODE) {
       await delay(300);
       msgCounter++;
+      const targetConv = MOCK_CONVERSATIONS.find((c) => c.id === targetChatId);
       const forwarded: Message = {
         id: `msg-${msgCounter}`,
         groupId: targetChatId,
@@ -281,12 +287,16 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
         type: msg.type,
         fileUrl: msg.fileUrl,
         fileName: msg.fileName,
-        status: 'sent',
+        status: targetConv?.online ? 'delivered' as const : 'sent' as const,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
       };
       if (!MOCK_MESSAGES[targetChatId]) MOCK_MESSAGES[targetChatId] = [];
       MOCK_MESSAGES[targetChatId].push(forwarded);
+      if (targetConv) {
+        targetConv.lastMessage = msg.content ? `↗ ${msg.content}` : '↗ Forwarded message';
+        targetConv.lastTime = 'now';
+      }
       return forwarded;
     }
 
