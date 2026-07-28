@@ -149,5 +149,16 @@ export interface Contact {
   addedAt: Date;
 }
 
+export interface SearchMessageResult {
+  messageId: string;
+  conversationId: string;
+  conversationName: string;
+  conversationType: 'dm' | 'group';
+  senderId: string;
+  senderName: string;
+  content: string;
+  createdAt: Date;
+}
+
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';
