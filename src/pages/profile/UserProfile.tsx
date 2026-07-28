@@ -31,7 +31,9 @@ export default function UserProfile() {
     enabled: !isSelf,
   });
 
-  const isContact = !!userId && contacts.some((c) => c.userId === userId);
+  const contact = userId ? contacts.find((c) => c.userId === userId) : undefined;
+  const isContact = !!contact;
+  const displayName = contact?.customName || user?.fullName || '';
 
   const addContactMutation = useMutation({
     mutationFn: () => addContact(userId!),
@@ -89,8 +91,11 @@ export default function UserProfile() {
                 </Avatar>
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <h2 className="text-base font-bold text-foreground">{user.fullName}</h2>
-                  <p className="text-sm text-muted-foreground">@{user.username}</p>
+                  <h2 className="text-base font-bold text-foreground">{displayName}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    @{user.username}
+                    {contact?.customName && <span className="ml-2 text-muted-foreground/60">• {user.fullName}</span>}
+                  </p>
                   <div className="mt-2 flex items-center gap-1.5">
                     <span
                       className={cn(
@@ -145,7 +150,7 @@ export default function UserProfile() {
                   onClick={async () => {
                     try {
                       const dmId = await findOrCreateConversation(user.id);
-                      navigate(`/dm/${dmId}`, { state: { name: user.fullName, online: user.status === 'online' } });
+                      navigate(`/dm/${dmId}`, { state: { name: displayName, online: user.status === 'online' } });
                     } catch {
                       toast.error('Failed to open conversation');
                     }

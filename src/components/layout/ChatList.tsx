@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ElementType } from 'react';
+import { useState, useRef, useEffect, useMemo, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -9,10 +9,11 @@ import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
 import NotificationBell from '@/components/layout/NotificationBell';
 import { useTypingStore } from '@/store/typingStore';
-import { getConversations, bulkDeleteConversations } from '@/services/chat';
+import { getConversations, bulkDeleteConversations, searchAllMessages } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
-import type { Conversation } from '@/types';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { Conversation, SearchMessageResult } from '@/types';
 
 const tabs = [
   { id: 'messages', label: 'Messages', icon: MessageSquareText },
@@ -81,6 +82,15 @@ export default function ChatList() {
     if (tab === 'groups' && c.type !== 'group') return false;
     return c.name.toLowerCase().includes(search.toLowerCase());
   });
+
+  const debouncedSearch = useDebounce(search, 300);
+
+  const messageResults: SearchMessageResult[] = useMemo(() => {
+    if (!debouncedSearch.trim()) return [];
+    return searchAllMessages(debouncedSearch);
+  }, [debouncedSearch]);
+
+  const showSearchResults = search.trim().length > 0;
 
   const handleLongPressStart = (chatId: string, e: React.MouseEvent) => {
     longPressStartPos.current = { x: e.clientX, y: e.clientY };
@@ -283,15 +293,87 @@ export default function ChatList() {
               Retry
             </button>
           </div>
+        ) : showSearchResults ? (
+          <>
+            {filtered.length > 0 && (
+              <div>
+                <div className="px-4 py-2 text-xs font-medium text-muted-foreground lg:px-5 lg:py-2.5">
+                  Conversations
+                </div>
+                {filtered.map((chat) => {
+                  const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
+                  return (
+                    <Link
+                      key={chat.id}
+                      to={linkTo}
+                      state={{ name: chat.name, online: chat.online, lastSeen: chat.lastSeen, members: chat.members }}
+                      className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                    >
+                      <div className="relative shrink-0">
+                        <Avatar className="lg:h-12 lg:w-12">
+                          {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
+                          <AvatarFallback className="lg:text-base">
+                            {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{chat.name}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{chat.lastTime}</span>
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground lg:text-sm">{chat.lastMessage}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+            {messageResults.length > 0 && (
+              <div>
+                <div className="px-4 py-2 text-xs font-medium text-muted-foreground lg:px-5 lg:py-2.5">
+                  Messages
+                </div>
+                {messageResults.map((msg) => (
+                  <Link
+                    key={msg.messageId}
+                    to={msg.conversationType === 'dm' ? `/dm/${msg.conversationId}` : `/chat/${msg.conversationId}`}
+                    state={{ name: msg.conversationName }}
+                    className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                  >
+                    <div className="relative shrink-0">
+                      <Avatar className="lg:h-12 lg:w-12">
+                        <AvatarFallback className="lg:text-base">
+                          {msg.conversationType === 'group' ? <Users size={18} /> : <User size={18} />}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{msg.conversationName}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatLastSeen(msg.createdAt)}</span>
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground lg:text-sm">
+                        <span className="text-foreground/70">{msg.senderName}: </span>
+                        {msg.content}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            {filtered.length === 0 && messageResults.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground lg:text-base">
+                <Search size={40} className="mb-2 opacity-30" />
+                <p>No results for "{search}"</p>
+              </div>
+            )}
+          </>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground lg:text-base">
             <MessageSquareText size={40} className="mb-2 opacity-30" />
             <p>
-              {search
-                ? `No ${tab === 'messages' ? 'chats' : 'groups'} matching "${search}"`
-                : tab === 'messages'
-                  ? 'No messages yet'
-                  : 'No groups yet'}
+              {tab === 'messages' ? 'No messages yet' : 'No groups yet'}
             </p>
           </div>
         ) : (

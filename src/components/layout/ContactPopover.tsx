@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, User, MessageSquareText, Search, Loader2, X, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { getContacts, addContact, searchPeople, findUser } from '@/services/contacts';
+import { getContacts, addContact, searchContacts, findUser } from '@/services/contacts';
 import { findOrCreateConversation } from '@/services/chat';
 import type { User as UserType } from '@/types';
 
@@ -60,7 +60,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
     setSearching(true);
     searchTimer.current = setTimeout(async () => {
       try {
-        const users = await searchPeople(value.trim());
+        const users = await searchContacts(value.trim());
         setResults(users);
       } catch {
         setResults([]);
@@ -70,18 +70,19 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
     }, 300);
   }, []);
 
-  const handleStartDM = async (userId: string) => {
+  const handleStartDM = async (userId: string, displayName?: string) => {
     try {
       const convId = await findOrCreateConversation(userId);
       onClose();
-      navigate(`/dm/${convId}`);
+      navigate(`/dm/${convId}`, { state: { name: displayName } });
     } catch {
       toast.error('Failed to start conversation');
     }
   };
 
   const handleSelectUser = (user: UserType) => {
-    handleStartDM(user.id);
+    const contact = contacts?.find((c) => c.userId === user.id);
+    handleStartDM(user.id, contact?.customName || user.fullName);
   };
 
   const handleNewContact = async () => {
@@ -96,11 +97,12 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       }
       await addContact(user.id, newCustomName.trim() || undefined);
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       setShowNewContactForm(false);
       setNewUsername('');
       setNewCustomName('');
       toast.success('Contact added!');
-      handleStartDM(user.id);
+      handleStartDM(user.id, newCustomName.trim() || user.fullName);
     } catch (err) {
       setNewContactError(err instanceof Error ? err.message : 'Failed to add contact');
     } finally {
@@ -195,7 +197,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
                 <input
                   type="text"
                   aria-label="Search"
-                  placeholder="Search or type @username..."
+                  placeholder="Search contacts..."
                   value={query}
                   onChange={(e) => handleSearch(e.target.value)}
                   autoFocus
