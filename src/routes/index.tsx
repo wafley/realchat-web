@@ -6,7 +6,7 @@ import ChatLayout from '@/layouts/ChatLayout';
 import SettingsLayout from '@/layouts/SettingsLayout';
 import ProfileLayout from '@/layouts/ProfileLayout';
 import GroupsLayout from '@/layouts/GroupsLayout';
-import FriendsLayout from '@/layouts/FriendsLayout';
+
 
 export const router = createBrowserRouter([
   {
@@ -84,19 +84,6 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <FriendsLayout />,
-            children: [
-              {
-                path: 'friends',
-                lazy: () => import('@/pages/friends/AllFriends').then((m) => ({ Component: m.default })),
-              },
-              {
-                path: 'friends/add',
-                lazy: () => import('@/pages/friends/AddFriend').then((m) => ({ Component: m.default })),
-              },
-            ],
-          },
-          {
             element: <ProfileLayout />,
             children: [
               {
@@ -108,25 +95,10 @@ export const router = createBrowserRouter([
                 lazy: () => import('@/pages/profile/EditProfile').then((m) => ({ Component: m.default })),
               },
               {
-                path: 'profile/following',
-                lazy: () => import('@/pages/profile/FollowingPage').then((m) => ({ Component: m.default })),
-              },
-              {
-                path: 'profile/followers',
-                lazy: () => import('@/pages/profile/FollowersPage').then((m) => ({ Component: m.default })),
-              },
-              {
                 path: 'profile/:userId',
                 lazy: () => import('@/pages/profile/UserProfile').then((m) => ({ Component: m.default })),
               },
-              {
-                path: 'profile/:userId/following',
-                lazy: () => import('@/pages/profile/FollowingPage').then((m) => ({ Component: m.default })),
-              },
-              {
-                path: 'profile/:userId/followers',
-                lazy: () => import('@/pages/profile/FollowersPage').then((m) => ({ Component: m.default })),
-              },
+
             ],
           },
           {

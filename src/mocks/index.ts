@@ -11,5 +11,5 @@ export {
   populateReadBy,
 } from './chat';
 export { MOCK_GROUPS, MOCK_MESSAGES as SEARCH_MESSAGES } from './search';
-export { MOCK_FOLLOWING, MOCK_FOLLOWERS } from './friends';
+
 export { MOCK_POSTS } from './posts';
