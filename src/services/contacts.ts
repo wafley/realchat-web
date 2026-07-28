@@ -55,7 +55,7 @@ export async function addContact(userId: string, customName?: string): Promise<C
     MOCK_CONTACTS.push(contact);
     return contact;
   }
-  const { data } = await api.post<Contact>('/me/contacts', { userId, customName });
+  const { data } = await api.post<Contact>(`/me/contacts/${userId}`, { customName });
   return data;
 }
 

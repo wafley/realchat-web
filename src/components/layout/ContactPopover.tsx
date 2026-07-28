@@ -80,17 +80,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
     }
   };
 
-  const handleSelectUser = async (user: UserType) => {
-    const isContact = contacts?.some((c) => c.userId === user.id);
-    if (!isContact) {
-      try {
-        await addContact(user.id);
-        queryClient.invalidateQueries({ queryKey: ['contacts'] });
-        toast.success('Contact added!');
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to add contact');
-      }
-    }
+  const handleSelectUser = (user: UserType) => {
     handleStartDM(user.id);
   };
 
@@ -123,8 +113,6 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
   const showContacts = !query.trim() && contacts && contacts.length > 0;
   const showResults = query.trim();
   const showActions = !query.trim() && !showNewContactForm;
-  const showSearch = !showNewContactForm;
-
   return (
     <>
       <div className="fixed inset-0 z-[100]" onClick={onClose} />

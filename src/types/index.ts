@@ -123,7 +123,7 @@ export interface PaginatedResponse<T> {
 
 export interface Notification {
   id: string;
-  type: 'new_follower' | 'message' | 'group';
+  type: 'contact_added' | 'message' | 'group';
   title: string;
   body?: string;
   read: boolean;

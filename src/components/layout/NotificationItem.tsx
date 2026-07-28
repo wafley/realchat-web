@@ -18,14 +18,14 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const sender = notification.sender || (notification as any).user || (notification as any).data?.sender || (notification as any).data?.user;
   const avatarUrl = sender?.avatarUrl || (notification as any).avatarUrl || (notification as any).data?.avatarUrl;
   const senderName = sender?.fullName || sender?.username || (notification as any).senderName || (notification as any).data?.senderName;
-  const isSystemNotif = notification.type === 'new_follower' || notification.type === 'friend_request';
+  const isContactNotif = notification.type === 'contact_added';
 
   const handleClick = () => {
     if (!notification.read) {
       markRead.mutate(notification.id);
     }
 
-    if ((notification.type === 'follow_accepted' || notification.type === 'friend_accepted') && sender) {
+    if (notification.type === 'contact_added' && sender) {
       navigate(`/profile/${sender.id}`);
     } else if (notification.type === 'message' && notification.conversationId) {
       navigate(`/dm/${notification.conversationId}`);
@@ -55,7 +55,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
       </div>
       <div className="min-w-0 flex-1">
         <p className={cn('text-sm leading-snug', notification.read ? 'text-muted-foreground' : 'text-foreground')}>
-          {isSystemNotif && senderName ? `${senderName} added you as contact` : notification.title}
+          {isContactNotif && senderName ? `${senderName} added you as contact` : notification.title}
         </p>
         {notification.body && (
           <p className="mt-0.5 text-xs text-muted-foreground truncate">{notification.body}</p>
