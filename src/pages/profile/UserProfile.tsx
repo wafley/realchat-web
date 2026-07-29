@@ -1,13 +1,14 @@
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check, Pencil, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
-import { addContact, removeContact, getContacts } from '@/services/contacts';
+import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
@@ -62,6 +63,44 @@ export default function UserProfile() {
     onError: () => toast.error('Failed to block user'),
   });
 
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingName) nameInputRef.current?.focus();
+  }, [editingName]);
+
+  const updateNameMutation = useMutation({
+    mutationFn: () => updateContactCustomName(userId!, nameInput),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      setEditingName(false);
+      toast.success('Contact name updated');
+    },
+    onError: () => toast.error('Failed to update contact name'),
+  });
+
+  const handleStartEdit = () => {
+    setNameInput(contact?.customName || user?.fullName || '');
+    setEditingName(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!nameInput.trim()) return;
+    updateNameMutation.mutate();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingName(false);
+    setNameInput('');
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSaveEdit();
+    if (e.key === 'Escape') handleCancelEdit();
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
@@ -91,7 +130,43 @@ export default function UserProfile() {
                 </Avatar>
 
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <h2 className="text-base font-bold text-foreground">{displayName}</h2>
+                  {isContact && editingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={nameInputRef}
+                        type="text"
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        onKeyDown={handleNameKeyDown}
+                        className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2 py-1 text-base font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={updateNameMutation.isPending || !nameInput.trim()}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-30"
+                      >
+                        {updateNameMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={16} />}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h2 className="truncate text-base font-bold text-foreground">{displayName}</h2>
+                      {isContact && (
+                        <button
+                          onClick={handleStartEdit}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     @{user.username}
                     {contact?.customName && <span className="ml-2 text-muted-foreground/60">• {user.fullName}</span>}
@@ -121,8 +196,6 @@ export default function UserProfile() {
               </div>
 
               <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
-
-
 
               <div className="mt-6 flex flex-col gap-2">
                 {!isSelf && (
