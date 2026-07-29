@@ -254,14 +254,23 @@ export function useChatActions(props: UseChatActionsProps) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (isInitialLoadRef.current) return;
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          if (ioCooldownRef.current) return;
-          ioCooldownRef.current = true;
-          fetchNextPage();
-        }
+
         if (!entry.isIntersecting) {
           ioCooldownRef.current = false;
+          return;
         }
+
+        if (!hasNextPage || isFetchingNextPage) return;
+
+        const container = messagesEndRef.current?.parentElement?.parentElement;
+        if (container) {
+          if (container.scrollHeight <= container.clientHeight) return;
+          if (container.scrollTop > 5) return;
+        }
+
+        if (ioCooldownRef.current) return;
+        ioCooldownRef.current = true;
+        fetchNextPage();
       },
       { threshold: 0 },
     );
