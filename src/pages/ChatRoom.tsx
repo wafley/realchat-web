@@ -118,6 +118,7 @@ export default function ChatRoom() {
     return () => {
       leaveRoom(state.chatId);
       setCurrentChat(null, false);
+      sessionStorage.removeItem(`scrollPos-${state.chatId}`);
     };
   }, [state.chatId, state.isDM]);
 
@@ -216,6 +217,7 @@ export default function ChatRoom() {
       )}
 
       <MessageList
+        chatId={state.chatId}
         filteredMessages={state.filteredMessages}
         searchQuery={state.searchQuery}
         isPending={state.isPending}

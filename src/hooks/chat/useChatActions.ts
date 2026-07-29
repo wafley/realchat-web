@@ -238,6 +238,12 @@ export function useChatActions(props: UseChatActionsProps) {
       const el = messagesEndRef.current;
       if (el) {
         if (isInitialLoadRef.current) {
+          const restored = sessionStorage.getItem(`scrollRestored-${chatId}`);
+          if (restored) {
+            sessionStorage.removeItem(`scrollRestored-${chatId}`);
+            isInitialLoadRef.current = false;
+            return;
+          }
           el.scrollIntoView({ behavior: 'instant' });
           isInitialLoadRef.current = false;
         } else {

@@ -1,10 +1,11 @@
-import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback } from 'react';
+import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { Loader2, AlertCircle, RefreshCw, MessageSquareText, ChevronDown } from 'lucide-react';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
 
 interface MessageListProps {
+  chatId: string;
   isPending: boolean;
   isError: boolean;
   error: Error | null;
@@ -35,6 +36,7 @@ interface MessageListProps {
 }
 
 export default function MessageList({
+  chatId,
   isPending,
   isError,
   error,
@@ -71,11 +73,49 @@ export default function MessageList({
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setShowScrollDown(distanceFromBottom > 200);
-  }, []);
+    sessionStorage.setItem(`scrollPos-${chatId}`, String(el.scrollTop));
+  }, [chatId]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesEndRef]);
+
+  const scrollRestoredRef = useRef(false);
+  const prevFirstIdRef = useRef<string | null>(null);
+  const prevScrollHeightRef = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || filteredMessages.length === 0) return;
+
+    if (!scrollRestoredRef.current) {
+      scrollRestoredRef.current = true;
+      const saved = sessionStorage.getItem(`scrollPos-${chatId}`);
+      if (saved) {
+        const pos = parseInt(saved, 10);
+        if (pos > 0 && pos < el.scrollHeight) {
+          el.scrollTop = pos;
+        }
+        sessionStorage.setItem(`scrollRestored-${chatId}`, '1');
+        sessionStorage.removeItem(`scrollPos-${chatId}`);
+        prevFirstIdRef.current = filteredMessages[0]?.id ?? null;
+        prevScrollHeightRef.current = el.scrollHeight;
+        return;
+      }
+    }
+
+    const firstId = filteredMessages[0]?.id ?? null;
+    const prevFirstId = prevFirstIdRef.current;
+    if (prevFirstId && prevFirstId !== firstId) {
+      const diff = el.scrollHeight - prevScrollHeightRef.current;
+      if (diff > 0) {
+        el.scrollTop += diff;
+      }
+    }
+
+    prevFirstIdRef.current = firstId;
+    prevScrollHeightRef.current = el.scrollHeight;
+  }, [filteredMessages, chatId]);
 
   return (
     <div className="relative flex-1 overflow-hidden">
