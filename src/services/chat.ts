@@ -50,7 +50,7 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
 let groupIdCounter = 10;
 let msgCounter = 100;
 
-export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 30): Promise<PaginatedResponse<Message>> {
+export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 10): Promise<PaginatedResponse<Message>> {
   try {
     if (DEV_MODE) {
       await delay(300);
