@@ -43,6 +43,8 @@ function MediaThumb({ media }: { media: { id: string; type: string; content?: st
         <img
           src={media.fileUrl}
           alt={media.fileName || 'Shared image'}
+          loading="lazy"
+          decoding="async"
           className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
           onClick={() => media.fileUrl && media.fileUrl !== '#'
             ? window.open(media.fileUrl, '_blank')
@@ -54,7 +56,7 @@ function MediaThumb({ media }: { media: { id: string; type: string; content?: st
           onClick={() => toast.info('Video playback coming soon')}
         >
           {media.fileUrl && media.fileUrl !== '#' ? (
-            <img src={media.fileUrl} alt={media.fileName || 'Shared video'} className="h-full w-full object-cover opacity-70" />
+            <img src={media.fileUrl} alt={media.fileName || 'Shared video'} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-70" />
           ) : (
             <div className="flex flex-col items-center gap-1">
               <Play size={24} className="text-muted-foreground" fill="currentColor" />
@@ -306,8 +308,10 @@ export default function UserProfile() {
                     </button>
                   </div>
                   <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8">
-                    {sharedMedia.slice(0, 5).map((media) => (
-                      <MediaThumb key={media.id} media={media} />
+                    {sharedMedia.slice(0, 8).map((media, i) => (
+                      <div key={media.id} className={i >= 5 ? 'hidden sm:block' : ''}>
+                        <MediaThumb media={media} />
+                      </div>
                     ))}
                   </div>
                 </div>
