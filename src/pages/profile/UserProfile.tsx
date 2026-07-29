@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check, Pencil, X, FileText, Play } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
@@ -11,6 +12,88 @@ import { blockUser as blockUserService, findOrCreateConversation, getSharedMedia
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${bytes} B`;
+}
+
+function isLinkContent(content?: string): boolean {
+  return !!content && /https?:\/\/[^\s]+/.test(content);
+}
+
+function extractUrl(content: string): string | null {
+  const match = content.match(/https?:\/\/[^\s]+/);
+  return match ? match[0] : null;
+}
+
+function urlDomain(url: string): string {
+  try { return new URL(url).hostname.replace('www.', ''); }
+  catch { return url; }
+}
+
+function MediaThumb({ media }: { media: { id: string; type: string; content?: string; fileUrl?: string; fileName?: string; fileSize?: number; duration?: number } }) {
+  const isLink = media.type === 'text';
+  const linkUrl = isLink ? extractUrl(media.content || '') : null;
+
+  return (
+    <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
+      {media.type === 'image' ? (
+        <img
+          src={media.fileUrl}
+          alt={media.fileName || 'Shared image'}
+          className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
+          onClick={() => media.fileUrl && media.fileUrl !== '#'
+            ? window.open(media.fileUrl, '_blank')
+            : toast.error('Preview not available')}
+        />
+      ) : media.type === 'video' ? (
+        <div
+          className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
+          onClick={() => toast.info('Video playback coming soon')}
+        >
+          {media.fileUrl && media.fileUrl !== '#' ? (
+            <img src={media.fileUrl} alt={media.fileName || 'Shared video'} className="h-full w-full object-cover opacity-70" />
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <Play size={24} className="text-muted-foreground" fill="currentColor" />
+            </div>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
+              <Play size={14} className="text-white" fill="white" />
+            </div>
+          </div>
+          {media.duration && (
+            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+              {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
+            </span>
+          )}
+        </div>
+      ) : isLink && linkUrl ? (
+        <a
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10"
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <span className="max-w-full truncate text-[10px] font-medium text-foreground">{urlDomain(linkUrl)}</span>
+          <span className="max-w-full truncate text-[9px] text-muted-foreground">{linkUrl}</span>
+        </a>
+      ) : (
+        <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10">
+          <FileText size={20} className="text-muted-foreground" />
+          <span className="max-w-full truncate text-[10px] text-muted-foreground">{media.fileName}</span>
+          {media.fileSize && <span className="text-[10px] text-muted-foreground/60">{formatFileSize(media.fileSize)}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
@@ -63,6 +146,8 @@ export default function UserProfile() {
     onError: () => toast.error('Failed to block user'),
   });
 
+  const [mediaModalOpen, setMediaModalOpen] = useState(false);
+  const [mediaTab, setMediaTab] = useState<'media' | 'file' | 'link'>('media');
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -112,12 +197,6 @@ export default function UserProfile() {
     queryFn: () => getSharedMedia(dmId!),
     enabled: !!dmId,
   });
-
-  function formatFileSize(bytes: number): string {
-    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${bytes} B`;
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -215,103 +294,104 @@ export default function UserProfile() {
 
               <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
 
-              <div className="mt-6 flex flex-col gap-2">
-                {!isSelf && (
-                  isContact ? (
+              {!isSelf && <hr className="my-3 border-border" />}
+
+              {!isSelf && sharedMedia.length > 0 && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-xs font-medium text-muted-foreground/65">Media, Links and Docs</h3>
+                    <button onClick={() => setMediaModalOpen(true)} className="mt-0.5 flex items-center gap-0.5 text-xs text-accent transition-colors hover:text-accent/80">
+                      Lihat semua ({sharedMedia.length})
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8">
+                    {sharedMedia.slice(0, 5).map((media) => (
+                      <MediaThumb key={media.id} media={media} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                <div className="mb-4 flex gap-1 border-b border-border pb-2">
+                  {(['media', 'file', 'link'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setMediaTab(tab)}
+                      className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                        mediaTab === tab
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {tab === 'media' ? 'Media' : tab === 'file' ? 'Docs' : 'Links'}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                  {sharedMedia.filter((m) => {
+                    if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
+                    if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
+                    return m.type === mediaTab;
+                  }).map((media) => (
+                    <MediaThumb key={media.id} media={media} />
+                  ))}
+                  {sharedMedia.filter((m) => {
+                    if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
+                    if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
+                    return m.type === mediaTab;
+                  }).length === 0 && (
+                    <p className="col-span-full py-10 text-center text-xs text-muted-foreground">Tidak ada media</p>
+                  )}
+                </div>
+              </Modal>
+
+              {!isSelf && <hr className="my-3 border-border" />}
+
+              {!isSelf && (
+                <div className="grid grid-cols-3 gap-2">
+                  {isContact ? (
                     <button
                       onClick={() => removeContactMutation.mutate()}
                       disabled={removeContactMutation.isPending}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-border px-2 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                     >
                       {removeContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserMinus size={16} />}
-                      {removeContactMutation.isPending ? 'Removing...' : 'Remove Contact'}
+                      <span className="hidden sm:inline">{removeContactMutation.isPending ? 'Removing...' : 'Remove'}</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => addContactMutation.mutate()}
                       disabled={addContactMutation.isPending}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+                      className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
                     >
                       {addContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-                      {addContactMutation.isPending ? 'Adding...' : 'Add Contact'}
+                      <span className="hidden sm:inline">{addContactMutation.isPending ? 'Adding...' : 'Add'}</span>
                     </button>
-                  )
-                )}
-                <button
-                  onClick={async () => {
-                    try {
-                      const dmId = await findOrCreateConversation(user.id);
-                      navigate(`/dm/${dmId}`, { state: { name: displayName, online: user.status === 'online' } });
-                    } catch {
-                      toast.error('Failed to open conversation');
-                    }
-                  }}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
-                >
-                  <MessageSquareText size={16} />
-                  Send Message
-                </button>
-                <button
-                  onClick={() => blockMutation.mutate()}
-                  disabled={blockMutation.isPending}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
-                >
-                  {blockMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
-                  {blockMutation.isPending ? 'Blocking...' : 'Block User'}
-                </button>
-              </div>
-
-              {!isSelf && sharedMedia.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="mb-3 text-sm font-semibold text-foreground">Shared Media</h3>
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5">
-                    {sharedMedia.slice(0, 15).map((media) => (
-                      <div key={media.id} className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
-                        {media.type === 'image' ? (
-                          <img
-                            src={media.fileUrl}
-                            alt={media.fileName || 'Shared image'}
-                            className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
-                            onClick={() => media.fileUrl && media.fileUrl !== '#'
-                              ? window.open(media.fileUrl, '_blank')
-                              : toast.error('Preview not available')}
-                          />
-                        ) : media.type === 'video' ? (
-                          <div
-                            className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
-                            onClick={() => toast.info('Video playback coming soon')}
-                          >
-                            {media.fileUrl && media.fileUrl !== '#' ? (
-                              <img src={media.fileUrl} alt={media.fileName || 'Shared video'} className="h-full w-full object-cover opacity-70" />
-                            ) : (
-                              <div className="flex flex-col items-center gap-1">
-                                <Play size={24} className="text-muted-foreground" fill="currentColor" />
-                              </div>
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
-                                <Play size={14} className="text-white" fill="white" />
-                              </div>
-                            </div>
-                            {media.duration && (
-                              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-                                {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10">
-                            <FileText size={20} className="text-muted-foreground" />
-                            <span className="max-w-full truncate text-[10px] text-muted-foreground">{media.fileName}</span>
-                            {media.fileSize && <span className="text-[10px] text-muted-foreground/60">{formatFileSize(media.fileSize)}</span>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {sharedMedia.length > 15 && (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">+{sharedMedia.length - 15} more</p>
                   )}
+                  <button
+                    onClick={async () => {
+                      try {
+                        const dmId = await findOrCreateConversation(user.id);
+                        navigate(`/dm/${dmId}`, { state: { name: displayName, online: user.status === 'online' } });
+                      } catch {
+                        toast.error('Failed to open conversation');
+                      }
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
+                  >
+                    <MessageSquareText size={16} />
+                    <span className="hidden sm:inline">Chat</span>
+                  </button>
+                  <button
+                    onClick={() => blockMutation.mutate()}
+                    disabled={blockMutation.isPending}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-border px-2 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
+                  >
+                    {blockMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
+                    <span className="hidden sm:inline">{blockMutation.isPending ? 'Blocking...' : 'Block'}</span>
+                  </button>
                 </div>
               )}
 

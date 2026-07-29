@@ -761,7 +761,11 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
   if (DEV_MODE) {
     await delay(200);
     const messages = MOCK_MESSAGES[conversationId] ?? [];
-    return messages.filter((m) => m.type === 'image' || m.type === 'video' || m.type === 'file');
+    return messages.filter((m) => {
+      if (m.type === 'image' || m.type === 'video' || m.type === 'file') return true;
+      if (m.type === 'text') return /https?:\/\/[^\s]+/.test(m.content);
+      return false;
+    });
   }
   const { data } = await api.get(`/conversations/${conversationId}/media`);
   return Array.isArray(data) ? data : [];
