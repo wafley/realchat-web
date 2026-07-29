@@ -168,6 +168,7 @@ function MessageBubbleComp({
                       style={{ maxHeight: '300px' }}
                       onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
                       loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
@@ -195,6 +196,7 @@ function MessageBubbleComp({
                     style={{ maxHeight: '300px' }}
                     onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
                     loading="lazy"
+                    decoding="async"
                   />
                   {renderTimestamp(true)}
                 </div>
