@@ -313,13 +313,13 @@ export default function UserProfile() {
                 </div>
               )}
 
-              <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl max-h-[85vh] overflow-y-auto">
-                <div className="mb-4 flex gap-1 border-b border-border pb-2">
+              <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl">
+                <div className="mb-4 grid grid-cols-3 gap-1 border-b border-border pb-2">
                   {(['media', 'file', 'link'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setMediaTab(tab)}
-                      className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`w-full rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                         mediaTab === tab
                           ? 'bg-accent text-accent-foreground'
                           : 'text-muted-foreground hover:text-foreground'
@@ -329,21 +329,23 @@ export default function UserProfile() {
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                  {sharedMedia.filter((m) => {
-                    if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
-                    if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
-                    return m.type === mediaTab;
-                  }).map((media) => (
-                    <MediaThumb key={media.id} media={media} />
-                  ))}
-                  {sharedMedia.filter((m) => {
-                    if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
-                    if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
-                    return m.type === mediaTab;
-                  }).length === 0 && (
-                    <p className="col-span-full py-10 text-center text-xs text-muted-foreground">Tidak ada media</p>
-                  )}
+                <div className="h-[420px] overflow-y-auto">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                    {sharedMedia.filter((m) => {
+                      if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
+                      if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
+                      return m.type === mediaTab;
+                    }).map((media) => (
+                      <MediaThumb key={media.id} media={media} />
+                    ))}
+                    {sharedMedia.filter((m) => {
+                      if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
+                      if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
+                      return m.type === mediaTab;
+                    }).length === 0 && (
+                      <p className="col-span-full py-10 text-center text-xs text-muted-foreground">Tidak ada media</p>
+                    )}
+                  </div>
                 </div>
               </Modal>
 
