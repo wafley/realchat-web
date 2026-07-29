@@ -757,4 +757,14 @@ export function searchAllMessages(query: string): SearchMessageResult[] {
   return [];
 }
 
+export async function getSharedMedia(conversationId: string): Promise<Message[]> {
+  if (DEV_MODE) {
+    await delay(200);
+    const messages = MOCK_MESSAGES[conversationId] ?? [];
+    return messages.filter((m) => m.type === 'image' || m.type === 'video' || m.type === 'file');
+  }
+  const { data } = await api.get(`/conversations/${conversationId}/media`);
+  return Array.isArray(data) ? data : [];
+}
+
 export type { ChatConversation };

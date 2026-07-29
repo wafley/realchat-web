@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check, Pencil, X } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check, Pencil, X, FileText, Play } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
-import { blockUser as blockUserService, findOrCreateConversation } from '@/services/chat';
+import { blockUser as blockUserService, findOrCreateConversation, getSharedMedia } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
@@ -100,6 +100,24 @@ export default function UserProfile() {
     if (e.key === 'Enter') handleSaveEdit();
     if (e.key === 'Escape') handleCancelEdit();
   };
+
+  const { data: dmId } = useQuery({
+    queryKey: ['dm', userId],
+    queryFn: () => findOrCreateConversation(userId!),
+    enabled: !!userId && !isSelf,
+  });
+
+  const { data: sharedMedia = [] } = useQuery({
+    queryKey: ['shared-media', dmId],
+    queryFn: () => getSharedMedia(dmId!),
+    enabled: !!dmId,
+  });
+
+  function formatFileSize(bytes: number): string {
+    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${bytes} B`;
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -242,6 +260,60 @@ export default function UserProfile() {
                   {blockMutation.isPending ? 'Blocking...' : 'Block User'}
                 </button>
               </div>
+
+              {!isSelf && sharedMedia.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="mb-3 text-sm font-semibold text-foreground">Shared Media</h3>
+                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5">
+                    {sharedMedia.slice(0, 15).map((media) => (
+                      <div key={media.id} className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
+                        {media.type === 'image' ? (
+                          <img
+                            src={media.fileUrl}
+                            alt={media.fileName || 'Shared image'}
+                            className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
+                            onClick={() => media.fileUrl && media.fileUrl !== '#'
+                              ? window.open(media.fileUrl, '_blank')
+                              : toast.error('Preview not available')}
+                          />
+                        ) : media.type === 'video' ? (
+                          <div
+                            className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
+                            onClick={() => toast.info('Video playback coming soon')}
+                          >
+                            {media.fileUrl && media.fileUrl !== '#' ? (
+                              <img src={media.fileUrl} alt={media.fileName || 'Shared video'} className="h-full w-full object-cover opacity-70" />
+                            ) : (
+                              <div className="flex flex-col items-center gap-1">
+                                <Play size={24} className="text-muted-foreground" fill="currentColor" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
+                                <Play size={14} className="text-white" fill="white" />
+                              </div>
+                            </div>
+                            {media.duration && (
+                              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                                {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10">
+                            <FileText size={20} className="text-muted-foreground" />
+                            <span className="max-w-full truncate text-[10px] text-muted-foreground">{media.fileName}</span>
+                            {media.fileSize && <span className="text-[10px] text-muted-foreground/60">{formatFileSize(media.fileSize)}</span>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {sharedMedia.length > 15 && (
+                    <p className="mt-2 text-center text-xs text-muted-foreground">+{sharedMedia.length - 15} more</p>
+                  )}
+                </div>
+              )}
 
             </>
           )}
