@@ -33,7 +33,7 @@ function urlDomain(url: string): string {
   catch { return url; }
 }
 
-function MediaThumb({ media }: { media: { id: string; type: string; content?: string; fileUrl?: string; fileName?: string; fileSize?: number; duration?: number } }) {
+function MediaThumb({ media, onClickImage }: { media: { id: string; type: string; content?: string; fileUrl?: string; fileName?: string; fileSize?: number; duration?: number }; onClickImage?: (url: string) => void }) {
   const isLink = media.type === 'text';
   const linkUrl = isLink ? extractUrl(media.content || '') : null;
 
@@ -46,9 +46,13 @@ function MediaThumb({ media }: { media: { id: string; type: string; content?: st
           loading="lazy"
           decoding="async"
           className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
-          onClick={() => media.fileUrl && media.fileUrl !== '#'
-            ? window.open(media.fileUrl, '_blank')
-            : toast.error('Preview not available')}
+          onClick={() => {
+            if (media.fileUrl && media.fileUrl !== '#') {
+              onClickImage?.(media.fileUrl);
+            } else {
+              toast.error('Preview not available');
+            }
+          }}
         />
       ) : media.type === 'video' ? (
         <div
@@ -150,6 +154,7 @@ export default function UserProfile() {
 
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [mediaTab, setMediaTab] = useState<'media' | 'file' | 'link'>('media');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -310,7 +315,7 @@ export default function UserProfile() {
                   <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8">
                     {sharedMedia.slice(0, 8).map((media, i) => (
                       <div key={media.id} className={i >= 5 ? 'hidden sm:block' : ''}>
-                        <MediaThumb media={media} />
+                        <MediaThumb media={media} onClickImage={(url) => setPreviewUrl(url)} />
                       </div>
                     ))}
                   </div>
@@ -340,7 +345,7 @@ export default function UserProfile() {
                       if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
                       return m.type === mediaTab;
                     }).map((media) => (
-                      <MediaThumb key={media.id} media={media} />
+                      <MediaThumb key={media.id} media={media} onClickImage={(url) => setPreviewUrl(url)} />
                     ))}
                     {sharedMedia.filter((m) => {
                       if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
@@ -405,6 +410,26 @@ export default function UserProfile() {
           )}
         </div>
       </div>
+
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <button
+            onClick={() => setPreviewUrl(null)}
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
+          >
+            <X size={22} />
+          </button>
+          <img
+            src={previewUrl}
+            alt="Full size"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
