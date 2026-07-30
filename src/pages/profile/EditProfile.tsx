@@ -22,6 +22,7 @@ export default function EditProfile() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<EditProfileSchema>({
     resolver: zodResolver(editProfileSchema),
@@ -30,6 +31,8 @@ export default function EditProfile() {
       bio: user?.bio || '',
     },
   });
+
+  const fullNameValue = watch('fullName');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,10 +114,14 @@ export default function EditProfile() {
 
             <div className="space-y-0">
               <div className="border-b border-border/50 px-4 py-3.5">
-                <label className="text-xs text-muted-foreground">Full Name</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-muted-foreground">Full Name</label>
+                  <p className="text-xs text-muted-foreground/50">{50 - (fullNameValue?.length || 0)}/50</p>
+                </div>
                 <input
                   type="text"
                   placeholder="Your full name"
+                  maxLength={50}
                   {...register('fullName')}
                   className="mt-1 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
