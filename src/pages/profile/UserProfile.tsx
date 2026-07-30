@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2 } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Moon, Monitor, Volume2, Key, Eye, EyeOff, ExternalLink, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,10 @@ import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
 import { queryClient as appQueryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
+import { loadPrefs, savePrefs } from '@/services/notification';
+import { usePrivacyStore } from '@/store/privacyStore';
+import { useThemeStore } from '@/store/themeStore';
+import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
@@ -102,7 +106,231 @@ function MediaThumb({ media, onClickImage }: { media: { id: string; type: string
   );
 }
 
-export default function UserProfile() {
+function SectionItem({ icon: Icon, label, desc, expanded, onToggle, children }: { icon: any; label: string; desc: string; expanded: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <div>
+      <button onClick={onToggle} className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-accent/5">
+        <Icon size={20} className="shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">{desc}</p>
+        </div>
+        <ChevronRight size={16} className={cn('shrink-0 text-muted-foreground/40 transition-transform', expanded && 'rotate-90')} />
+      </button>
+      <div className={cn('overflow-hidden transition-all', expanded ? 'max-h-[500px]' : 'max-h-0')}>
+        <div className="px-4 pb-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationsContent() {
+  const [prefs, setPrefs] = useState(loadPrefs);
+  useEffect(() => { savePrefs(prefs); }, [prefs]);
+  const toggle = (key: 'messages' | 'groups' | 'sound') => setPrefs((p) => ({ ...p, [key]: !p[key] }));
+  return (
+    <div className="space-y-3">
+      {[
+        { key: 'messages' as const, label: 'Message notifications' },
+        { key: 'groups' as const, label: 'Group notifications' },
+        { key: 'sound' as const, label: 'Sound' },
+      ].map(({ key, label }) => (
+        <label key={key} className="flex items-center justify-between">
+          <span className="text-sm text-foreground">{label}</span>
+          <button
+            onClick={() => toggle(key)}
+            className={cn(
+              'relative h-5 w-9 rounded-full transition-colors',
+              prefs[key] ? 'bg-accent' : 'bg-muted-foreground/30',
+            )}
+          >
+            <span className={cn(
+              'absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
+              prefs[key] && 'translate-x-4',
+            )} />
+          </button>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function PrivacyContent() {
+  const navigate = useNavigate();
+  const { lastSeen, readReceipts, setLastSeen, setReadReceipts } = usePrivacyStore();
+  const { data: blockedUsers = [] } = useQuery({ queryKey: ['blockedUsers'], queryFn: getBlockedUsers });
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-foreground">Last Seen</span>
+        <select value={lastSeen} onChange={(e) => setLastSeen(e.target.value as any)} className="rounded-lg border border-input bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+          <option value="everyone">Everyone</option>
+          <option value="contacts">My Contacts</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <label className="flex items-center justify-between">
+        <span className="text-sm text-foreground">Read Receipts</span>
+        <button onClick={() => setReadReceipts(!readReceipts)} className={cn('relative h-5 w-9 rounded-full transition-colors', readReceipts ? 'bg-accent' : 'bg-muted-foreground/30')}>
+          <span className={cn('absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform', readReceipts && 'translate-x-4')} />
+        </button>
+      </label>
+      <button onClick={() => navigate('/settings/privacy/blocked')} className="flex w-full items-center justify-between rounded-lg border border-border/50 px-3 py-2 text-left transition-colors hover:bg-accent/5">
+        <span className="text-sm text-foreground">Blocked Users</span>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">{blockedUsers.length}<ExternalLink size={12} /></div>
+      </button>
+    </div>
+  );
+}
+
+function AppearanceContent() {
+  const { mode, setMode, fontSize, setFontSize } = useThemeStore();
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">Theme</p>
+        <div className="flex gap-1.5 rounded-lg bg-muted/50 p-1">
+          {[{ id: 'dark' as const, label: 'Dark', icon: Moon }, { id: 'light' as const, label: 'Light', icon: Sun }, { id: 'system' as const, label: 'System', icon: Monitor }].map(({ id, label, icon: Icon }) => (
+            <button key={id} onClick={() => setMode(id)} className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors', mode === id ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+              <Icon size={14} />{label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">Font Size</p>
+        <div className="flex gap-1.5 rounded-lg bg-muted/50 p-1">
+          {[{ id: 'small' as const, label: 'Small' }, { id: 'default' as const, label: 'Default' }, { id: 'large' as const, label: 'Large' }].map(({ id, label }) => (
+            <button key={id} onClick={() => setFontSize(id)} className={cn('flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors', fontSize === id ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>{label}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountContent() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDelPw, setShowDelPw] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleChangePw = async () => {
+    if (!pwCurrent || !pwNew) { toast.error('Fill in all fields'); return; }
+    if (pwNew.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    setChanging(true);
+    try { await changePassword(pwCurrent, pwNew); toast.success('Password changed'); setPwCurrent(''); setPwNew(''); }
+    catch (err) { toast.error(parseAuthError(err)); }
+    finally { setChanging(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deletePassword) { toast.error('Enter your password'); return; }
+    setDeleting(true);
+    try {
+      await deleteAccount(deletePassword);
+      queryClient.clear();
+      useAuthStore.getState().logout();
+      destroySocket();
+      navigate('/login');
+    } catch (err) { toast.error(parseAuthError(err)); }
+    finally { setDeleting(false); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-medium text-muted-foreground">Change Password</p>
+      <div className="relative">
+        <input type={showPw ? 'text' : 'password'} value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} placeholder="Current password" className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+        <button onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">{showPw ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+      </div>
+      <div className="relative">
+        <input type={showPw ? 'text' : 'password'} value={pwNew} onChange={(e) => setPwNew(e.target.value)} placeholder="New password" className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+      </div>
+      <button onClick={handleChangePw} disabled={changing} className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50">
+        {changing ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+        {changing ? 'Changing...' : 'Change Password'}
+      </button>
+      <hr className="border-border" />
+      <p className="text-xs font-medium text-destructive">Delete Account</p>
+      <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
+      <button onClick={() => setDeleteOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/5">
+        <Trash2 size={14} />Delete Account
+      </button>
+      <Modal open={deleteOpen} onClose={() => { setDeleteOpen(false); setDeleteInput(''); setDeletePassword(''); }} hideClose>
+        <div className="p-6">
+          <h3 className="mb-2 text-lg font-bold text-foreground">Delete Account</h3>
+          <p className="mb-4 text-sm text-muted-foreground">Type <strong className="text-foreground">delete</strong> to confirm and enter your password.</p>
+          <input value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)} placeholder='Type "delete"' className="mb-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+          <div className="relative mb-4">
+            <input type={showDelPw ? 'text' : 'password'} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} placeholder="Your password" className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button onClick={() => setShowDelPw(!showDelPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">{showDelPw ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { setDeleteOpen(false); setDeleteInput(''); setDeletePassword(''); }} className="flex-1 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/5">Cancel</button>
+            <button onClick={handleDelete} disabled={deleteInput !== 'delete' || !deletePassword || deleting} className="flex-1 rounded-lg bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/80 disabled:opacity-50">
+              {deleting ? <Loader2 size={14} className="animate-spin" /> : 'Delete'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function AboutContent() {
+  const features = [
+    { name: 'Chat', status: 'active' as const },
+    { name: 'Group Chat', status: 'active' as const },
+    { name: 'Contacts', status: 'active' as const },
+    { name: 'Feed & Posts', status: 'active' as const },
+    { name: 'File Sharing', status: 'active' as const },
+    { name: 'Voice & Video Calls', status: 'coming' as const },
+    { name: 'Dark Mode', status: 'active' as const },
+    { name: 'Online Status', status: 'active' as const },
+    { name: 'Notification Preferences', status: 'active' as const },
+    { name: 'End-to-End Encryption', status: 'coming' as const },
+    { name: 'Message Reactions', status: 'active' as const },
+    { name: 'Message Forwarding', status: 'active' as const },
+    { name: 'Message Pinning', status: 'active' as const },
+    { name: 'Read Receipts', status: 'active' as const },
+  ];
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg object-contain" />
+        <div>
+          <p className="text-sm font-bold text-foreground">Hallo Wok</p>
+          <p className="text-xs text-muted-foreground">Version 0.0.1</p>
+        </div>
+      </div>
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">All Features</p>
+        <div className="space-y-1">
+          {features.map((f) => (
+            <div key={f.name} className="flex items-center gap-2">
+              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', f.status === 'active' ? 'bg-green-500' : 'bg-muted-foreground/40')} />
+              <span className={cn('text-xs', f.status === 'active' ? 'text-foreground' : 'text-muted-foreground/50')}>
+                {f.name}{f.status === 'coming' && <span className="ml-1 text-[10px] text-muted-foreground/40">(Coming Soon)</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="mb-0.5 text-xs font-medium text-muted-foreground">Developer</p>
+        <p className="text-xs text-foreground">@wafley</p>
+      </div>
+    </div>
+  );
+}
   const { userId: paramUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
@@ -126,6 +354,16 @@ export default function UserProfile() {
   const effectiveUser = isSelf && currentUser ? { ...user, ...currentUser } : user;
   const contact = userId ? contacts.find((c) => c.userId === userId) : undefined;
   const isContact = !!contact;
+
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (id: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const displayName = contact?.customName || effectiveUser?.fullName || '';
 
   const addContactMutation = useMutation({
@@ -407,55 +645,52 @@ export default function UserProfile() {
                   <hr className="my-6 border-border" />
                   <div>
                     <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
-                    <div className="overflow-hidden rounded-xl border border-border">
-                      <Link
-                        to="/settings/notifications"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                    <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
+                      <SectionItem
+                        icon={Bell}
+                        label="Notifications"
+                        desc="Message, group, and sound preferences"
+                        expanded={expandedSections.has('notifications')}
+                        onToggle={() => toggleSection('notifications')}
                       >
-                        <Bell size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Notifications</p>
-                          <p className="text-xs text-muted-foreground">Message, group, and sound preferences</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
-                      <Link
-                        to="/settings/privacy"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                        <NotificationsContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={Shield}
+                        label="Privacy"
+                        desc="Last seen, read receipts, blocked users"
+                        expanded={expandedSections.has('privacy')}
+                        onToggle={() => toggleSection('privacy')}
                       >
-                        <Shield size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Privacy</p>
-                          <p className="text-xs text-muted-foreground">Last seen, read receipts, blocked users</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
-                      <Link
-                        to="/settings/appearance"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                        <PrivacyContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={Sun}
+                        label="Appearance"
+                        desc="Theme preferences"
+                        expanded={expandedSections.has('appearance')}
+                        onToggle={() => toggleSection('appearance')}
                       >
-                        <Sun size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Appearance</p>
-                          <p className="text-xs text-muted-foreground">Theme preferences</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
-                      <Link
-                        to="/settings/account"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                        <AppearanceContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={AlertTriangle}
+                        label="Account"
+                        desc="Password and account management"
+                        expanded={expandedSections.has('account')}
+                        onToggle={() => toggleSection('account')}
                       >
-                        <AlertTriangle size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Account</p>
-                          <p className="text-xs text-muted-foreground">Danger zone and account management</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
+                        <AccountContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={Info}
+                        label="About"
+                        desc="App info and credits"
+                        expanded={expandedSections.has('about')}
+                        onToggle={() => toggleSection('about')}
+                      >
+                        <AboutContent />
+                      </SectionItem>
                       <button
                         onClick={() => {
                           appQueryClient.clear();
