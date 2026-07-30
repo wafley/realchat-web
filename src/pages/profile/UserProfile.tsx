@@ -111,8 +111,6 @@ export default function UserProfile() {
   const userId = paramUserId || currentUser?.id;
   const isSelf = currentUser?.id === userId;
 
-  const avatarUrl = isSelf ? (currentUser?.avatarUrl || user?.avatarUrl) : user?.avatarUrl;
-
   const { data: user, isPending, isError } = useQuery({
     queryKey: ['user', userId],
     queryFn: () => getUser(userId!),
@@ -327,7 +325,7 @@ export default function UserProfile() {
               <div className="flex flex-row items-center gap-4 md:gap-12">
                 <div onClick={() => isSelf && navigate('/profile/edit')} className={cn(isSelf && 'cursor-pointer')}>
                   <Avatar className="h-20 w-20 md:h-24 md:w-24">
-                    {avatarUrl && <AvatarImage src={avatarUrl} />}
+                    {(isSelf ? currentUser?.avatarUrl : user?.avatarUrl) && <AvatarImage src={isSelf ? currentUser?.avatarUrl : user?.avatarUrl} />}
                     <AvatarFallback className="text-lg md:text-2xl">
                       <User size={22} />
                     </AvatarFallback>
