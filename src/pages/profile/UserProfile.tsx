@@ -404,7 +404,8 @@ export default function UserProfile() {
                     </button>
                   </div>
 
-                  <div className="mt-6 space-y-1">
+                  <hr className="my-6 border-border" />
+                  <div className="space-y-1">
                     <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
                     <Link
                       to="/settings/notifications"
