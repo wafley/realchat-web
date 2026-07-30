@@ -27,7 +27,6 @@ export default function EditProfile() {
     resolver: zodResolver(editProfileSchema),
     defaultValues: {
       fullName: user?.fullName || '',
-      username: user?.username || '',
       bio: user?.bio || '',
     },
   });
@@ -44,7 +43,6 @@ export default function EditProfile() {
     try {
       const payload: Record<string, string> = {
         fullName: data.fullName,
-        username: data.username,
         bio: data.bio || '',
       };
       if (avatarFile) {
@@ -122,18 +120,6 @@ export default function EditProfile() {
                 />
                 {errors.fullName && (
                   <p className="mt-1 text-xs text-destructive">{errors.fullName.message}</p>
-                )}
-              </div>
-              <div className="border-b border-border/50 px-4 py-3.5">
-                <label className="text-xs text-muted-foreground">Username</label>
-                <input
-                  type="text"
-                  placeholder="username"
-                  {...register('username')}
-                  className="mt-1 w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                />
-                {errors.username && (
-                  <p className="mt-1 text-xs text-destructive">{errors.username.message}</p>
                 )}
               </div>
               <div className="px-4 py-3.5">

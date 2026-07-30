@@ -123,9 +123,10 @@ export default function UserProfile() {
     enabled: !isSelf,
   });
 
+  const effectiveUser = isSelf && currentUser ? { ...user, ...currentUser } : user;
   const contact = userId ? contacts.find((c) => c.userId === userId) : undefined;
   const isContact = !!contact;
-  const displayName = contact?.customName || user?.fullName || '';
+  const displayName = contact?.customName || effectiveUser?.fullName || '';
 
   const addContactMutation = useMutation({
     mutationFn: () => addContact(userId!),
@@ -325,7 +326,7 @@ export default function UserProfile() {
               <div className="flex flex-row items-center gap-4 md:gap-12">
                 <div onClick={() => isSelf && navigate('/profile/edit')} className={cn(isSelf && 'cursor-pointer')}>
                   <Avatar className="h-20 w-20 md:h-24 md:w-24">
-                    {(isSelf ? currentUser?.avatarUrl : user?.avatarUrl) && <AvatarImage src={isSelf ? currentUser?.avatarUrl : user?.avatarUrl} />}
+                    {effectiveUser?.avatarUrl && <AvatarImage src={effectiveUser?.avatarUrl} />}
                     <AvatarFallback className="text-lg md:text-2xl">
                       <User size={22} />
                     </AvatarFallback>
@@ -371,14 +372,14 @@ export default function UserProfile() {
                     </div>
                   )}
                   <p className="text-sm text-muted-foreground">
-                    @{user.username}
-                    {contact?.customName && <span className="ml-2 text-muted-foreground/60">• {user.fullName}</span>}
+                    @{effectiveUser?.username}
+                    {contact?.customName && <span className="ml-2 text-muted-foreground/60">• {effectiveUser?.fullName}</span>}
                   </p>
 
                 </div>
               </div>
 
-              <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{effectiveUser?.bio || 'No bio yet'}</p>
 
               {isSelf && (
                 <>
@@ -392,7 +393,7 @@ export default function UserProfile() {
                     <button
                       onClick={() => {
                         if (user?.id) {
-                          navigator.clipboard.writeText(`${window.location.origin}/profile/${user.id}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/profile/${effectiveUser?.id}`);
                           toast.success('Profile link copied!');
                         }
                       }}
