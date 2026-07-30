@@ -31,6 +31,8 @@ export const editProfileSchema = z.object({
   bio: z.string().max(200, 'Bio must be 200 characters or less').optional(),
 });
 
+export type EditProfileSchema = z.infer<typeof editProfileSchema>;
+
 export const createGroupSchema = z.object({
   name: z.string().min(1, 'Group name is required'),
   description: z.string().max(500, 'Description must be 500 characters or less').optional(),

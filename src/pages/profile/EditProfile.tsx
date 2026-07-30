@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
 import { uploadAvatar } from '@/services/user';
 import { toast } from 'sonner';
-import { editProfileSchema, type editProfileSchema as EditProfileSchema } from '@/lib/validations';
+import { editProfileSchema, type EditProfileSchema } from '@/lib/validations';
 
 export default function EditProfile() {
   const navigate = useNavigate();
