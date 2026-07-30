@@ -16,6 +16,8 @@ export { DM_USER_MAP };
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
+export const MOCK_BLOCKED_USERS = new Map<string, User>();
+
 export function senderName(senderId: string): string {
   return MOCK_SENDER_MAP[senderId] ?? 'Unknown';
 }
@@ -424,6 +426,8 @@ export async function blockUser(userId: string): Promise<void> {
   try {
     if (DEV_MODE) {
       await delay(200);
+      const user = MOCK_USERS.find((u) => u.id === userId);
+      if (user) MOCK_BLOCKED_USERS.set(userId, user as User);
       return;
     }
 
@@ -434,13 +438,10 @@ export async function blockUser(userId: string): Promise<void> {
 }
 
 export async function getBlockedUsers(): Promise<User[]> {
-  if (DEV_MODE) {
-    await delay(200);
-    return [
-      { id: 'blocked1', username: 'spam_bot', fullName: 'Spam Bot', email: 'spam@example.com', status: 'offline', lastSeen: new Date(Date.now() - 86400000 * 3), createdAt: new Date() },
-      { id: 'blocked2', username: 'troll', fullName: 'Troll Account', email: 'troll@example.com', status: 'offline', createdAt: new Date() },
-    ];
-  }
+    if (DEV_MODE) {
+      await delay(200);
+      return Array.from(MOCK_BLOCKED_USERS.values());
+    }
   const { data } = await api.get<User[]>('/users/blocked');
   return Array.isArray(data) ? data : [];
 }
@@ -449,6 +450,7 @@ export async function unblockUser(userId: string): Promise<void> {
   try {
     if (DEV_MODE) {
       await delay(200);
+      MOCK_BLOCKED_USERS.delete(userId);
       return;
     }
 

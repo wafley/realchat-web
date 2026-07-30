@@ -9,7 +9,7 @@ import { formatTime } from '@/lib/chatHelpers';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
-import { blockUser as blockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups } from '@/services/chat';
+import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
@@ -149,8 +149,26 @@ export default function UserProfile() {
     onSuccess: () => {
       toast.success('User blocked');
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
     },
     onError: () => toast.error('Failed to block user'),
+  });
+
+  const { data: blockedUsers = [] } = useQuery({
+    queryKey: ['blocked-users'],
+    queryFn: getBlockedUsers,
+    enabled: !isSelf,
+  });
+
+  const isBlocked = blockedUsers.some((b) => b.id === userId);
+
+  const unblockMutation = useMutation({
+    mutationFn: () => unblockUserService(userId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      toast.success('User unblocked');
+    },
+    onError: () => toast.error('Failed to unblock user'),
   });
 
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
@@ -477,12 +495,34 @@ export default function UserProfile() {
                     <span className="hidden sm:inline">Chat</span>
                   </button>
                   <button
-                    onClick={() => blockMutation.mutate()}
-                    disabled={blockMutation.isPending}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-border px-2 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10 disabled:opacity-50"
+                    onClick={() => {
+                      if (isBlocked) {
+                        unblockMutation.mutate();
+                      } else {
+                        blockMutation.mutate();
+                      }
+                    }}
+                    disabled={blockMutation.isPending || unblockMutation.isPending}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-2 py-2.5 text-sm transition-colors disabled:opacity-50 ${
+                      isBlocked
+                        ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
+                        : 'border-border text-foreground hover:bg-accent/10'
+                    }`}
                   >
-                    {blockMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}
-                    <span className="hidden sm:inline">{blockMutation.isPending ? 'Blocking...' : 'Block'}</span>
+                    {blockMutation.isPending || unblockMutation.isPending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Ban size={16} />
+                    )}
+                    <span className="hidden sm:inline">
+                      {blockMutation.isPending
+                        ? 'Blocking...'
+                        : unblockMutation.isPending
+                          ? 'Unblocking...'
+                          : isBlocked
+                            ? 'Unblock'
+                            : 'Block'}
+                    </span>
                   </button>
                 </div>
               )}
