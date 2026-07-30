@@ -303,7 +303,7 @@ export default function UserProfile() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
+      <div className={cn('flex-1 overflow-y-auto md:pb-0', !isSelf && 'pb-24')}>
         <div className="mx-auto max-w-4xl px-6 py-8">
           <div className="relative mb-6 flex items-center">
             <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="text-muted-foreground transition-colors hover:text-accent">
