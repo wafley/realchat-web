@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
+import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
@@ -13,6 +13,7 @@ import { getConversations, bulkDeleteConversations, searchAllMessages } from '@/
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAuthStore } from '@/store/authStore';
 import type { Conversation, SearchMessageResult } from '@/types';
 
 const tabs = [
@@ -32,6 +33,7 @@ export default function ChatList() {
   const { groupId, userId } = useParams();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -251,22 +253,23 @@ export default function ChatList() {
               className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
             />
           </div>
-          <button
-            onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
-            aria-label="New chat"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
-          >
-            <Plus size={20} />
-          </button>
-          <div className="lg:hidden">
-            <NotificationBell />
+          <div className="flex items-center gap-2">
+            <div className="lg:hidden">
+              <NotificationBell />
+            </div>
+            <Link to="/profile" className="lg:hidden">
+              <Avatar className="h-8 w-8">
+                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                <AvatarFallback className="text-xs"><User size={16} /></AvatarFallback>
+              </Avatar>
+            </Link>
           </div>
         </div>
       )}
 
       <ContactPopover anchorEl={anchorEl} onClose={() => setAnchorEl(null)} />
 
-      <div className="flex border-b border-border">
+      <div className="flex items-center border-b border-border">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -548,6 +551,14 @@ export default function ChatList() {
           </div>
         </div>
       )}
+
+      <button
+        onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
+        aria-label="New chat"
+        className="fixed bottom-8 right-7 z-50 flex h-13 w-13 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-lg transition-all hover:bg-accent/90 active:scale-95 lg:hidden"
+      >
+        <MessageSquarePlus size={28} strokeWidth={2} />
+      </button>
     </div>
   );
 }
