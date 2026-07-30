@@ -334,7 +334,11 @@ export default function UserProfile() {
                   <h3 className="mb-2 text-xs font-medium text-muted-foreground/65">Groups in Common ({mutualGroups.length})</h3>
                   <div className="max-h-[290px] space-y-1.5 overflow-y-auto md:max-h-none md:overflow-visible">
                     {mutualGroups.map((g) => (
-                      <div key={g.id} className="flex items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2">
+                      <button
+                        key={g.id}
+                        onClick={() => navigate(`/chat/${g.id}`)}
+                        className="flex w-full items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2 text-left transition-colors hover:bg-accent/5"
+                      >
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-xs font-bold text-muted-foreground">
                           {g.name.charAt(0).toUpperCase()}
                         </div>
@@ -342,7 +346,7 @@ export default function UserProfile() {
                           <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
                           <p className="text-xs text-muted-foreground">{g.members} members</p>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
