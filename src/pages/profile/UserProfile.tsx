@@ -302,7 +302,7 @@ export default function UserProfile() {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
         <div className="mx-auto max-w-4xl px-6 py-8">
-          <button onClick={() => navigate(isSelf ? '/' : -1)} className="mb-6 text-muted-foreground transition-colors hover:text-accent">
+          <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="mb-6 text-muted-foreground transition-colors hover:text-accent">
             <ArrowLeft size={20} />
           </button>
 
