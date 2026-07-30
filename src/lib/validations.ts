@@ -9,10 +9,12 @@ export const registerSchema = z
   .object({
     username: z
       .string()
+      .trim()
       .min(1, 'Username is required')
       .min(3, 'Username must be at least 3 characters')
+      .max(30, 'Username must be 30 characters or less')
       .regex(/^[a-zA-Z0-9_-]+$/, 'Username must not contain spaces. Use _ or - instead'),
-    fullName: z.string().min(1, 'Full name is required'),
+    fullName: z.string().trim().min(1, 'Full name is required').max(50, 'Full name must be 50 characters or less'),
     email: z.string().min(1, 'Email is required').email('Invalid email address'),
     password: z
       .string()

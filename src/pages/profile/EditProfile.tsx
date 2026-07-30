@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
 import { uploadAvatar } from '@/services/user';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { editProfileSchema, type EditProfileSchema } from '@/lib/validations';
 
 export default function EditProfile() {
@@ -116,7 +117,7 @@ export default function EditProfile() {
               <div className="border-b border-border/50 px-4 py-3.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-muted-foreground">Full Name</label>
-                  <p className="text-xs text-muted-foreground/50">{50 - (fullNameValue?.length || 0)}/50</p>
+                  <p className={cn('text-xs', (fullNameValue?.length || 0) >= 50 ? 'text-destructive' : 'text-muted-foreground/50')}>{fullNameValue?.length || 0}/50</p>
                 </div>
                 <input
                   type="text"

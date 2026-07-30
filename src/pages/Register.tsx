@@ -89,6 +89,7 @@ export default function Register() {
           type="text"
           placeholder="your_username"
           autoComplete="username"
+          maxLength={30}
           error={errors.username?.message}
           {...registerField('username')}
         />
@@ -99,6 +100,7 @@ export default function Register() {
           type="text"
           placeholder="Your Name"
           autoComplete="name"
+          maxLength={50}
           error={errors.fullName?.message}
           {...registerField('fullName')}
         />
