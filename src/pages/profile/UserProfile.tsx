@@ -6,8 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/lib/chatHelpers';
-import { formatLastSeen } from '@/utils/time';
-import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
@@ -112,6 +110,8 @@ export default function UserProfile() {
 
   const userId = paramUserId || currentUser?.id;
   const isSelf = currentUser?.id === userId;
+
+  const avatarUrl = isSelf ? (currentUser?.avatarUrl || user?.avatarUrl) : user?.avatarUrl;
 
   const { data: user, isPending, isError } = useQuery({
     queryKey: ['user', userId],
@@ -326,7 +326,7 @@ export default function UserProfile() {
               <div className="flex flex-row items-center gap-4 md:gap-12">
                 <div onClick={() => isSelf && navigate('/profile/edit')} className={cn(isSelf && 'cursor-pointer')}>
                   <Avatar className="h-20 w-20 md:h-24 md:w-24">
-                    {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                    {avatarUrl && <AvatarImage src={avatarUrl} />}
                     <AvatarFallback className="text-lg md:text-2xl">
                       <User size={22} />
                     </AvatarFallback>
@@ -375,27 +375,7 @@ export default function UserProfile() {
                     @{user.username}
                     {contact?.customName && <span className="ml-2 text-muted-foreground/60">• {user.fullName}</span>}
                   </p>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
-                        user.status === 'online'
-                          ? 'bg-green-500/10 text-green-500'
-                          : 'bg-muted text-muted-foreground',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'h-2 w-2 rounded-full',
-                          user.status === 'online' ? 'bg-green-500' : 'bg-muted-foreground',
-                        )}
-                      />
-                      {user.status === 'online' ? 'Online' : 'Offline'}
-                    </span>
-                    {user.status !== 'online' && user.lastSeen && shouldShowLastSeen() && (
-                      <span className="text-xs text-muted-foreground">last seen {formatLastSeen(user.lastSeen)}</span>
-                    )}
-                  </div>
+
                 </div>
               </div>
 
