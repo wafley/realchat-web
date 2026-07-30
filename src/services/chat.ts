@@ -771,4 +771,29 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
   return Array.isArray(data) ? data : [];
 }
 
+export async function getMutualGroups(userId: string): Promise<ChatConversation[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const allGroups = await getGroups();
+      const mutual: ChatConversation[] = [];
+      for (const g of allGroups) {
+        try {
+          const groupDetail = await getGroup(g.id);
+          if (groupDetail.members.some((m) => m.userId === userId)) {
+            mutual.push(g);
+          }
+        } catch {
+          // skip if group detail fails
+        }
+      }
+      return mutual;
+    }
+    const { data } = await api.get(`/users/${userId}/mutual-groups`);
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get mutual groups');
+  }
+}
+
 export type { ChatConversation };

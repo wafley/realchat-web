@@ -5,10 +5,11 @@ import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
+import { formatTime } from '@/lib/chatHelpers';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { getUser } from '@/services/user';
-import { blockUser as blockUserService, findOrCreateConversation, getSharedMedia } from '@/services/chat';
+import { blockUser as blockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
@@ -205,6 +206,12 @@ export default function UserProfile() {
     enabled: !!dmId,
   });
 
+  const { data: mutualGroups = [] } = useQuery({
+    queryKey: ['mutual-groups', userId],
+    queryFn: () => getMutualGroups(userId!),
+    enabled: !!userId && !isSelf,
+  });
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
@@ -308,7 +315,7 @@ export default function UserProfile() {
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="text-xs font-medium text-muted-foreground/65">Media, Links and Docs</h3>
                     <button onClick={() => setMediaModalOpen(true)} className="mt-0.5 flex items-center gap-0.5 text-xs text-accent transition-colors hover:text-accent/80">
-                      Lihat semua ({sharedMedia.length})
+                      View all ({sharedMedia.length})
                       <ChevronRight size={12} />
                     </button>
                   </div>
@@ -322,39 +329,109 @@ export default function UserProfile() {
                 </div>
               )}
 
-              <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl">
-                <div className="mb-4 grid grid-cols-3 gap-1 border-b border-border pb-2">
+              {!isSelf && mutualGroups.length > 0 && (
+                <div className="mt-3">
+                  <h3 className="mb-2 text-xs font-medium text-muted-foreground/65">Groups in Common ({mutualGroups.length})</h3>
+                  <div className="max-h-[290px] space-y-1.5 overflow-y-auto md:max-h-none md:overflow-visible">
+                    {mutualGroups.map((g) => (
+                      <div key={g.id} className="flex items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-xs font-bold text-muted-foreground">
+                          {g.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
+                          <p className="text-xs text-muted-foreground">{g.members} members</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl" hideClose>
+                <div className="mb-4 flex items-center gap-0.5 rounded-xl bg-accent/10 p-1">
                   {(['media', 'file', 'link'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setMediaTab(tab)}
-                      className={`w-full rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`flex-1 rounded-lg px-4 py-1.5 text-xs font-medium transition-all ${
                         mediaTab === tab
-                          ? 'bg-accent text-accent-foreground'
+                          ? 'bg-accent text-accent-foreground shadow-sm'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {tab === 'media' ? 'Media' : tab === 'file' ? 'Docs' : 'Links'}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setMediaModalOpen(false)}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
                 <div className="h-[420px] overflow-y-auto">
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                    {sharedMedia.filter((m) => {
-                      if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
-                      if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
-                      return m.type === mediaTab;
-                    }).map((media) => (
-                      <MediaThumb key={media.id} media={media} onClickImage={(url) => setPreviewUrl(url)} />
-                    ))}
-                    {sharedMedia.filter((m) => {
-                      if (mediaTab === 'media') return m.type === 'image' || m.type === 'video';
-                      if (mediaTab === 'link') return m.type === 'text' && isLinkContent(m.content);
-                      return m.type === mediaTab;
-                    }).length === 0 && (
-                      <p className="col-span-full py-10 text-center text-xs text-muted-foreground">Tidak ada media</p>
-                    )}
-                  </div>
+                  {mediaTab === 'link' || mediaTab === 'file' ? (
+                    <div className="space-y-2">
+                      {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').map((item) => {
+                        if (mediaTab === 'link') {
+                          const msg = item;
+                          const url = extractUrl(msg.content || '');
+                          const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
+                          return (
+                            <a
+                              key={msg.id}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
+                                {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
+                                <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                                  {formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
+                                </p>
+                              </div>
+                            </a>
+                          );
+                        }
+                        const msg = item;
+                        return (
+                          <div
+                            key={msg.id}
+                            className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                              <FileText size={16} className="text-muted-foreground" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-foreground">{msg.fileName || 'File'}</p>
+                              {msg.content && <p className="mt-0.5 truncate text-xs text-muted-foreground">{msg.content}</p>}
+                              <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                                {msg.fileSize ? formatFileSize(msg.fileSize) : null}{msg.fileSize ? ' · ' : ''}{formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').length === 0 && (
+                        <p className="py-10 text-center text-xs text-muted-foreground">{mediaTab === 'link' ? 'No links' : 'No documents'}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                      {sharedMedia.filter((m) => m.type === 'image' || m.type === 'video').map((media) => (
+                        <MediaThumb key={media.id} media={media} onClickImage={(url) => setPreviewUrl(url)} />
+                      ))}
+                      {sharedMedia.filter((m) => m.type === 'image' || m.type === 'video').length === 0 && (
+                        <p className="col-span-full py-10 text-center text-xs text-muted-foreground">No media</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Modal>
 
