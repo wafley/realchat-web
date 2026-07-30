@@ -405,67 +405,73 @@ export default function UserProfile() {
                   </div>
 
                   <hr className="my-6 border-border" />
-                  <div className="space-y-1">
+                  <div>
                     <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
-                    <Link
-                      to="/settings/notifications"
-                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
-                    >
-                      <Bell size={20} className="text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">Notifications</p>
-                        <p className="text-xs text-muted-foreground">Message, group, and sound preferences</p>
-                      </div>
-                      <ChevronRight size={16} className="text-muted-foreground/40" />
-                    </Link>
-                    <Link
-                      to="/settings/privacy"
-                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
-                    >
-                      <Shield size={20} className="text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">Privacy</p>
-                        <p className="text-xs text-muted-foreground">Last seen, read receipts, blocked users</p>
-                      </div>
-                      <ChevronRight size={16} className="text-muted-foreground/40" />
-                    </Link>
-                    <Link
-                      to="/settings/appearance"
-                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
-                    >
-                      <Sun size={20} className="text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">Appearance</p>
-                        <p className="text-xs text-muted-foreground">Theme preferences</p>
-                      </div>
-                      <ChevronRight size={16} className="text-muted-foreground/40" />
-                    </Link>
-                    <Link
-                      to="/settings/account"
-                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
-                    >
-                      <AlertTriangle size={20} className="text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">Account</p>
-                        <p className="text-xs text-muted-foreground">Danger zone and account management</p>
-                      </div>
-                      <ChevronRight size={16} className="text-muted-foreground/40" />
-                    </Link>
-                    <button
-                      onClick={() => {
-                        appQueryClient.clear();
-                        destroySocket();
-                        useAuthStore.getState().logout();
-                        navigate('/login', { replace: true });
-                      }}
-                      className="flex w-full items-center gap-4 rounded-xl border border-destructive/20 p-4 text-destructive transition-colors hover:bg-destructive/5"
-                    >
-                      <LogOut size={20} />
-                      <div className="min-w-0 flex-1 text-left">
-                        <p className="text-sm font-medium">Logout</p>
-                        <p className="text-xs text-muted-foreground">Sign out of your account</p>
-                      </div>
-                    </button>
+                    <div className="overflow-hidden rounded-xl border border-border">
+                      <Link
+                        to="/settings/notifications"
+                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                      >
+                        <Bell size={20} className="text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">Notifications</p>
+                          <p className="text-xs text-muted-foreground">Message, group, and sound preferences</p>
+                        </div>
+                        <ChevronRight size={16} className="text-muted-foreground/40" />
+                      </Link>
+                      <hr className="border-border" />
+                      <Link
+                        to="/settings/privacy"
+                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                      >
+                        <Shield size={20} className="text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">Privacy</p>
+                          <p className="text-xs text-muted-foreground">Last seen, read receipts, blocked users</p>
+                        </div>
+                        <ChevronRight size={16} className="text-muted-foreground/40" />
+                      </Link>
+                      <hr className="border-border" />
+                      <Link
+                        to="/settings/appearance"
+                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                      >
+                        <Sun size={20} className="text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">Appearance</p>
+                          <p className="text-xs text-muted-foreground">Theme preferences</p>
+                        </div>
+                        <ChevronRight size={16} className="text-muted-foreground/40" />
+                      </Link>
+                      <hr className="border-border" />
+                      <Link
+                        to="/settings/account"
+                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                      >
+                        <AlertTriangle size={20} className="text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">Account</p>
+                          <p className="text-xs text-muted-foreground">Danger zone and account management</p>
+                        </div>
+                        <ChevronRight size={16} className="text-muted-foreground/40" />
+                      </Link>
+                      <hr className="border-border" />
+                      <button
+                        onClick={() => {
+                          appQueryClient.clear();
+                          destroySocket();
+                          useAuthStore.getState().logout();
+                          navigate('/login', { replace: true });
+                        }}
+                        className="flex w-full items-center gap-4 p-4 text-destructive transition-colors hover:bg-destructive/5"
+                      >
+                        <LogOut size={20} />
+                        <div className="min-w-0 flex-1 text-left">
+                          <p className="text-sm font-medium">Logout</p>
+                          <p className="text-xs text-muted-foreground">Sign out of your account</p>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
