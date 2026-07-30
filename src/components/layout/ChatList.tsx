@@ -254,6 +254,13 @@ export default function ChatList() {
             />
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
+              aria-label="New chat"
+              className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
+            >
+              <Plus size={20} />
+            </button>
             <div className="lg:hidden">
               <NotificationBell />
             </div>
