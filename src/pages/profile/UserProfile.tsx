@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,8 @@ import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
+import { destroySocket } from '@/services/socket.service';
+import { queryClient as appQueryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
 
 function formatFileSize(bytes: number): string {
@@ -103,11 +105,12 @@ function MediaThumb({ media, onClickImage }: { media: { id: string; type: string
 }
 
 export default function UserProfile() {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId: paramUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
 
+  const userId = paramUserId || currentUser?.id;
   const isSelf = currentUser?.id === userId;
 
   const { data: user, isPending, isError } = useQuery({
@@ -302,9 +305,19 @@ export default function UserProfile() {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
         <div className="mx-auto max-w-4xl px-6 py-8">
-          <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="mb-6 text-muted-foreground transition-colors hover:text-accent">
-            <ArrowLeft size={20} />
-          </button>
+          <div className="mb-6 flex items-center justify-between">
+            <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="text-muted-foreground transition-colors hover:text-accent">
+              <ArrowLeft size={20} />
+            </button>
+            {isSelf && (
+              <button
+                onClick={() => navigate('/settings')}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            )}
+          </div>
 
           {isPending ? (
             <div className="flex items-center justify-center py-20">
@@ -319,12 +332,14 @@ export default function UserProfile() {
           ) : (
             <>
               <div className="flex flex-row items-center gap-4 md:gap-12">
-                <Avatar className="h-20 w-20 md:h-24 md:w-24">
-                  {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                  <AvatarFallback className="text-lg md:text-2xl">
-                    <User size={22} />
-                  </AvatarFallback>
-                </Avatar>
+                <div onClick={() => isSelf && navigate('/profile/edit')} className={cn(isSelf && 'cursor-pointer')}>
+                  <Avatar className="h-20 w-20 md:h-24 md:w-24">
+                    {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                    <AvatarFallback className="text-lg md:text-2xl">
+                      <User size={22} />
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
 
                 <div className="flex min-w-0 flex-1 flex-col">
                   {isContact && editingName ? (
@@ -393,6 +408,94 @@ export default function UserProfile() {
               </div>
 
               <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{user.bio || 'No bio yet'}</p>
+
+              {isSelf && (
+                <>
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      onClick={() => navigate('/profile/edit')}
+                      className="flex-1 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
+                    >
+                      Edit Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (user?.id) {
+                          navigator.clipboard.writeText(`${window.location.origin}/profile/${user.id}`);
+                          toast.success('Profile link copied!');
+                        }
+                      }}
+                      className="flex items-center justify-center gap-2 flex-1 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
+                    >
+                      <Share2 size={16} />
+                      Share Profile
+                    </button>
+                  </div>
+
+                  <div className="mt-6 space-y-1">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
+                    <Link
+                      to="/settings/notifications"
+                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
+                    >
+                      <Bell size={20} className="text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">Notifications</p>
+                        <p className="text-xs text-muted-foreground">Message, group, and sound preferences</p>
+                      </div>
+                      <ChevronRight size={16} className="text-muted-foreground/40" />
+                    </Link>
+                    <Link
+                      to="/settings/privacy"
+                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
+                    >
+                      <Shield size={20} className="text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">Privacy</p>
+                        <p className="text-xs text-muted-foreground">Last seen, read receipts, blocked users</p>
+                      </div>
+                      <ChevronRight size={16} className="text-muted-foreground/40" />
+                    </Link>
+                    <Link
+                      to="/settings/appearance"
+                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
+                    >
+                      <Sun size={20} className="text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">Appearance</p>
+                        <p className="text-xs text-muted-foreground">Theme preferences</p>
+                      </div>
+                      <ChevronRight size={16} className="text-muted-foreground/40" />
+                    </Link>
+                    <Link
+                      to="/settings/account"
+                      className="flex items-center gap-4 rounded-xl border border-border p-4 transition-colors hover:bg-accent/5"
+                    >
+                      <AlertTriangle size={20} className="text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">Account</p>
+                        <p className="text-xs text-muted-foreground">Danger zone and account management</p>
+                      </div>
+                      <ChevronRight size={16} className="text-muted-foreground/40" />
+                    </Link>
+                    <button
+                      onClick={() => {
+                        appQueryClient.clear();
+                        destroySocket();
+                        useAuthStore.getState().logout();
+                        navigate('/login', { replace: true });
+                      }}
+                      className="flex w-full items-center gap-4 rounded-xl border border-destructive/20 p-4 text-destructive transition-colors hover:bg-destructive/5"
+                    >
+                      <LogOut size={20} />
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="text-sm font-medium">Logout</p>
+                        <p className="text-xs text-muted-foreground">Sign out of your account</p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
 
               {!isSelf && <hr className="my-3 border-border" />}
 
