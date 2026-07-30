@@ -1,17 +1,13 @@
 import { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
-import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useSocketStore } from '@/store/socketStore';
 import { initSocket, destroySocket } from '@/services/socket.service';
 
 
 export default function AppLayout() {
-  const location = useLocation();
-  const isChatRoute = location.pathname.startsWith('/dm/') || location.pathname.startsWith('/chat/');
-  const isOtherProfile = /^\/profile\/[^/]+$/.test(location.pathname);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
