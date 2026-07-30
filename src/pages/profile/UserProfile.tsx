@@ -230,9 +230,77 @@ export default function UserProfile() {
     enabled: !!userId && !isSelf,
   });
 
+  const actionsBar = !isSelf ? (
+    <div className="grid grid-cols-3 gap-2">
+      {isContact ? (
+        <button
+          onClick={() => removeContactMutation.mutate()}
+          disabled={removeContactMutation.isPending}
+          className="flex items-center justify-center gap-2 rounded-lg border border-border px-2 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+        >
+          {removeContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserMinus size={16} />}
+          <span className="hidden sm:inline">{removeContactMutation.isPending ? 'Removing...' : 'Remove'}</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => addContactMutation.mutate()}
+          disabled={addContactMutation.isPending}
+          className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+        >
+          {addContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+          <span className="hidden sm:inline">{addContactMutation.isPending ? 'Adding...' : 'Add'}</span>
+        </button>
+      )}
+      <button
+        onClick={async () => {
+          try {
+            const dmId = await findOrCreateConversation(user?.id ?? userId!);
+            navigate(`/dm/${dmId}`, { state: { name: displayName, online: user?.status === 'online' } });
+          } catch {
+            toast.error('Failed to open conversation');
+          }
+        }}
+        className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
+      >
+        <MessageSquareText size={16} />
+        <span className="hidden sm:inline">Chat</span>
+      </button>
+      <button
+        onClick={() => {
+          if (isBlocked) {
+            unblockMutation.mutate();
+          } else {
+            blockMutation.mutate();
+          }
+        }}
+        disabled={blockMutation.isPending || unblockMutation.isPending}
+        className={`flex items-center justify-center gap-2 rounded-lg border px-2 py-2.5 text-sm transition-colors disabled:opacity-50 ${
+          isBlocked
+            ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
+            : 'border-border text-foreground hover:bg-accent/10'
+        }`}
+      >
+        {blockMutation.isPending || unblockMutation.isPending ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <Ban size={16} />
+        )}
+        <span className="hidden sm:inline">
+          {blockMutation.isPending
+            ? 'Blocking...'
+            : unblockMutation.isPending
+              ? 'Unblocking...'
+              : isBlocked
+                ? 'Unblock'
+                : 'Block'}
+        </span>
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
         <div className="mx-auto max-w-4xl px-6 py-8">
           <button onClick={() => navigate(-1)} className="mb-6 text-muted-foreground transition-colors hover:text-accent">
             <ArrowLeft size={20} />
@@ -457,80 +525,19 @@ export default function UserProfile() {
                 </div>
               </Modal>
 
-              {!isSelf && <hr className="my-3 border-border" />}
-
-              {!isSelf && (
-                <div className="grid grid-cols-3 gap-2">
-                  {isContact ? (
-                    <button
-                      onClick={() => removeContactMutation.mutate()}
-                      disabled={removeContactMutation.isPending}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-border px-2 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    >
-                      {removeContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserMinus size={16} />}
-                      <span className="hidden sm:inline">{removeContactMutation.isPending ? 'Removing...' : 'Remove'}</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => addContactMutation.mutate()}
-                      disabled={addContactMutation.isPending}
-                      className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
-                    >
-                      {addContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-                      <span className="hidden sm:inline">{addContactMutation.isPending ? 'Adding...' : 'Add'}</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={async () => {
-                      try {
-                        const dmId = await findOrCreateConversation(user.id);
-                        navigate(`/dm/${dmId}`, { state: { name: displayName, online: user.status === 'online' } });
-                      } catch {
-                        toast.error('Failed to open conversation');
-                      }
-                    }}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
-                  >
-                    <MessageSquareText size={16} />
-                    <span className="hidden sm:inline">Chat</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (isBlocked) {
-                        unblockMutation.mutate();
-                      } else {
-                        blockMutation.mutate();
-                      }
-                    }}
-                    disabled={blockMutation.isPending || unblockMutation.isPending}
-                    className={`flex items-center justify-center gap-2 rounded-lg border px-2 py-2.5 text-sm transition-colors disabled:opacity-50 ${
-                      isBlocked
-                        ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
-                        : 'border-border text-foreground hover:bg-accent/10'
-                    }`}
-                  >
-                    {blockMutation.isPending || unblockMutation.isPending ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Ban size={16} />
-                    )}
-                    <span className="hidden sm:inline">
-                      {blockMutation.isPending
-                        ? 'Blocking...'
-                        : unblockMutation.isPending
-                          ? 'Unblocking...'
-                          : isBlocked
-                            ? 'Unblock'
-                            : 'Block'}
-                    </span>
-                  </button>
-                </div>
-              )}
+              {!isSelf && <hr className="my-3 border-border hidden md:block" />}
+              {!isSelf && <div className="hidden md:block">{actionsBar}</div>}
 
             </>
           )}
         </div>
       </div>
+
+      {!isSelf && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-background p-3">
+          {actionsBar}
+        </div>
+      )}
 
       {previewUrl && (
         <div
