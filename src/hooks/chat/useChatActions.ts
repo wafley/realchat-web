@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
@@ -148,6 +148,8 @@ export function useChatActions(props: UseChatActionsProps) {
     prevLastMsgIdRef,
     longPressTimerRef,
     longPressStartPosRef,
+    isInitialLoadRef = useRef(true),
+    ioCooldownRef = useRef(false),
     sendMutation,
     sendImageMutation,
     sendFileMutation,
@@ -233,7 +235,21 @@ export function useChatActions(props: UseChatActionsProps) {
     if (messages.length === 0) return;
     const lastId = messages[messages.length - 1]?.id;
     if (lastId && lastId !== prevLastMsgIdRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const el = messagesEndRef.current;
+      if (el) {
+        if (isInitialLoadRef.current) {
+          const restored = sessionStorage.getItem(`scrollRestored-${chatId}`);
+          if (restored) {
+            sessionStorage.removeItem(`scrollRestored-${chatId}`);
+            isInitialLoadRef.current = false;
+            return;
+          }
+          el.scrollIntoView({ behavior: 'instant' });
+          isInitialLoadRef.current = false;
+        } else {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
     }
     prevLastMsgIdRef.current = lastId;
   }, [messages]);
@@ -243,9 +259,24 @@ export function useChatActions(props: UseChatActionsProps) {
     if (!el || !hasNextPage || isFetchingNextPage) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
+        if (isInitialLoadRef.current) return;
+
+        if (!entry.isIntersecting) {
+          ioCooldownRef.current = false;
+          return;
         }
+
+        if (!hasNextPage || isFetchingNextPage) return;
+
+        const container = messagesEndRef.current?.parentElement?.parentElement;
+        if (container) {
+          if (container.scrollHeight <= container.clientHeight) return;
+          if (container.scrollTop > 5) return;
+        }
+
+        if (ioCooldownRef.current) return;
+        ioCooldownRef.current = true;
+        fetchNextPage();
       },
       { threshold: 0 },
     );

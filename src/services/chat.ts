@@ -16,6 +16,8 @@ export { DM_USER_MAP };
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
+export const MOCK_BLOCKED_USERS = new Map<string, User>();
+
 export function senderName(senderId: string): string {
   return MOCK_SENDER_MAP[senderId] ?? 'Unknown';
 }
@@ -50,7 +52,7 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
 let groupIdCounter = 10;
 let msgCounter = 100;
 
-export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 30): Promise<PaginatedResponse<Message>> {
+export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 10): Promise<PaginatedResponse<Message>> {
   try {
     if (DEV_MODE) {
       await delay(300);
@@ -424,6 +426,8 @@ export async function blockUser(userId: string): Promise<void> {
   try {
     if (DEV_MODE) {
       await delay(200);
+      const user = MOCK_USERS.find((u) => u.id === userId);
+      if (user) MOCK_BLOCKED_USERS.set(userId, user as User);
       return;
     }
 
@@ -434,13 +438,10 @@ export async function blockUser(userId: string): Promise<void> {
 }
 
 export async function getBlockedUsers(): Promise<User[]> {
-  if (DEV_MODE) {
-    await delay(200);
-    return [
-      { id: 'blocked1', username: 'spam_bot', fullName: 'Spam Bot', email: 'spam@example.com', status: 'offline', lastSeen: new Date(Date.now() - 86400000 * 3), createdAt: new Date() },
-      { id: 'blocked2', username: 'troll', fullName: 'Troll Account', email: 'troll@example.com', status: 'offline', createdAt: new Date() },
-    ];
-  }
+    if (DEV_MODE) {
+      await delay(200);
+      return Array.from(MOCK_BLOCKED_USERS.values());
+    }
   const { data } = await api.get<User[]>('/users/blocked');
   return Array.isArray(data) ? data : [];
 }
@@ -449,6 +450,7 @@ export async function unblockUser(userId: string): Promise<void> {
   try {
     if (DEV_MODE) {
       await delay(200);
+      MOCK_BLOCKED_USERS.delete(userId);
       return;
     }
 
@@ -755,6 +757,45 @@ export function searchAllMessages(query: string): SearchMessageResult[] {
   }
 
   return [];
+}
+
+export async function getSharedMedia(conversationId: string): Promise<Message[]> {
+  if (DEV_MODE) {
+    await delay(200);
+    const messages = MOCK_MESSAGES[conversationId] ?? [];
+    return messages.filter((m) => {
+      if (m.type === 'image' || m.type === 'video' || m.type === 'file') return true;
+      if (m.type === 'text') return /https?:\/\/[^\s]+/.test(m.content);
+      return false;
+    });
+  }
+  const { data } = await api.get(`/conversations/${conversationId}/media`);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getMutualGroups(userId: string): Promise<ChatConversation[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(200);
+      const allGroups = await getGroups();
+      const mutual: ChatConversation[] = [];
+      for (const g of allGroups) {
+        try {
+          const groupDetail = await getGroup(g.id);
+          if (groupDetail.members.some((m) => m.userId === userId)) {
+            mutual.push(g);
+          }
+        } catch {
+          // skip if group detail fails
+        }
+      }
+      return mutual;
+    }
+    const { data } = await api.get(`/users/${userId}/mutual-groups`);
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get mutual groups');
+  }
 }
 
 export type { ChatConversation };

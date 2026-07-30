@@ -8,9 +8,10 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   className?: string;
+  hideClose?: boolean;
 }
 
-export default function Modal({ open, onClose, title, children, className }: ModalProps) {
+export default function Modal({ open, onClose, title, children, className, hideClose }: ModalProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
@@ -39,15 +40,17 @@ export default function Modal({ open, onClose, title, children, className }: Mod
           className,
         )}
       >
-        <div className="flex items-center justify-between mb-4">
-          {title && <h2 className="text-base font-bold text-foreground">{title}</h2>}
-          <button
-            onClick={onClose}
-            className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        {!hideClose && (
+          <div className="flex items-center justify-between mb-4">
+            {title && <h2 className="text-base font-bold text-foreground">{title}</h2>}
+            <button
+              onClick={onClose}
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
         {children}
       </div>
     </div>

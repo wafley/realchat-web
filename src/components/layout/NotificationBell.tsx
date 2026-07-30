@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useNotifications, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
@@ -48,17 +48,25 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div data-notification-bell className="fixed top-0 left-0 max-lg:bottom-[68px] lg:left-20 z-50 flex h-[calc(100vh-68px)] lg:h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200">
+        <div data-notification-bell className="fixed top-0 left-0 max-lg:bottom-0 lg:left-20 z-50 flex h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200">
           <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
             <h3 className="text-base font-bold text-foreground">Notifications</h3>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markAllRead.mutate()}
+                  className="text-xs font-semibold text-accent hover:underline"
+                >
+                  Mark all as read
+                </button>
+              )}
               <button
-                onClick={() => markAllRead.mutate()}
-                className="text-xs font-semibold text-accent hover:underline"
+                onClick={() => setOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground lg:hidden"
               >
-                Mark all as read
+                <X size={16} />
               </button>
-            )}
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto">
             {notifications.length === 0 ? (
