@@ -309,7 +309,7 @@ export default function UserProfile() {
             <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="text-muted-foreground transition-colors hover:text-accent">
               <ArrowLeft size={20} />
             </button>
-            <span className="text-sm font-semibold text-foreground">Profile</span>
+            <span className="text-sm font-semibold text-muted-foreground">Profile</span>
           </div>
 
           {isPending ? (
