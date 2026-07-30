@@ -122,10 +122,6 @@ export default function EditProfile() {
                   <p className="mt-1 text-xs text-destructive">{errors.fullName.message}</p>
                 )}
               </div>
-              <div className="border-b border-border/50 px-4 py-3.5">
-                <label className="text-xs text-muted-foreground">Username</label>
-                <p className="mt-1 text-sm text-muted-foreground/60">@{user?.username}</p>
-              </div>
               <div className="px-4 py-3.5">
                 <label className="text-xs text-muted-foreground">Bio</label>
                 <textarea
