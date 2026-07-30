@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
@@ -425,9 +425,11 @@ export default function UserProfile() {
                         onClick={() => navigate(`/chat/${g.id}`)}
                         className="flex w-full items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2 text-left transition-colors hover:bg-accent/5"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-xs font-bold text-muted-foreground">
-                          {g.name.charAt(0).toUpperCase()}
-                        </div>
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs">
+                            <Users size={14} />
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
                           <p className="text-xs text-muted-foreground">{g.members} members</p>
