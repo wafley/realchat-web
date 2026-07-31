@@ -567,6 +567,7 @@ export default function UserProfile() {
                           const msg = item;
                           const url = extractUrl(msg.content || '');
                           const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
+                          if (!url) return null;
                           return (
                             <a
                               key={msg.id}
