@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 
 type ThemeMode = 'dark' | 'light' | 'system';
-type FontSize = 'small' | 'default' | 'large';
-type AccentColor =
+export type FontSize = 'small' | 'default' | 'large';
+export type AccentColor =
   | 'blue'
   | 'green'
   | 'teal'
