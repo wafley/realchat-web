@@ -1,4 +1,4 @@
-import { forwardRef, useState, createContext, useContext, type HTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useState, createContext, useContext, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 interface AvatarContextValue {
