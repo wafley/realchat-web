@@ -148,8 +148,6 @@ export function useChatActions(props: UseChatActionsProps) {
     prevLastMsgIdRef,
     longPressTimerRef,
     longPressStartPosRef,
-    isInitialLoadRef = useRef(true),
-    ioCooldownRef = useRef(false),
     sendMutation,
     sendImageMutation,
     sendFileMutation,
@@ -165,6 +163,9 @@ export function useChatActions(props: UseChatActionsProps) {
     isFetchingNextPage,
     fetchNextPage,
   } = props;
+
+  const isInitialLoadRef = useRef(true);
+  const ioCooldownRef = useRef(false);
 
   // --- Effects ---
 
