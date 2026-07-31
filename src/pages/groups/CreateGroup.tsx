@@ -4,10 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, Search, X, Loader2, Camera, UserIcon } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
 import type { User } from '@/types';
-import { createGroupSchema, type createGroupSchema as CreateGroupSchema } from '@/lib/validations';
+import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
 
 export default function CreateGroup() {
   const navigate = useNavigate();
@@ -16,7 +16,6 @@ export default function CreateGroup() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -56,7 +55,6 @@ export default function CreateGroup() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
     const url = URL.createObjectURL(file);
     setAvatarPreview(url);
   };
