@@ -46,7 +46,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
         <Avatar className="h-10 w-10">
           {avatarUrl && <AvatarImage src={avatarUrl} />}
           <AvatarFallback className="text-xs">
-            {notification.type === 'message' || notification.type === 'MESSAGE' ? <MessageCircle size={16} /> : notification.type === 'group' || notification.type === 'GROUP' ? <Users size={16} /> : <Bell size={16} />}
+            {notification.type === 'message' ? <MessageCircle size={16} /> : notification.type === 'group' ? <Users size={16} /> : <Bell size={16} />}
           </AvatarFallback>
         </Avatar>
         {!notification.read && (
