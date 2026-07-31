@@ -1,14 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Loader2, AlertCircle, Users, ArrowLeft, Settings, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2, User } from 'lucide-react';
+import { Loader2, AlertCircle, Users, ArrowLeft, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2, User } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Modal from '@/components/ui/modal';
 import { getGroup, leaveGroup, removeGroupMember, updateMemberRole, updateGroup, deleteGroup } from '@/services/chat';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
