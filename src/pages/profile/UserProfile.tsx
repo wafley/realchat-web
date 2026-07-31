@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2 } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
+
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/lib/chatHelpers';
 import { getUser } from '@/services/user';
@@ -13,6 +14,13 @@ import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
 import { queryClient as appQueryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
+
+import SectionItem from './settings/SectionItem';
+import NotificationsContent from './settings/NotificationsContent';
+import PrivacyContent from './settings/PrivacyContent';
+import AppearanceContent from './settings/AppearanceContent';
+import AccountContent from './settings/AccountContent';
+import AboutContent from './settings/AboutContent';
 
 function formatFileSize(bytes: number): string {
   if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
@@ -126,6 +134,16 @@ export default function UserProfile() {
   const effectiveUser = isSelf && currentUser ? { ...user, ...currentUser } : user;
   const contact = userId ? contacts.find((c) => c.userId === userId) : undefined;
   const isContact = !!contact;
+
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (id: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const displayName = contact?.customName || effectiveUser?.fullName || '';
 
   const addContactMutation = useMutation({
@@ -303,8 +321,8 @@ export default function UserProfile() {
   return (
     <div className="flex h-full flex-col">
       <div className={cn('flex-1 overflow-y-auto md:pb-0', !isSelf && 'pb-24')}>
-        <div className="mx-auto max-w-4xl px-6 py-8">
-          <div className="relative mb-6 flex items-center">
+        <div className="mx-auto max-w-4xl px-6 py-4">
+          <div className="relative mb-4 flex items-center">
             <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="text-muted-foreground transition-colors hover:text-accent">
               <ArrowLeft size={20} />
             </button>
@@ -407,55 +425,52 @@ export default function UserProfile() {
                   <hr className="my-6 border-border" />
                   <div>
                     <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
-                    <div className="overflow-hidden rounded-xl border border-border">
-                      <Link
-                        to="/settings/notifications"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                    <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
+                      <SectionItem
+                        icon={Bell}
+                        label="Notifications"
+                        desc="Message, group, and sound preferences"
+                        expanded={expandedSections.has('notifications')}
+                        onToggle={() => toggleSection('notifications')}
                       >
-                        <Bell size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Notifications</p>
-                          <p className="text-xs text-muted-foreground">Message, group, and sound preferences</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
-                      <Link
-                        to="/settings/privacy"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                        <NotificationsContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={Shield}
+                        label="Privacy"
+                        desc="Last seen, read receipts, blocked users"
+                        expanded={expandedSections.has('privacy')}
+                        onToggle={() => toggleSection('privacy')}
                       >
-                        <Shield size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Privacy</p>
-                          <p className="text-xs text-muted-foreground">Last seen, read receipts, blocked users</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
-                      <Link
-                        to="/settings/appearance"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                        <PrivacyContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={Sun}
+                        label="Appearance"
+                        desc="Theme preferences"
+                        expanded={expandedSections.has('appearance')}
+                        onToggle={() => toggleSection('appearance')}
                       >
-                        <Sun size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Appearance</p>
-                          <p className="text-xs text-muted-foreground">Theme preferences</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
-                      <Link
-                        to="/settings/account"
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/5"
+                        <AppearanceContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={AlertTriangle}
+                        label="Account"
+                        desc="Password and account management"
+                        expanded={expandedSections.has('account')}
+                        onToggle={() => toggleSection('account')}
                       >
-                        <AlertTriangle size={20} className="text-muted-foreground" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">Account</p>
-                          <p className="text-xs text-muted-foreground">Danger zone and account management</p>
-                        </div>
-                        <ChevronRight size={16} className="text-muted-foreground/40" />
-                      </Link>
-                      <hr className="border-border" />
+                        <AccountContent />
+                      </SectionItem>
+                      <SectionItem
+                        icon={Info}
+                        label="About"
+                        desc="App info and credits"
+                        expanded={expandedSections.has('about')}
+                        onToggle={() => toggleSection('about')}
+                      >
+                        <AboutContent />
+                      </SectionItem>
                       <button
                         onClick={() => {
                           appQueryClient.clear();
