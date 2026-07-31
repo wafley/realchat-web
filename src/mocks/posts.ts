@@ -21,7 +21,7 @@ export const MOCK_POSTS: Post[] = [
     id: 'post-3',
     userId: 'bambang',
     imageUrl: 'https://picsum.photos/seed/post3/600/600',
-    caption: null,
+    caption: undefined,
     likes: 5,
     createdAt: new Date('2026-07-26T14:15:00Z'),
   },
