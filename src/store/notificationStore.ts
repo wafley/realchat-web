@@ -20,11 +20,11 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   isOpen: false,
   setNotifications: (notifications) =>
     set({
-      notifications: notifications.map((n) => ({ ...n, read: n.isRead ?? n.read ?? false })),
+      notifications: notifications.map((n) => ({ ...n, read: (n as any).isRead ?? n.read ?? false })),
     }),
   addNotification: (notification) =>
     set((state) => {
-      const normalized = { ...notification, read: notification.isRead ?? notification.read ?? false };
+      const normalized = { ...notification, read: (notification as any).isRead ?? notification.read ?? false };
       return {
         notifications: [normalized, ...state.notifications],
         unreadCount: state.unreadCount + (normalized.read ? 0 : 1),
