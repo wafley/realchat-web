@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { Message, MessageStatus, PaginatedResponse, ReplyTo } from '@/types';
+import type { Message, PaginatedResponse, ReplyTo } from '@/types';
 import { queryClient } from '@/lib/queryClient';
 import {
   sendMessage,
