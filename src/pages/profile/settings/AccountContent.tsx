@@ -8,7 +8,7 @@ import Modal from '@/components/ui/modal';
 import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
 import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
-import { changePasswordSchema, type changePasswordSchema as ChangePasswordSchema } from '@/lib/validations';
+import { changePasswordSchema, type ChangePasswordSchema } from '@/lib/validations';
 import { toast } from 'sonner';
 
 export default function AccountContent() {

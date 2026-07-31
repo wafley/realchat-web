@@ -70,3 +70,5 @@ export const changePasswordSchema = z
     message: 'New passwords do not match',
     path: ['confirmPassword'],
   });
+
+export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
