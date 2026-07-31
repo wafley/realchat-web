@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { Bell, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useNotifications, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
 import NotificationItem from './NotificationItem';
