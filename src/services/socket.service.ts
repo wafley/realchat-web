@@ -13,7 +13,6 @@ import type { Conversation } from '@/types';
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 let currentChatId: string | null = null;
-let currentIsDM = false;
 
 // --- Emit helpers ---
 
@@ -43,7 +42,7 @@ function onMessageNew(msg: Message) {
   if (DEV_MODE) return;
 
   const chatId = msg.groupId;
-  const conversations = queryClient.getQueryData<{ id: string }[]>(['conversations']);
+  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
 
@@ -257,7 +256,6 @@ export function destroySocket() {
   socketClient.disconnect();
 }
 
-export function setCurrentChat(chatId: string | null, isDM: boolean) {
+export function setCurrentChat(chatId: string | null, _isDM: boolean) {
   currentChatId = chatId;
-  currentIsDM = isDM;
 }
