@@ -9,7 +9,7 @@ import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
 import Modal from '@/components/ui/modal';
-import { changePasswordSchema, type changePasswordSchema as ChangePasswordSchema } from '@/lib/validations';
+import { changePasswordSchema, type ChangePasswordSchema } from '@/lib/validations';
 
 export default function SettingsAccount() {
   const navigate = useNavigate();
