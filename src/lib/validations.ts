@@ -40,6 +40,8 @@ export const createGroupSchema = z.object({
   description: z.string().max(500, 'Description must be 500 characters or less').optional(),
 });
 
+export type CreateGroupSchema = z.infer<typeof createGroupSchema>;
+
 export const forgotPasswordSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
 });
