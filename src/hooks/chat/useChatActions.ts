@@ -29,6 +29,7 @@ interface UseChatActionsProps {
   searchQuery: string;
   muted: boolean;
   chatName: string;
+  otherUserId: string | undefined;
   selectedImage: File | null;
   selectedFile: File | null;
   replyingToForSend: Message | null;
@@ -111,6 +112,7 @@ export function useChatActions(props: UseChatActionsProps) {
     searchQuery,
     muted,
     chatName,
+    otherUserId,
     selectedImage,
     selectedFile,
     imagePreview,
@@ -591,7 +593,8 @@ export function useChatActions(props: UseChatActionsProps) {
 
   const handleBlock = useCallback(async () => {
     try {
-      await blockUser(chatId);
+      const target = otherUserId ?? chatId;
+      await blockUser(target);
       setBlockConfirmOpen(false);
       toast.success(`${chatName} has been blocked`);
       queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
@@ -599,17 +602,18 @@ export function useChatActions(props: UseChatActionsProps) {
     } catch {
       toast.error('Failed to block user');
     }
-  }, [chatId, chatName]);
+  }, [chatId, chatName, otherUserId]);
 
   const handleReport = useCallback(async () => {
     try {
-      await reportUser(chatId);
+      const target = otherUserId ?? chatId;
+      await reportUser(target);
       setReportConfirmOpen(false);
       toast.success('Report submitted');
     } catch {
       toast.error('Failed to submit report');
     }
-  }, [chatId]);
+  }, [chatId, otherUserId]);
 
   const handleToggleReaction = useCallback(
     (msgId: string, emoji: string) => {

@@ -53,6 +53,7 @@ export default function ChatRoom() {
     searchQuery: state.searchQuery,
     muted: state.muted,
     chatName: state.chatName,
+    otherUserId: state.otherUserId,
     selectedImage: state.selectedImage,
     selectedFile: state.selectedFile,
     imagePreview: state.imagePreview,
