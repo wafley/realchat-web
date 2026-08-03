@@ -137,7 +137,11 @@ export function useChatState() {
   const filteredMessages = useMemo(() => {
     if (!showSearch || !searchQuery.trim()) return messages;
     const q = searchQuery.toLowerCase();
-    return messages.filter((m) => m.content.toLowerCase().includes(q));
+    return messages.filter(
+      (m) =>
+        m.content.toLowerCase().includes(q) ||
+        (m.fileName ?? '').toLowerCase().includes(q),
+    );
   }, [messages, showSearch, searchQuery]);
 
   const searchMatchIds = useMemo(() => filteredMessages.map((m) => m.id), [filteredMessages]);
