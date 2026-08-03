@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Message } from '@/types';
@@ -34,14 +34,10 @@ export function useChatState() {
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
   const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
-  const [muted, setMuted] = useState(convFromList?.muted ?? false);
+  const [muted, setMuted] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchMatches, setSearchMatches] = useState<string[]>([]);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
-
-  useEffect(() => {
-    setMuted(convFromList?.muted ?? false);
-  }, [convFromList?.muted]);
 
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,12 +60,16 @@ export function useChatState() {
     queryFn: getConversations,
   });
 
-  const convFromList = useMemo(
-    () => conversations.find((c) => c.id === chatId),
-    [conversations, chatId],
-  );
+   const convFromList = useMemo(
+     () => conversations.find((c) => c.id === chatId),
+     [conversations, chatId],
+   );
 
-  const chatName = convFromList?.name || location.state?.name || 'Chat';
+   useEffect(() => {
+     setMuted(convFromList?.muted ?? false);
+   }, [convFromList?.muted]);
+
+   const chatName = convFromList?.name || location.state?.name || 'Chat';
   const chatOnline = location.state?.online ?? convFromList?.online ?? true;
   const chatLastSeen = location.state?.lastSeen ?? convFromList?.lastSeen ?? null;
   const memberCount = location.state?.members ?? null;

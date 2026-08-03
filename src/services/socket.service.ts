@@ -50,8 +50,8 @@ function onMessageNew(msg: Message) {
     ['messages', chatId, isDM],
     (prev) => {
       if (!prev) return prev;
-      if (firstPage.data.some((m) => m.id === msg.id)) return prev;
       const [firstPage, ...rest] = prev.pages;
+      if (firstPage.data.some((m) => m.id === msg.id)) return prev;
       return {
         ...prev,
         pages: [
