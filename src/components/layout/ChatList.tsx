@@ -9,7 +9,8 @@ import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
 import NotificationBell from '@/components/layout/NotificationBell';
 import { useTypingStore } from '@/store/typingStore';
-import { getConversations, bulkDeleteConversations, searchAllMessages } from '@/services/chat';
+import { usePresenceStore } from '@/store/presenceStore';
+import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -53,6 +54,15 @@ export default function ChatList() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const typingMap = useTypingStore((s) => s.typingMap);
+  const presenceMap = usePresenceStore((s) => s.presenceMap);
+
+  const presenceOf = (chat: Conversation) => {
+    const uid = chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined;
+    const presence = uid ? presenceMap[uid] : undefined;
+    return presence
+      ? { online: presence.isOnline, lastSeen: presence.lastSeen }
+      : { online: chat.online, lastSeen: chat.lastSeen };
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (ids: string[]) => bulkDeleteConversations(ids),
@@ -319,11 +329,12 @@ export default function ChatList() {
                 </div>
                 {filtered.map((chat) => {
                   const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
+                  const { online, lastSeen } = presenceOf(chat);
                   return (
                     <Link
                       key={chat.id}
                       to={linkTo}
-                      state={{ name: chat.name, online: chat.online, lastSeen: chat.lastSeen, members: chat.members }}
+                      state={{ name: chat.name, online, lastSeen, members: chat.members }}
                       className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                     >
                       <div className="relative shrink-0">
@@ -399,11 +410,12 @@ export default function ChatList() {
               const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
               const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
               const isSelected = selectedChatIds.has(chat.id);
+              const { online, lastSeen } = presenceOf(chat);
               const ItemTag = (isSelectionMode ? 'div' : Link) as ElementType;
               return (
                 <ItemTag
                   key={chat.id}
-                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online, lastSeen: chat.lastSeen, members: chat.members } } : {})}
+                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online, lastSeen, members: chat.members } } : {})}
                   role="listitem"
                   aria-current={isActive && !isSelectionMode ? 'page' : undefined}
                   onMouseDown={(e: React.MouseEvent) => {
@@ -449,7 +461,7 @@ export default function ChatList() {
                         {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
                       </AvatarFallback>
                     </Avatar>
-                    {chat.online && !isSelectionMode && (
+                    {online && !isSelectionMode && (
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 lg:h-3.5 lg:w-3.5" />
                     )}
                     {isSelected && (
@@ -471,10 +483,10 @@ export default function ChatList() {
                       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
                         {typingMap[chat.id] ? (
                           <span className="text-accent">typing...</span>
-                        ) : chat.online ? (
+                        ) : online ? (
                           chat.lastMessage
-                        ) : chat.lastSeen && shouldShowLastSeen() ? (
-                          <span className="text-muted-foreground">last seen {formatLastSeen(chat.lastSeen)}</span>
+                        ) : lastSeen && shouldShowLastSeen() ? (
+                          <span className="text-muted-foreground">last seen {formatLastSeen(lastSeen)}</span>
                         ) : (
                           chat.lastMessage
                         )}
