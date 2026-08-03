@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Message } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
+import { usePresenceStore } from '@/store/presenceStore';
 import { getMessages, getConversations, DM_USER_MAP } from '@/services/chat';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
@@ -69,11 +70,42 @@ export function useChatState() {
      setMuted(convFromList?.muted ?? false);
    }, [convFromList?.muted]);
 
+   useEffect(() => {
+     setInput('');
+     setShowSearch(false);
+     setSearchQuery('');
+     setSelectedImage(null);
+     setImagePreview(null);
+     setShowEmojiPicker(false);
+     setReplyingTo(null);
+     setEditingMsg(null);
+     setLightboxUrl(null);
+     setContextMenu(null);
+     setDeleteTarget(null);
+     setForwardTarget(null);
+     setForwardSearch('');
+     setPinnedMessages([]);
+     setSelectedFile(null);
+     setGroupInfoOpen(false);
+     setBlockConfirmOpen(false);
+     setReportConfirmOpen(false);
+     setReadReceiptTarget(null);
+     setReactingMsgId(null);
+     setReactionPickerRect(null);
+     setSelectedIds([]);
+     setSearchMatches([]);
+     setActiveMatchIndex(0);
+     return () => {
+       useTypingStore.getState().setTyping(chatId, false);
+     };
+   }, [chatId]);
+
    const chatName = convFromList?.name || location.state?.name || 'Chat';
-  const chatOnline = location.state?.online ?? convFromList?.online ?? true;
-  const chatLastSeen = location.state?.lastSeen ?? convFromList?.lastSeen ?? null;
-  const memberCount = location.state?.members ?? null;
-  const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
+   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
+   const presence = usePresenceStore((s) => (otherUserId ? s.presenceMap[otherUserId] : undefined));
+   const chatOnline = presence ? presence.isOnline : (location.state?.online ?? convFromList?.online ?? true);
+   const chatLastSeen = presence ? presence.lastSeen : (location.state?.lastSeen ?? convFromList?.lastSeen ?? null);
+   const memberCount = location.state?.members ?? null;
 
   const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);
 

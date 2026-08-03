@@ -1,4 +1,4 @@
-import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback, useLayoutEffect } from 'react';
+import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react';
 import { Loader2, AlertCircle, RefreshCw, MessageSquareText, ChevronDown } from 'lucide-react';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
@@ -83,6 +83,12 @@ export default function MessageList({
   const scrollRestoredRef = useRef(false);
   const prevFirstIdRef = useRef<string | null>(null);
   const prevScrollHeightRef = useRef(0);
+
+  useEffect(() => {
+    scrollRestoredRef.current = false;
+    prevFirstIdRef.current = null;
+    prevScrollHeightRef.current = 0;
+  }, [chatId]);
 
   useLayoutEffect(() => {
     const el = scrollContainerRef.current;

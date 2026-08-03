@@ -172,6 +172,12 @@ export function useChatActions(props: UseChatActionsProps) {
   // --- Effects ---
 
   useEffect(() => {
+    isInitialLoadRef.current = true;
+    ioCooldownRef.current = false;
+    prevLastMsgIdRef.current = null;
+  }, [chatId]);
+
+  useEffect(() => {
     if (!hasActiveSearch()) {
       setSearchMatches([]);
       setActiveMatchIndex(0);
