@@ -165,24 +165,27 @@ export function useChatMutations({
           if (!old) return old;
           return {
             ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              data: !delForAll
-                ? page.data.filter((m) => m.id !== msgId)
-                : page.data.map((m) =>
-                    m.id === msgId
-                      ? {
-                          ...m,
-                          content: 'You deleted this message',
-                          type: 'text' as const,
-                          fileUrl: undefined,
-                          fileName: undefined,
-                          replyTo: undefined,
-                        }
-                      : m,
-                  ),
-              total: !delForAll ? page.total - 1 : page.total,
-            })),
+            pages: old.pages.map((page) => {
+              const hadMsg = page.data.some((m) => m.id === msgId);
+              return {
+                ...page,
+                data: !delForAll
+                  ? page.data.filter((m) => m.id !== msgId)
+                  : page.data.map((m) =>
+                      m.id === msgId
+                        ? {
+                            ...m,
+                            content: 'You deleted this message',
+                            type: 'text' as const,
+                            fileUrl: undefined,
+                            fileName: undefined,
+                            replyTo: undefined,
+                          }
+                        : m,
+                    ),
+                total: !delForAll && hadMsg ? page.total - 1 : page.total,
+              };
+            }),
           };
         },
       );
