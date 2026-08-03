@@ -692,11 +692,16 @@ export function useChatActions(props: UseChatActionsProps) {
     [bulkForwardMessages, forwardMutation, setSelectedIds],
   );
 
-  const handleToggleMute = useCallback(() => {
+  const handleToggleMute = useCallback(async () => {
     const n = !muted;
     setMuted(n);
-    toggleMuteConversation(chatId);
-    toast(n ? 'Notifications muted' : 'Notifications unmuted');
+    try {
+      await toggleMuteConversation(chatId);
+      toast(n ? 'Notifications muted' : 'Notifications unmuted');
+    } catch {
+      setMuted(!n);
+      toast.error('Failed to update mute setting');
+    }
   }, [muted, chatId]);
 
   const handleUpdateEdit = useCallback(() => {
