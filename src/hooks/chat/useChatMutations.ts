@@ -153,6 +153,7 @@ export function useChatMutations({
     mutationFn: ({ msgId, delForAll }: { msgId: string; delForAll: boolean }) =>
       deleteMessage(chatId, msgId, delForAll),
     onMutate: async ({ msgId, delForAll }) => {
+      setDeleteLoading(true);
       await queryClient.cancelQueries({ queryKey: ['messages', chatId, isDM] });
       const prev = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
         'messages',
