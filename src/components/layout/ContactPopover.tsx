@@ -120,25 +120,27 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       <div className="fixed inset-0 z-[100]" onClick={onClose} />
       <div
         ref={drawerRef}
-        className="fixed left-0 top-0 z-[101] flex h-full w-full flex-col rounded-r-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 lg:left-20 lg:w-[30rem]"
+        className="fixed left-0 top-0 z-[101] flex h-full w-full flex-col rounded-r-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 lg:left-20 lg:w-[30rem] pt-[env(safe-area-inset-top,0px)] lg:pt-0"
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           {showNewContactForm ? (
-            <>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowNewContactForm(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+                aria-label="Back"
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={18} />
               </button>
               <h2 className="text-sm font-bold text-foreground">New Contact</h2>
-            </>
+            </div>
           ) : (
             <h2 className="text-sm font-bold text-foreground">New Conversation</h2>
           )}
           <button
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
