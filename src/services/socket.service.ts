@@ -163,9 +163,21 @@ function onMessageStatus(data: { id: string; status: MessageStatus; groupId: str
   );
 }
 
+const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
+
 function onTypingUpdate(data: { userId: string; conversationId: string; isTyping: boolean }) {
   const currentUserId = useAuthStore.getState().user?.id;
   if (data.userId === currentUserId) return;
+  if (typingTimeouts[data.conversationId]) {
+    clearTimeout(typingTimeouts[data.conversationId]);
+    delete typingTimeouts[data.conversationId];
+  }
+  if (data.isTyping) {
+    typingTimeouts[data.conversationId] = setTimeout(() => {
+      useTypingStore.getState().setTyping(data.conversationId, false);
+      delete typingTimeouts[data.conversationId];
+    }, 5000);
+  }
   useTypingStore.getState().setTyping(data.conversationId, data.isTyping);
 }
 
@@ -253,6 +265,7 @@ export function initSocket(token?: string) {
 }
 
 export function destroySocket() {
+  Object.values(typingTimeouts).forEach((t) => clearTimeout(t));
   socketClient.off('message:new', onMessageNew);
   socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);
