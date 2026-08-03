@@ -62,14 +62,24 @@ function onMessageNew(msg: Message) {
     },
   );
 
-  // Update conversation preview + reorder
+  // Update conversation preview + reorder + unread badge
   const preview = msg.type === 'image' ? '📷 Photo' : msg.content;
-  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+  const currentUserId = useAuthStore.getState().user?.id;
+  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number }[]>(
     ['conversations'],
     (prev) => {
       if (!prev) return prev;
+      const isOwn = msg.senderId === currentUserId;
+      const shouldCount = !isOwn && currentChatId !== chatId;
       const updated = prev.map((c) =>
-        c.id === chatId ? { ...c, lastMessage: preview, lastTime: 'now' } : c,
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: preview,
+              lastTime: 'now',
+              unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
+            }
+          : c,
       );
       const idx = updated.findIndex((c) => c.id === chatId);
       if (idx <= 0) return updated;
