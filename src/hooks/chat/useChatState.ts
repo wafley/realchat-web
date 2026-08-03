@@ -34,10 +34,14 @@ export function useChatState() {
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
   const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(convFromList?.muted ?? false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchMatches, setSearchMatches] = useState<string[]>([]);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+
+  useEffect(() => {
+    setMuted(convFromList?.muted ?? false);
+  }, [convFromList?.muted]);
 
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
