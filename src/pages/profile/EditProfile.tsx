@@ -9,6 +9,7 @@ import { uploadAvatar } from '@/services/user';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { editProfileSchema, type EditProfileSchema } from '@/lib/validations';
+import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export default function EditProfile() {
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -38,8 +41,18 @@ export default function EditProfile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    setRawImageSrc(objectUrl);
+    setCropModalOpen(true);
+    // Reset file input value so selecting same file again re-triggers onChange
+    e.target.value = '';
+  };
+
+  const handleCropComplete = (croppedFile: File, croppedPreviewUrl: string) => {
+    setAvatarFile(croppedFile);
+    setAvatarPreview(croppedPreviewUrl);
+    if (rawImageSrc) URL.revokeObjectURL(rawImageSrc);
+    setRawImageSrc(null);
   };
 
   const onSave = async (data: EditProfileSchema) => {
@@ -155,6 +168,13 @@ export default function EditProfile() {
           </button>
         </div>
       </div>
+
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={rawImageSrc}
+        onClose={() => setCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

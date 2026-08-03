@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
 import type { User } from '@/types';
 import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
+import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function CreateGroup() {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ export default function CreateGroup() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -56,7 +59,15 @@ export default function CreateGroup() {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
-    setAvatarPreview(url);
+    setRawImageSrc(url);
+    setCropModalOpen(true);
+    e.target.value = '';
+  };
+
+  const handleCropComplete = (_croppedFile: File, croppedPreviewUrl: string) => {
+    setAvatarPreview(croppedPreviewUrl);
+    if (rawImageSrc) URL.revokeObjectURL(rawImageSrc);
+    setRawImageSrc(null);
   };
 
   return (
@@ -225,6 +236,13 @@ export default function CreateGroup() {
           </button>
         </form>
       </div>
+
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={rawImageSrc}
+        onClose={() => setCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }
