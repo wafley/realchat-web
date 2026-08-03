@@ -10,7 +10,7 @@ import ContactPopover from '@/components/layout/ContactPopover';
 import NotificationBell from '@/components/layout/NotificationBell';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
-import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP } from '@/services/chat';
+import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP, type ChatConversation } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -56,7 +56,7 @@ export default function ChatList() {
   const typingMap = useTypingStore((s) => s.typingMap);
   const presenceMap = usePresenceStore((s) => s.presenceMap);
 
-  const presenceOf = (chat: Conversation) => {
+  const presenceOf = (chat: ChatConversation) => {
     const uid = chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined;
     const presence = uid ? presenceMap[uid] : undefined;
     return presence
