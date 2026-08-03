@@ -256,7 +256,13 @@ export function useChatActions(props: UseChatActionsProps) {
           el.scrollIntoView({ behavior: 'instant' });
           isInitialLoadRef.current = false;
         } else {
-          el.scrollIntoView({ behavior: 'smooth' });
+          const container = messagesEndRef.current?.parentElement?.parentElement;
+          let nearBottom = true;
+          if (container) {
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+            nearBottom = distanceFromBottom <= 200;
+          }
+          if (nearBottom) el.scrollIntoView({ behavior: 'smooth' });
         }
       }
     }
