@@ -262,8 +262,8 @@ export function useChatMutations({
   });
 
   const sendFileMutation = useMutation({
-    mutationFn: ({ file, caption }: { file: File; caption: string }) =>
-      sendFileMessage(chatId, file, isDM, caption || undefined),
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
+      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
     onSuccess(r) {
       onMessageSent(r);
     },

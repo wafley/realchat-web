@@ -362,7 +362,7 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
   }
 }
 
-export async function sendFileMessage(chatId: string, file: File, isDM: boolean, caption?: string): Promise<Message> {
+export async function sendFileMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(500);
@@ -381,6 +381,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
         fileSize: file.size,
         duration: isVideo ? 0 : undefined,
         status: 'sent',
+        replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
       };
@@ -398,6 +399,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
     const form = new FormData();
     form.append('file', file);
     if (caption) form.append('caption', caption);
+    if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
     const { data } = await api.post<Message>(`${endpoint}`, form);
     return data;
   } catch (err) {
