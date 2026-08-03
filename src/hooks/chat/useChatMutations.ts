@@ -61,15 +61,16 @@ export function useChatMutations({
       queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
         ['messages', chatId, isDM],
         (prev) => {
-          if (!prev) return prev;
-          const [firstPage, ...rest] = prev.pages;
-          return {
-            ...prev,
-            pages: [
-              { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
-              ...rest,
-            ],
-          };
+           if (!prev) return prev;
+           if (prev.pages[0].data.some((m) => m.id === newMsg.id)) return prev;
+           const [firstPage, ...rest] = prev.pages;
+           return {
+             ...prev,
+             pages: [
+               { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
+               ...rest,
+             ],
+           };
         },
       );
       const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
