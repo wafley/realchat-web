@@ -1,21 +1,27 @@
 import type { ReactNode } from 'react';
 
-export function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+export function formatTime(date: Date | string | number) {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-export function formatDateSeparator(date: Date): string {
+export function formatDateSeparator(date: Date | string | number): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diff = Math.floor((today.getTime() - target.getTime()) / 86400000);
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Yesterday';
-  return date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+  return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
 }
 
-export function getDateKey(date: Date): string {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+export function getDateKey(date: Date | string | number): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
 export function highlightText(text: string, query: string): string | ReactNode[] {

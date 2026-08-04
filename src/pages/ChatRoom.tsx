@@ -10,6 +10,7 @@ import ChatOverlays from '@/components/chat/ChatOverlays';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
+import { usePrivacyStore } from '@/store/privacyStore';
 import { joinRoom, leaveRoom, emitMessageSeen, setCurrentChat } from '@/services/socket.service';
 
 export default function ChatRoom() {
@@ -53,6 +54,7 @@ export default function ChatRoom() {
     searchQuery: state.searchQuery,
     muted: state.muted,
     chatName: state.chatName,
+    otherUserId: state.otherUserId,
     selectedImage: state.selectedImage,
     selectedFile: state.selectedFile,
     imagePreview: state.imagePreview,
@@ -113,7 +115,9 @@ export default function ChatRoom() {
 
     setCurrentChat(state.chatId, state.isDM);
     joinRoom(state.chatId);
-    emitMessageSeen(state.chatId);
+    if (usePrivacyStore.getState().readReceipts) {
+      emitMessageSeen(state.chatId);
+    }
 
     return () => {
       leaveRoom(state.chatId);

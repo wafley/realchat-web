@@ -61,15 +61,16 @@ export function useChatMutations({
       queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
         ['messages', chatId, isDM],
         (prev) => {
-          if (!prev) return prev;
-          const [firstPage, ...rest] = prev.pages;
-          return {
-            ...prev,
-            pages: [
-              { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
-              ...rest,
-            ],
-          };
+           if (!prev) return prev;
+           if (prev.pages[0].data.some((m) => m.id === newMsg.id)) return prev;
+           const [firstPage, ...rest] = prev.pages;
+           return {
+             ...prev,
+             pages: [
+               { ...firstPage, data: [...firstPage.data, newMsg], total: firstPage.total + 1 },
+               ...rest,
+             ],
+           };
         },
       );
       const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
@@ -152,6 +153,7 @@ export function useChatMutations({
     mutationFn: ({ msgId, delForAll }: { msgId: string; delForAll: boolean }) =>
       deleteMessage(chatId, msgId, delForAll),
     onMutate: async ({ msgId, delForAll }) => {
+      setDeleteLoading(true);
       await queryClient.cancelQueries({ queryKey: ['messages', chatId, isDM] });
       const prev = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
         'messages',
@@ -164,24 +166,27 @@ export function useChatMutations({
           if (!old) return old;
           return {
             ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              data: !delForAll
-                ? page.data.filter((m) => m.id !== msgId)
-                : page.data.map((m) =>
-                    m.id === msgId
-                      ? {
-                          ...m,
-                          content: 'You deleted this message',
-                          type: 'text' as const,
-                          fileUrl: undefined,
-                          fileName: undefined,
-                          replyTo: undefined,
-                        }
-                      : m,
-                  ),
-              total: !delForAll ? page.total - 1 : page.total,
-            })),
+            pages: old.pages.map((page) => {
+              const hadMsg = page.data.some((m) => m.id === msgId);
+              return {
+                ...page,
+                data: !delForAll
+                  ? page.data.filter((m) => m.id !== msgId)
+                  : page.data.map((m) =>
+                      m.id === msgId
+                        ? {
+                            ...m,
+                            content: 'You deleted this message',
+                            type: 'text' as const,
+                            fileUrl: undefined,
+                            fileName: undefined,
+                            replyTo: undefined,
+                          }
+                        : m,
+                    ),
+                total: !delForAll && hadMsg ? page.total - 1 : page.total,
+              };
+            }),
           };
         },
       );
@@ -258,8 +263,8 @@ export function useChatMutations({
   });
 
   const sendFileMutation = useMutation({
-    mutationFn: ({ file, caption }: { file: File; caption: string }) =>
-      sendFileMessage(chatId, file, isDM, caption || undefined),
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
+      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
     onSuccess(r) {
       onMessageSent(r);
     },

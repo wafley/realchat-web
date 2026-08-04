@@ -51,6 +51,7 @@ function onMessageNew(msg: Message) {
     (prev) => {
       if (!prev) return prev;
       const [firstPage, ...rest] = prev.pages;
+      if (firstPage.data.some((m) => m.id === msg.id)) return prev;
       return {
         ...prev,
         pages: [
@@ -61,14 +62,24 @@ function onMessageNew(msg: Message) {
     },
   );
 
-  // Update conversation preview + reorder
+  // Update conversation preview + reorder + unread badge
   const preview = msg.type === 'image' ? '📷 Photo' : msg.content;
-  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+  const currentUserId = useAuthStore.getState().user?.id;
+  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number }[]>(
     ['conversations'],
     (prev) => {
       if (!prev) return prev;
+      const isOwn = msg.senderId === currentUserId;
+      const shouldCount = !isOwn && currentChatId !== chatId;
       const updated = prev.map((c) =>
-        c.id === chatId ? { ...c, lastMessage: preview, lastTime: 'now' } : c,
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: preview,
+              lastTime: 'now',
+              unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
+            }
+          : c,
       );
       const idx = updated.findIndex((c) => c.id === chatId);
       if (idx <= 0) return updated;
@@ -152,9 +163,21 @@ function onMessageStatus(data: { id: string; status: MessageStatus; groupId: str
   );
 }
 
+const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
+
 function onTypingUpdate(data: { userId: string; conversationId: string; isTyping: boolean }) {
   const currentUserId = useAuthStore.getState().user?.id;
   if (data.userId === currentUserId) return;
+  if (typingTimeouts[data.conversationId]) {
+    clearTimeout(typingTimeouts[data.conversationId]);
+    delete typingTimeouts[data.conversationId];
+  }
+  if (data.isTyping) {
+    typingTimeouts[data.conversationId] = setTimeout(() => {
+      useTypingStore.getState().setTyping(data.conversationId, false);
+      delete typingTimeouts[data.conversationId];
+    }, 5000);
+  }
   useTypingStore.getState().setTyping(data.conversationId, data.isTyping);
 }
 
@@ -242,6 +265,7 @@ export function initSocket(token?: string) {
 }
 
 export function destroySocket() {
+  Object.values(typingTimeouts).forEach((t) => clearTimeout(t));
   socketClient.off('message:new', onMessageNew);
   socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);

@@ -4,7 +4,20 @@ import { queryClient } from '@/lib/queryClient';
 import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { usePrivacyStore } from '@/store/privacyStore';
-import type { Message } from '@/types';
+import type { Message, ReplyTo } from '@/types';
+
+function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
+  if (!replyingTo) return undefined;
+  return {
+    id: replyingTo.id,
+    senderId: replyingTo.senderId,
+    senderName: replyingTo.sender?.fullName ?? 'Unknown',
+    content: replyingTo.content,
+    type: replyingTo.type as 'text' | 'image',
+    fileUrl: replyingTo.fileUrl,
+    fileName: replyingTo.fileName,
+  };
+}
 
 interface UseChatActionsProps {
   chatId: string;
@@ -29,6 +42,7 @@ interface UseChatActionsProps {
   searchQuery: string;
   muted: boolean;
   chatName: string;
+  otherUserId: string | undefined;
   selectedImage: File | null;
   selectedFile: File | null;
   replyingToForSend: Message | null;
@@ -72,7 +86,7 @@ interface UseChatActionsProps {
   // Mutations
   sendMutation: { mutate: (vars: { content: string; replyTo?: any }) => void };
   sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any }) => void };
-  sendFileMutation: { mutate: (vars: { file: File; caption: string }) => void };
+  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }) => void };
   editMutation: { mutate: (vars: { msgId: string; content: string }) => void };
   deleteMutation: { mutate: (vars: { msgId: string; delForAll: boolean }) => void };
   pinMutation: { mutate: (msgId: string) => void };
@@ -111,6 +125,7 @@ export function useChatActions(props: UseChatActionsProps) {
     searchQuery,
     muted,
     chatName,
+    otherUserId,
     selectedImage,
     selectedFile,
     imagePreview,
@@ -168,6 +183,12 @@ export function useChatActions(props: UseChatActionsProps) {
   const ioCooldownRef = useRef(false);
 
   // --- Effects ---
+
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    ioCooldownRef.current = false;
+    prevLastMsgIdRef.current = null;
+  }, [chatId]);
 
   useEffect(() => {
     if (!hasActiveSearch()) {
@@ -248,7 +269,13 @@ export function useChatActions(props: UseChatActionsProps) {
           el.scrollIntoView({ behavior: 'instant' });
           isInitialLoadRef.current = false;
         } else {
-          el.scrollIntoView({ behavior: 'smooth' });
+          const container = messagesEndRef.current?.parentElement?.parentElement;
+          let nearBottom = true;
+          if (container) {
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+            nearBottom = distanceFromBottom <= 200;
+          }
+          if (nearBottom) el.scrollIntoView({ behavior: 'smooth' });
         }
       }
     }
@@ -420,17 +447,7 @@ export function useChatActions(props: UseChatActionsProps) {
     if (selectedImage) {
       const file = selectedImage;
       const caption = input.trim();
-      const rp = replyingTo
-        ? {
-            id: replyingTo.id,
-            senderId: replyingTo.senderId,
-            senderName: replyingTo.sender?.fullName ?? 'Unknown',
-            content: replyingTo.content,
-            type: replyingTo.type as 'text' | 'image',
-            fileUrl: replyingTo.fileUrl,
-            fileName: replyingTo.fileName,
-          }
-        : undefined;
+      const rp = buildReplyTo(replyingTo);
       if (imagePreview) URL.revokeObjectURL(imagePreview);
       setSelectedImage(null);
       setImagePreview(null);
@@ -440,10 +457,11 @@ export function useChatActions(props: UseChatActionsProps) {
     } else if (selectedFile) {
       const file = selectedFile;
       const caption = input.trim();
+      const rp = buildReplyTo(replyingTo);
       setSelectedFile(null);
       setInput('');
       setReplyingTo(null);
-      sendFileMutation.mutate({ file, caption });
+      sendFileMutation.mutate({ file, caption, replyTo: rp });
     }
   }, [selectedImage, selectedFile, input, replyingTo, imagePreview]);
 
@@ -591,7 +609,8 @@ export function useChatActions(props: UseChatActionsProps) {
 
   const handleBlock = useCallback(async () => {
     try {
-      await blockUser(chatId);
+      const target = otherUserId ?? chatId;
+      await blockUser(target);
       setBlockConfirmOpen(false);
       toast.success(`${chatName} has been blocked`);
       queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
@@ -599,17 +618,18 @@ export function useChatActions(props: UseChatActionsProps) {
     } catch {
       toast.error('Failed to block user');
     }
-  }, [chatId, chatName]);
+  }, [chatId, chatName, otherUserId]);
 
   const handleReport = useCallback(async () => {
     try {
-      await reportUser(chatId);
+      const target = otherUserId ?? chatId;
+      await reportUser(target);
       setReportConfirmOpen(false);
       toast.success('Report submitted');
     } catch {
       toast.error('Failed to submit report');
     }
-  }, [chatId]);
+  }, [chatId, otherUserId]);
 
   const handleToggleReaction = useCallback(
     (msgId: string, emoji: string) => {
@@ -676,11 +696,16 @@ export function useChatActions(props: UseChatActionsProps) {
     [bulkForwardMessages, forwardMutation, setSelectedIds],
   );
 
-  const handleToggleMute = useCallback(() => {
+  const handleToggleMute = useCallback(async () => {
     const n = !muted;
     setMuted(n);
-    toggleMuteConversation(chatId);
-    toast(n ? 'Notifications muted' : 'Notifications unmuted');
+    try {
+      await toggleMuteConversation(chatId);
+      toast(n ? 'Notifications muted' : 'Notifications unmuted');
+    } catch {
+      setMuted(!n);
+      toast.error('Failed to update mute setting');
+    }
   }, [muted, chatId]);
 
   const handleUpdateEdit = useCallback(() => {
@@ -701,17 +726,7 @@ export function useChatActions(props: UseChatActionsProps) {
     }
     const text = input.trim();
     if (!text) return;
-    const rp = replyingTo
-      ? {
-          id: replyingTo.id,
-          senderId: replyingTo.senderId,
-          senderName: replyingTo.sender?.fullName ?? 'Unknown',
-          content: replyingTo.content,
-          type: replyingTo.type as 'text' | 'image',
-          fileUrl: replyingTo.fileUrl,
-          fileName: replyingTo.fileName,
-        }
-      : undefined;
+    const rp = buildReplyTo(replyingTo);
     setInput('');
     setReplyingTo(null);
     sendMutation.mutate({ content: text, replyTo: rp });

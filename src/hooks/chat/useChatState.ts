@@ -1,9 +1,10 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Message } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
+import { usePresenceStore } from '@/store/presenceStore';
 import { getMessages, getConversations, DM_USER_MAP } from '@/services/chat';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
@@ -65,11 +66,46 @@ export function useChatState() {
     [conversations, chatId],
   );
 
+  useEffect(() => {
+    setMuted(convFromList?.muted ?? false);
+  }, [convFromList?.muted]);
+
+  useEffect(() => {
+    setInput('');
+    setShowSearch(false);
+    setSearchQuery('');
+    setSelectedImage(null);
+    setImagePreview(null);
+    setShowEmojiPicker(false);
+    setReplyingTo(null);
+    setEditingMsg(null);
+    setLightboxUrl(null);
+    setContextMenu(null);
+    setDeleteTarget(null);
+    setForwardTarget(null);
+    setForwardSearch('');
+    setPinnedMessages([]);
+    setSelectedFile(null);
+    setGroupInfoOpen(false);
+    setBlockConfirmOpen(false);
+    setReportConfirmOpen(false);
+    setReadReceiptTarget(null);
+    setReactingMsgId(null);
+    setReactionPickerRect(null);
+    setSelectedIds([]);
+    setSearchMatches([]);
+    setActiveMatchIndex(0);
+    return () => {
+      useTypingStore.getState().setTyping(chatId, false);
+    };
+  }, [chatId]);
+
   const chatName = convFromList?.name || location.state?.name || 'Chat';
-  const chatOnline = location.state?.online ?? convFromList?.online ?? true;
-  const chatLastSeen = location.state?.lastSeen ?? convFromList?.lastSeen ?? null;
-  const memberCount = location.state?.members ?? null;
   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
+  const presence = usePresenceStore((s) => (otherUserId ? s.presenceMap[otherUserId] : undefined));
+  const chatOnline = presence ? presence.isOnline : (location.state?.online ?? convFromList?.online ?? true);
+  const chatLastSeen = presence ? presence.lastSeen : (location.state?.lastSeen ?? convFromList?.lastSeen ?? null);
+  const memberCount = location.state?.members ?? null;
 
   const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);
 
@@ -93,15 +129,32 @@ export function useChatState() {
     enabled: !!chatId,
   });
 
-  const messages = useMemo(
-    () => [...(data?.pages ?? [])].reverse().flatMap((p) => p.data),
-    [data],
-  );
+  const messages = useMemo(() => {
+    if (!data?.pages) return [];
+    const raw = [...data.pages].reverse().flatMap((p) => p.data);
+    const map = new Map<string, Message>();
+    for (const msg of raw) {
+      if (msg && msg.id) {
+        map.set(msg.id, msg);
+      }
+    }
+    const unique = Array.from(map.values());
+    unique.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeA - timeB;
+    });
+    return unique;
+  }, [data]);
 
   const filteredMessages = useMemo(() => {
     if (!showSearch || !searchQuery.trim()) return messages;
     const q = searchQuery.toLowerCase();
-    return messages.filter((m) => m.content.toLowerCase().includes(q));
+    return messages.filter(
+      (m) =>
+        m.content.toLowerCase().includes(q) ||
+        (m.fileName ?? '').toLowerCase().includes(q),
+    );
   }, [messages, showSearch, searchQuery]);
 
   const searchMatchIds = useMemo(() => filteredMessages.map((m) => m.id), [filteredMessages]);
