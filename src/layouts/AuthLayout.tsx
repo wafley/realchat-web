@@ -14,26 +14,22 @@ export default function AuthLayout() {
         src="/wallpaper-auth.jpg"
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 h-full w-full scale-[1.06] object-cover grayscale blur-[6px] brightness-[0.62] contrast-105"
+        className="pointer-events-none absolute inset-0 h-full w-full scale-[1.06] object-cover grayscale blur-[20px] brightness-[0.50] contrast-125"
       />
 
       {/* Silver Mica Tint Overlay */}
       <div className="auth-mica-tint pointer-events-none absolute inset-0" />
-
-      {/* Background Ambient Glow Orbs (neutral silver, no hue) */}
-      <div className="pointer-events-none absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-white/[0.05] blur-[140px]" />
-      <div className="pointer-events-none absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-neutral-200/[0.04] blur-[150px]" />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.03] blur-[160px]" />
-
+      
       {/* Full-screen Diagonal Light Sheen Overlay */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.04] via-transparent to-transparent" />
 
       {/* Main Content Area (Merged Directly into Mica Backdrop) */}
       <div className="relative z-10 my-auto w-full max-w-[410px] mx-auto flex flex-col items-center text-center py-8">
+        
         {/* Dynamic Titles */}
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1.5">
           {isLogin
-            ? 'Yooo, welcome back!'
+            ? 'Yooow, welcome back!'
             : isRegister
               ? 'Create your account'
               : isForgot
