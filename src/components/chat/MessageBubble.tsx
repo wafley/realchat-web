@@ -7,7 +7,7 @@ import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 interface MessageBubbleProps {
   msg: Message;
   isOwn: boolean;
-  name: string;
+  name?: string;
   searchQuery: string;
   hasActiveSearch: boolean;
   searchMatchIds: string[];
@@ -116,7 +116,7 @@ function MessageBubbleComp({
         </Avatar>
       ) : null}
       <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''} flex flex-col min-w-0`}>
-        {!isOwn && (
+        {!isOwn && name && (
           <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
             {name}
           </p>

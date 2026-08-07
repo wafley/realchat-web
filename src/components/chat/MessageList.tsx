@@ -6,6 +6,7 @@ import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
 
 interface MessageListProps {
   chatId: string;
+  isDM: boolean;
   isPending: boolean;
   isError: boolean;
   error: Error | null;
@@ -37,6 +38,7 @@ interface MessageListProps {
 
 export default function MessageList({
   chatId,
+  isDM,
   isPending,
   isError,
   error,
@@ -166,7 +168,7 @@ export default function MessageList({
           )}
           {filteredMessages.map((msg, idx) => {
             const isOwn = msg.sender?.id === currentUserId || msg.senderId === currentUserId;
-            const name = isOwn ? 'You' : (msg.sender?.fullName ?? 'Unknown');
+            const name = isOwn || isDM ? undefined : (msg.sender?.fullName ?? 'Unknown');
             const prevDateKey = idx > 0 ? getDateKey(filteredMessages[idx - 1].createdAt) : null;
             const currDateKey = getDateKey(msg.createdAt);
             const showDateSeparator = prevDateKey !== currDateKey;

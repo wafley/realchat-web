@@ -218,6 +218,7 @@ export default function ChatRoom() {
 
       <MessageList
         chatId={state.chatId}
+        isDM={state.isDM}
         filteredMessages={state.filteredMessages}
         searchQuery={state.searchQuery}
         isPending={state.isPending}
