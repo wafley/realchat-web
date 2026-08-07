@@ -25,7 +25,7 @@ export function leaveRoom(conversationId: string) {
   socketClient.leaveRoom(conversationId);
 }
 
-function joinAllConversationRooms() {
+export function joinAllConversationRooms() {
   if (DEV_MODE) return;
   const convs = queryClient.getQueryData<{ id?: string }[]>(['conversations']);
   if (!convs || !Array.isArray(convs)) return;
