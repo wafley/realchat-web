@@ -181,6 +181,7 @@ export function useChatMutations({
                             fileUrl: undefined,
                             fileName: undefined,
                             replyTo: undefined,
+                            isDeleted: true,
                           }
                         : m,
                     ),

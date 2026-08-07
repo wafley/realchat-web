@@ -147,7 +147,7 @@ function onMessageDeleted(data: { messageId: string; conversationId: string }) {
           ...page,
           data: page.data.map((m) =>
             m.id === data.messageId
-              ? { ...m, content: 'Message deleted', type: 'text' as const, fileUrl: undefined, fileName: undefined }
+              ? { ...m, content: 'Message deleted', type: 'text' as const, fileUrl: undefined, fileName: undefined, isDeleted: true }
               : m,
           ),
         })),

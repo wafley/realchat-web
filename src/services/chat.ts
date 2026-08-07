@@ -81,6 +81,7 @@ export function mapMessage(row: RemoteMessage): Message {
     content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
     type,
     isPinned: row.isPinned ?? false,
+    isDeleted: row.isDeleted ?? false,
     edited: row.isEdited ?? false,
     replyTo: row.replyToId
       ? { id: row.replyToId, senderId: '', senderName: '', content: '', type: 'text' }

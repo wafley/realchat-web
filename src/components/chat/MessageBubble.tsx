@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User } from 'lucide-react';
+import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User, Ban } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
@@ -267,6 +267,11 @@ function MessageBubbleComp({
                 </div>
               </a>
             </div>
+          ) : msg.isDeleted ? (
+            <p className="flex items-center gap-1.5 whitespace-pre-wrap break-words pr-14 pb-0.5 text-sm italic opacity-50">
+              <Ban size={13} className="shrink-0" />
+              <span>{msg.content}</span>
+            </p>
           ) : (
             <p className="whitespace-pre-wrap break-words pr-14 pb-0.5">
               {highlightText(displayedContent, searchQuery)}

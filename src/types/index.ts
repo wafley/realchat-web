@@ -40,6 +40,7 @@ export interface Message {
   status?: MessageStatus;
   replyTo?: ReplyTo;
   isPinned?: boolean;
+  isDeleted?: boolean;
   readBy?: string[];
   edited?: boolean;
   reactions?: Reaction[];
