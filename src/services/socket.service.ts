@@ -39,6 +39,9 @@ async function onSocketConnected() {
   try {
     await queryClient.refetchQueries({ queryKey: ['conversations'] });
   } catch {}
+  try {
+    await queryClient.refetchQueries({ queryKey: ['messages'], type: 'active' });
+  } catch {}
   joinAllConversationRooms();
 }
 
