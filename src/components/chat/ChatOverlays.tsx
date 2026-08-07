@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -116,6 +116,26 @@ export default function ChatOverlays({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setMenuPos(null);
+      return;
+    }
+    const el = contextMenuRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const MARGIN = 8;
+    let x = contextMenu.x;
+    let y = contextMenu.y;
+    if (x + w > window.innerWidth - MARGIN) x = Math.max(MARGIN, window.innerWidth - w - MARGIN);
+    if (y + h > window.innerHeight - MARGIN) y = Math.max(MARGIN, window.innerHeight - h - MARGIN);
+    setMenuPos({ x, y });
+  }, [contextMenu]);
+
   const handleStartEdit = () => {
     setEditName(group?.name ?? '');
     setEditDesc(group?.description ?? '');
@@ -207,8 +227,9 @@ export default function ChatOverlays({
       {contextMenu && (
         <div className="fixed inset-0 z-[90]" onClick={onCloseContextMenu}>
           <div
-            className="absolute w-48 origin-top-left animate-scale-in overflow-hidden rounded-xl border border-border bg-card py-1 shadow-2xl"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            ref={contextMenuRef}
+            className="absolute w-48 origin-top-left animate-scale-in max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-2xl"
+            style={{ left: menuPos?.x ?? contextMenu.x, top: menuPos?.y ?? contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
             role="menu"
             aria-label="Message actions"

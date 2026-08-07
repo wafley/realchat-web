@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, type ElementType } from 'react';
+import { useState, useRef, useEffect, useMemo, useLayoutEffect, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -46,6 +46,25 @@ export default function ChatList() {
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setMenuPos(null);
+      return;
+    }
+    const el = contextMenuRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const MARGIN = 8;
+    let x = contextMenu.x;
+    let y = contextMenu.y;
+    if (x + w > window.innerWidth - MARGIN) x = Math.max(MARGIN, window.innerWidth - w - MARGIN);
+    if (y + h > window.innerHeight - MARGIN) y = Math.max(MARGIN, window.innerHeight - h - MARGIN);
+    setMenuPos({ x, y });
+  }, [contextMenu]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [alsoDeleteMedia, setAlsoDeleteMedia] = useState(true);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
@@ -510,8 +529,9 @@ export default function ChatList() {
       {contextMenu && (
         <div className="fixed inset-0 z-50" onMouseDown={() => setContextMenu(null)}>
           <div
+            ref={contextMenuRef}
             className="absolute w-48 rounded-lg border border-border bg-popover py-1 shadow-lg"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            style={{ left: menuPos?.x ?? contextMenu.x, top: menuPos?.y ?? contextMenu.y }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button

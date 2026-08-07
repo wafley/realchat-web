@@ -130,15 +130,7 @@ function MessageBubbleComp({
         <div
           onContextMenu={(e) => {
             e.preventDefault();
-            let x = e.clientX;
-            let y = e.clientY;
-            const menuW = 180;
-            const menuH = 200;
-            if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
-            if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
-            if (x < 8) x = 8;
-            if (y < 8) y = 8;
-            onContextMenu(msg, x, y);
+            onContextMenu(msg, e.clientX, e.clientY);
           }}
           onPointerDown={(e) => onLongPressStart(msg, e)}
           onPointerMove={onLongPressMove}
