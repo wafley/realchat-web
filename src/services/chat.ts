@@ -1,4 +1,5 @@
 import api from '@/lib/api';
+import { socketClient } from '@/lib/socket';
 import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { MOCK_CONTACTS } from '@/mocks/contacts';
@@ -54,7 +55,7 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
 let groupIdCounter = 10;
 let msgCounter = 100;
 
-interface RemoteMessage {
+export interface RemoteMessage {
   id: string;
   conversationId?: string;
   senderId: string;
@@ -65,9 +66,10 @@ interface RemoteMessage {
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
   createdAt?: string | null;
+  editedAt?: string | null;
 }
 
-function mapMessage(row: RemoteMessage): Message {
+export function mapMessage(row: RemoteMessage): Message {
   const type: Message['type'] =
     row.type === 'image' || row.type === 'file' || row.type === 'video' || row.type === 'system'
       ? row.type
@@ -201,11 +203,14 @@ export async function sendMessage(chatId: string, content: string, _isDM: boolea
       return msg;
     }
 
-    const { data } = await api.post<Message>(`/conversations/${chatId}/messages`, {
-      content,
-      replyToId: replyTo?.id,
-    });
-    return data;
+    const replyToId = replyTo?.id;
+    if (!socketClient.isConnected) {
+      throw new Error('Realtime connection unavailable. Please try again.');
+    }
+    const res = await socketClient.sendMessageAck(chatId, content, replyToId);
+    if (res.error) throw new Error(res.error);
+    if (!res.data) throw new Error('Failed to send message');
+    return mapMessage(res.data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send message');
   }
@@ -225,8 +230,8 @@ export async function editMessage(chatId: string, messageId: string, content: st
       return { ...msgs[idx] };
     }
 
-    const { data } = await api.put<Message>(`/conversations/${chatId}/messages/${messageId}`, { content });
-    return data;
+    const { data } = await api.put<RemoteMessage>(`/conversations/${chatId}/messages/${messageId}`, { content });
+    return mapMessage({ ...data, isEdited: true });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to edit message');
   }
@@ -255,9 +260,13 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
       return;
     }
 
-    await api.delete(`/conversations/${chatId}/messages/${messageId}`, {
-      data: { deleteForAll },
-    });
+    if (!deleteForAll) return;
+
+    if (!socketClient.isConnected) {
+      throw new Error('Realtime connection unavailable. Please try again.');
+    }
+    const res = await socketClient.deleteMessageAck(chatId, messageId);
+    if (res.error) throw new Error(res.error);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete message');
   }
@@ -280,7 +289,9 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
       return;
     }
 
-    await api.post(`/conversations/${chatId}/read`);
+    // POST /conversations/:id/read tidak tersedia di BE (read receipts #17).
+    // Reset unread ditangani sisi cache FE (useChatActions).
+    return;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to mark as read');
   }
@@ -371,13 +382,13 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
       return;
     }
 
-    await api.post(`/conversations/bulk-delete`, { ids });
+    throw new Error('Bulk delete belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete conversations');
   }
 }
 
-export async function forwardMessage(targetChatId: string, msg: Message, sourceChatId: string): Promise<Message> {
+export async function forwardMessage(targetChatId: string, msg: Message, _sourceChatId: string): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(300);
@@ -404,10 +415,7 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
       return forwarded;
     }
 
-    const { data } = await api.post<Message>(`/messages/forward`, {
-      targetChatId, messageId: msg.id, sourceChatId,
-    });
-    return data;
+    throw new Error('Forward pesan belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to forward message');
   }
@@ -425,7 +433,7 @@ export async function pinMessage(chatId: string, messageId: string): Promise<voi
       return;
     }
 
-    await api.post(`/messages/${messageId}/pin`);
+    throw new Error('Pin pesan belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to pin message');
   }
@@ -443,7 +451,7 @@ export async function unpinMessage(chatId: string, messageId: string): Promise<v
       return;
     }
 
-    await api.delete(`/messages/${messageId}/pin`);
+    throw new Error('Unpin pesan belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to unpin message');
   }
@@ -457,8 +465,7 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
       return msgs.filter((m) => m.isPinned);
     }
 
-    const { data } = await api.get<Message[]>(`/messages/${chatId}/pinned`);
-    return data;
+    return [];
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get pinned messages');
   }
@@ -808,8 +815,7 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
       return [...current];
     }
 
-    const { data } = await api.post<{ reactions: Reaction[] }>(`/messages/${messageId}/reactions`, { emoji });
-    return data.reactions;
+    throw new Error('Reaksi belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to toggle reaction');
   }
@@ -823,7 +829,7 @@ export async function clearChat(chatId: string): Promise<void> {
       return;
     }
 
-    await api.delete(`/chats/${chatId}/messages`);
+    throw new Error('Clear chat belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to clear chat');
   }
