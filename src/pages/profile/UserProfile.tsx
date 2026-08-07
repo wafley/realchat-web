@@ -147,7 +147,10 @@ export default function UserProfile() {
   const displayName = contact?.customName || effectiveUser?.fullName || '';
 
   const addContactMutation = useMutation({
-    mutationFn: () => addContact(userId!),
+    mutationFn: () => {
+      if (!user) throw new Error('User not found');
+      return addContact(user.username);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       toast.success('Contact added!');
