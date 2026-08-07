@@ -8,6 +8,33 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>Hallo Wok</title>
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('hallo-wok-theme');
+          var resolved = mode === 'light' ? 'light' : mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          if (resolved === 'light') document.documentElement.classList.add('light');
+
+          var accentKey = localStorage.getItem('hallo-wok-accent');
+          var accentColors = {
+            blue: '#3b82f6', green: '#10b981', teal: '#14b8a6', purple: '#a855f7',
+            pink: '#ec4899', red: '#ef4444', orange: '#f97316', indigo: '#6366f1',
+          };
+          if (accentKey && accentColors[accentKey]) {
+            var hex = accentColors[accentKey];
+            document.documentElement.style.setProperty('--accent', hex);
+            document.documentElement.style.setProperty('--ring', hex);
+            document.documentElement.style.setProperty('--chat-outgoing-bg', hex);
+          }
+
+          var fontSize = localStorage.getItem('hallo-wok-font-size');
+          var fontScales = { small: '0.875', default: '1', large: '1.125' };
+          if (fontSize && fontScales[fontSize]) {
+            document.documentElement.style.setProperty('--font-scale', fontScales[fontSize]);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
