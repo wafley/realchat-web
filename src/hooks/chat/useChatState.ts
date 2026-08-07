@@ -1,11 +1,11 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import type { Message } from '@/types';
+import type { Message, User } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
-import { getMessages, getConversations, DM_USER_MAP } from '@/services/chat';
+import { getMessages, getConversations, getGroup, DM_USER_MAP } from '@/services/chat';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 export function useChatState() {
@@ -66,6 +66,12 @@ export function useChatState() {
     [conversations, chatId],
   );
 
+  const { data: senderGroup } = useQuery({
+    queryKey: ['group', chatId],
+    queryFn: () => getGroup(chatId),
+    enabled: !isDM && !!chatId,
+  });
+
   useEffect(() => {
     setMuted(convFromList?.muted ?? false);
   }, [convFromList?.muted]);
@@ -102,6 +108,20 @@ export function useChatState() {
 
   const chatName = convFromList?.name || location.state?.name || 'Chat';
   const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
+
+  const resolveSenderName = useCallback(
+    (senderId: string): string => {
+      if (senderId === currentUser?.id) return currentUser?.fullName || 'You';
+      if (!isDM) {
+        const m = senderGroup?.members?.find((mem) => mem.userId === senderId);
+        const name = m?.user?.fullName;
+        if (name) return name;
+      }
+      if (isDM) return convFromList?.name || chatName;
+      return 'Unknown';
+    },
+    [currentUser, isDM, senderGroup, convFromList, chatName],
+  );
   const presence = usePresenceStore((s) => (otherUserId ? s.presenceMap[otherUserId] : undefined));
   const chatOnline = presence ? presence.isOnline : (location.state?.online ?? convFromList?.online ?? true);
   const chatLastSeen = presence ? presence.lastSeen : (location.state?.lastSeen ?? convFromList?.lastSeen ?? null);
@@ -145,15 +165,27 @@ export function useChatState() {
       return timeA - timeB;
     });
     return unique.map((m) => {
-      if (!m.replyTo?.id) return m;
-      const target = map.get(m.replyTo.id);
-      if (!target) return { ...m, replyTo: { ...m.replyTo, senderName: 'Unknown', content: 'Message unavailable' } };
+      const withSender: Message = m.sender?.fullName
+        ? m
+        : {
+            ...m,
+            sender: {
+              ...(m.sender ?? ({} as Message['sender'])),
+              id: m.sender?.id ?? m.senderId,
+              fullName: resolveSenderName(m.senderId),
+            } as User,
+          };
+      if (!withSender.replyTo?.id) return withSender;
+      const target = map.get(withSender.replyTo.id);
+      if (!target) {
+        return { ...withSender, replyTo: { ...withSender.replyTo, senderName: 'Unknown', content: 'Message unavailable' } };
+      }
       return {
-        ...m,
+        ...withSender,
         replyTo: {
           id: target.id,
           senderId: target.senderId,
-          senderName: target.sender?.fullName || 'Unknown',
+          senderName: resolveSenderName(target.senderId),
           content: target.type === 'image' ? '📷 Photo' : target.content,
           type: target.type as 'text' | 'image',
           fileUrl: target.fileUrl,
@@ -161,7 +193,7 @@ export function useChatState() {
         },
       };
     });
-  }, [data]);
+  }, [data, resolveSenderName]);
 
   const filteredMessages = useMemo(() => {
     if (!showSearch || !searchQuery.trim()) return messages;
