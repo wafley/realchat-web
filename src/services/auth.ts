@@ -3,23 +3,59 @@ import api from '@/lib/api';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/login', payload);
-  return data;
+export interface AuthUserRaw {
+  id: string;
+  username?: string;
+  email?: string;
+  fullName?: string;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  statusText?: string | null;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
+  isVerified?: boolean;
+  createdAt?: string | null;
 }
 
-export async function register(payload: RegisterPayload): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/register', {
-    username: payload.username,
+export function mapUser(raw: AuthUserRaw): User {
+  return {
+    id: raw.id,
+    username: raw.username ?? '',
+    email: raw.email ?? '',
+    fullName: raw.fullName ?? '',
+    bio: raw.bio ?? undefined,
+    avatarUrl: raw.avatarUrl ?? undefined,
+    status: raw.isOnline ? 'online' : 'offline',
+    lastSeen: raw.lastSeenAt ? new Date(raw.lastSeenAt) : undefined,
+    createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+  };
+}
+
+export interface RegisteredAccount {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+}
+
+export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/login', payload);
+  return { ...data, user: mapUser(data.user as unknown as AuthUserRaw) };
+}
+
+export async function register(payload: RegisterPayload): Promise<RegisteredAccount> {
+  const { data } = await api.post<RegisteredAccount>('/auth/register', {
+    username: payload.username.trim().toLowerCase(),
     email: payload.email,
     password: payload.password,
+    fullName: payload.fullName,
   });
   return data;
 }
 
 export async function getMe(): Promise<User> {
-  const { data } = await api.get<User>('/users/me');
-  return data;
+  const { data } = await api.get<AuthUserRaw>('/users/me');
+  return mapUser(data);
 }
 
 export async function logout(refreshToken: string): Promise<void> {
@@ -48,8 +84,8 @@ export function parseAuthError(err: unknown): string {
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
-  const { data } = await api.put<User>('/users/me', payload);
-  return data;
+  const { data } = await api.put<AuthUserRaw>('/users/me', payload);
+  return mapUser(data);
 }
 
 export async function forgotPassword(email: string): Promise<void> {

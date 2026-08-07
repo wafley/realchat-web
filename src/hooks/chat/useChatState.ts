@@ -120,10 +120,10 @@ export function useChatState() {
     refetch,
   } = useInfiniteQuery({
     queryKey: ['messages', chatId, isDM],
-    queryFn: ({ pageParam = 1 }) => getMessages(chatId, isDM, pageParam),
-    initialPageParam: 1,
+    queryFn: ({ pageParam }) => getMessages(chatId, isDM, pageParam),
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
-      if (lastPage.page < lastPage.totalPages) return lastPage.page + 1;
+      if (lastPage.nextCursor) return lastPage.nextCursor;
       return undefined;
     },
     enabled: !!chatId,

@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, User, MessageSquareText, Search, Loader2, X, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { getContacts, addContact, searchContacts, findUser } from '@/services/contacts';
+import { getContacts, addContact, searchContacts } from '@/services/contacts';
+import { parseAuthError } from '@/services/auth';
 import { findOrCreateConversation } from '@/services/chat';
 import type { User as UserType } from '@/types';
 
@@ -90,21 +91,16 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
     setNewContactLoading(true);
     setNewContactError(null);
     try {
-      const user = await findUser(newUsername.trim());
-      if (!user) {
-        setNewContactError('User not found');
-        return;
-      }
-      await addContact(user.id, newCustomName.trim() || undefined);
+      const contact = await addContact(newUsername.trim(), newCustomName.trim() || undefined);
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setShowNewContactForm(false);
       setNewUsername('');
       setNewCustomName('');
       toast.success('Contact added!');
-      await handleStartDM(user.id, newCustomName.trim() || user.fullName);
+      await handleStartDM(contact.userId, contact.customName || contact.user.fullName);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch (err) {
-      setNewContactError(err instanceof Error ? err.message : 'Failed to add contact');
+      setNewContactError(parseAuthError(err));
     } finally {
       setNewContactLoading(false);
     }

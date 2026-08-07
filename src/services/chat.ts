@@ -45,37 +45,85 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
     });
     return newId;
   }
-  const { data } = await api.post<{ id: string }>('/conversations', { userId, type: 'dm' });
-  return data.id;
+  const { data } = await api.post<{ id?: string; conversationId?: string; conversation?: { id?: string }; data?: { id?: string } }>('/conversations', { type: 'PRIVATE', participantId: userId });
+  const id = data?.id ?? data?.conversation?.id ?? data?.conversationId ?? data?.data?.id;
+  if (!id) throw new Error('Failed to create conversation: no id in response');
+  return id;
 }
 
 let groupIdCounter = 10;
 let msgCounter = 100;
 
-export async function getMessages(chatId: string, isDM: boolean, page: number = 1, limit: number = 10): Promise<PaginatedResponse<Message>> {
+interface RemoteMessage {
+  id: string;
+  conversationId?: string;
+  senderId: string;
+  type?: string;
+  content: string;
+  replyToId?: string | null;
+  isPinned?: boolean | null;
+  isEdited?: boolean | null;
+  isDeleted?: boolean | null;
+  createdAt?: string | null;
+}
+
+function mapMessage(row: RemoteMessage): Message {
+  const type: Message['type'] =
+    row.type === 'image' || row.type === 'file' || row.type === 'video' || row.type === 'system'
+      ? row.type
+      : 'text';
+  return {
+    id: row.id,
+    groupId: row.conversationId ?? '',
+    senderId: row.senderId,
+    content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
+    type,
+    isPinned: row.isPinned ?? false,
+    edited: row.isEdited ?? false,
+    replyTo: row.replyToId
+      ? { id: row.replyToId, senderId: '', senderName: '', content: '', type: 'text' }
+      : undefined,
+    createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+    sender: {
+      id: row.senderId,
+      username: '',
+      fullName: '',
+      email: '',
+      status: 'offline',
+      createdAt: new Date(),
+    },
+  };
+}
+
+export async function getMessages(chatId: string, _isDM: boolean, cursor?: string, limit: number = 50): Promise<PaginatedResponse<Message>> {
   try {
     if (DEV_MODE) {
       await delay(300);
       const all = MOCK_MESSAGES[chatId] ?? [];
-      const total = all.length;
-      const totalPages = Math.max(1, Math.ceil(total / limit));
-      const start = Math.max(0, total - page * limit);
-      const end = total - (page - 1) * limit;
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      const data = all.slice(start, end).map((m) => ({
+      const data = [...all].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((m) => ({
         ...m,
         status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : undefined),
         readBy: m.readBy ?? populateReadBy(m),
         sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
       }));
-      return { data, total, page, limit, totalPages };
+      return { data, total: data.length, page: cursor ? 2 : 1, limit, totalPages: 1 };
     }
 
-    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const { data } = await api.get<PaginatedResponse<Message>>(`${endpoint}`, {
-      params: { page, limit },
+    const { data } = await api.get<{ messages?: RemoteMessage[]; nextCursor?: string | null }>(`/conversations/${chatId}/messages`, {
+      params: { ...(cursor ? { cursor } : {}), limit },
     });
-    return data;
+    const raw = Array.isArray(data) ? (data as RemoteMessage[]) : (data?.messages ?? []);
+    const mapped = raw.map(mapMessage).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const nextCursor = !Array.isArray(data) ? (data?.nextCursor ?? null) : null;
+    return {
+      data: mapped,
+      total: mapped.length,
+      page: cursor ? 2 : 1,
+      limit,
+      totalPages: nextCursor ? 2 : 1,
+      nextCursor,
+    };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to fetch messages');
   }
@@ -124,7 +172,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
   }
 }
 
-export async function sendMessage(chatId: string, content: string, isDM: boolean, replyTo?: ReplyTo): Promise<Message> {
+export async function sendMessage(chatId: string, content: string, _isDM: boolean, replyTo?: ReplyTo): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(200);
@@ -153,8 +201,10 @@ export async function sendMessage(chatId: string, content: string, isDM: boolean
       return msg;
     }
 
-    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const { data } = await api.post<Message>(`${endpoint}`, { content, replyTo });
+    const { data } = await api.post<Message>(`/conversations/${chatId}/messages`, {
+      content,
+      replyToId: replyTo?.id,
+    });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send message');
@@ -175,7 +225,7 @@ export async function editMessage(chatId: string, messageId: string, content: st
       return { ...msgs[idx] };
     }
 
-    const { data } = await api.patch<Message>(`/messages/${messageId}`, { content });
+    const { data } = await api.put<Message>(`/conversations/${chatId}/messages/${messageId}`, { content });
     return data;
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to edit message');
@@ -205,7 +255,7 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
       return;
     }
 
-    await api.delete(`/messages/${messageId}`, {
+    await api.delete(`/conversations/${chatId}/messages/${messageId}`, {
       data: { deleteForAll },
     });
   } catch (err) {
@@ -236,6 +286,36 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
   }
 }
 
+interface RemoteConversation {
+  id: string;
+  type: 'PRIVATE' | 'GROUP';
+  name: string | null;
+  avatarUrl?: string | null;
+  createdAt?: string;
+  displayName?: string | null;
+  avatar?: string | null;
+  isOnline?: boolean | null;
+  lastSeenAt?: string | null;
+  memberCount?: number | null;
+  mutedUntil?: string | null;
+  lastMessage?: {
+    content: string;
+    type: string;
+    createdAt: string | null;
+    isDeleted?: boolean | null;
+  } | null;
+}
+
+function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
+  if (!lm) return '';
+  if (lm.isDeleted) return 'Message deleted';
+  const content = lm.content ?? '';
+  if (lm.type === 'image') return content ? `📷 ${content}` : '📷 Photo';
+  if (lm.type === 'file') return content ? `📎 ${content}` : '📎 File';
+  if (lm.type === 'video') return content ? `🎬 ${content}` : '🎬 Video';
+  return content;
+}
+
 export async function getConversations(): Promise<ChatConversation[]> {
   try {
     if (DEV_MODE) {
@@ -249,8 +329,30 @@ export async function getConversations(): Promise<ChatConversation[]> {
       });
     }
 
-    const { data } = await api.get(`/conversations`);
-    return Array.isArray(data) ? data : Array.isArray(data?.conversations) ? data.conversations : [];
+    const { data } = await api.get<unknown>('/conversations');
+    const rows = Array.isArray(data)
+      ? (data as RemoteConversation[])
+      : Array.isArray((data as { conversations?: RemoteConversation[] })?.conversations)
+        ? (data as { conversations: RemoteConversation[] }).conversations
+        : [];
+    if (!Array.isArray(data) && !(data as { conversations?: unknown })?.conversations) {
+      console.warn('[chat] GET /conversations unknown shape:', data);
+    }
+    return rows.map((r): ChatConversation => {
+      const isPrivate = r.type === 'PRIVATE';
+      return {
+        id: r.id,
+        name: r.displayName ?? r.name ?? (isPrivate ? 'Unknown' : 'Group'),
+        avatarUrl: r.avatar ?? r.avatarUrl ?? undefined,
+        type: isPrivate ? 'dm' : 'group',
+        lastMessage: conversationPreview(r.lastMessage),
+        lastTime: r.lastMessage?.createdAt ?? r.createdAt,
+        online: r.isOnline ?? false,
+        lastSeen: r.lastSeenAt ? new Date(r.lastSeenAt) : undefined,
+        members: r.memberCount ?? (isPrivate ? 2 : undefined),
+        muted: r.mutedUntil ? true : false,
+      };
+    });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to fetch conversations');
   }
