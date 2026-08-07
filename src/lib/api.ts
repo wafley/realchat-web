@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { socketClient } from '@/lib/socket';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -75,6 +76,8 @@ api.interceptors.response.use(
 
       localStorage.setItem('accessToken', newAccessToken);
       localStorage.setItem('refreshToken', newRefreshToken);
+
+      socketClient.refreshAuthToken();
 
       processQueue(null, newAccessToken);
 
