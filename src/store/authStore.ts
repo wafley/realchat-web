@@ -56,10 +56,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
-    const res = await authService.register(payload);
-    localStorage.setItem('accessToken', res.accessToken);
-    localStorage.setItem('refreshToken', res.refreshToken);
-    set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
+    await authService.register(payload);
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    set({ user: null, token: null, isAuthenticated: false, isLoading: false });
   },
   logout: async () => {
     try {
