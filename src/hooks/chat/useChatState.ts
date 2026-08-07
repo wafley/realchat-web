@@ -144,7 +144,23 @@ export function useChatState() {
       const timeB = new Date(b.createdAt).getTime();
       return timeA - timeB;
     });
-    return unique;
+    return unique.map((m) => {
+      if (!m.replyTo?.id) return m;
+      const target = map.get(m.replyTo.id);
+      if (!target) return { ...m, replyTo: { ...m.replyTo, senderName: 'Unknown', content: 'Message unavailable' } };
+      return {
+        ...m,
+        replyTo: {
+          id: target.id,
+          senderId: target.senderId,
+          senderName: target.sender?.fullName || 'Unknown',
+          content: target.type === 'image' ? '📷 Photo' : target.content,
+          type: target.type as 'text' | 'image',
+          fileUrl: target.fileUrl,
+          fileName: target.fileName,
+        },
+      };
+    });
   }, [data]);
 
   const filteredMessages = useMemo(() => {
