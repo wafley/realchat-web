@@ -168,7 +168,11 @@ export default function MessageList({
           )}
           {filteredMessages.map((msg, idx) => {
             const isOwn = msg.sender?.id === currentUserId || msg.senderId === currentUserId;
-            const name = isOwn || isDM ? undefined : (msg.sender?.fullName ?? 'Unknown');
+            const prevMsg = idx > 0 ? filteredMessages[idx - 1] : null;
+            const isFirstInRun = !prevMsg || prevMsg.senderId !== msg.senderId;
+            const name = isOwn || isDM || !isFirstInRun ? undefined : (msg.sender?.fullName ?? 'Unknown');
+            const showAvatar = !isOwn && !isDM && isFirstInRun;
+            const showSpacer = !isOwn && !isDM && !showAvatar;
             const prevDateKey = idx > 0 ? getDateKey(filteredMessages[idx - 1].createdAt) : null;
             const currDateKey = getDateKey(msg.createdAt);
             const showDateSeparator = prevDateKey !== currDateKey;
@@ -185,6 +189,8 @@ export default function MessageList({
                   msg={msg}
                   isOwn={isOwn}
                   name={name}
+                  showAvatar={showAvatar}
+                  showSpacer={showSpacer}
                   searchQuery={searchQuery}
                   hasActiveSearch={hasActiveSearch}
                   searchMatchIds={searchMatchIds}

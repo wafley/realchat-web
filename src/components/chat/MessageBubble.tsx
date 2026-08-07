@@ -8,6 +8,8 @@ interface MessageBubbleProps {
   msg: Message;
   isOwn: boolean;
   name?: string;
+  showAvatar: boolean;
+  showSpacer: boolean;
   searchQuery: string;
   hasActiveSearch: boolean;
   searchMatchIds: string[];
@@ -31,6 +33,8 @@ function MessageBubbleComp({
   msg,
   isOwn,
   name,
+  showAvatar,
+  showSpacer,
   searchQuery,
   hasActiveSearch,
   searchMatchIds,
@@ -108,12 +112,14 @@ function MessageBubbleComp({
         >
           {isSelected ? <CheckSquare size={18} className="text-accent" /> : <Square size={18} className="text-muted-foreground" />}
         </button>
-      ) : !isOwn ? (
+      ) : showAvatar ? (
         <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
           <AvatarFallback className="text-xs lg:text-sm">
             <User size={14} />
           </AvatarFallback>
         </Avatar>
+      ) : showSpacer ? (
+        <div className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10" aria-hidden="true" />
       ) : null}
       <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''} flex flex-col min-w-0`}>
         {!isOwn && name && (
