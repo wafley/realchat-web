@@ -3,9 +3,9 @@ import { queryClient } from '@/lib/queryClient';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
-import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
+import { mapMessage, type RemoteMessage } from '@/services/chat';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, Group } from '@/types';
 import type { Conversation } from '@/types';
@@ -13,6 +13,7 @@ import type { Conversation } from '@/types';
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 let currentChatId: string | null = null;
+let unsubscribeConversations: (() => void) | null = null;
 
 // --- Emit helpers ---
 
@@ -24,6 +25,23 @@ export function leaveRoom(conversationId: string) {
   socketClient.leaveRoom(conversationId);
 }
 
+function joinAllConversationRooms() {
+  if (DEV_MODE) return;
+  const convs = queryClient.getQueryData<{ id?: string }[]>(['conversations']);
+  if (!convs || !Array.isArray(convs)) return;
+  for (const c of convs) {
+    if (c?.id) socketClient.joinRoom(c.id);
+  }
+}
+
+async function onSocketConnected() {
+  if (DEV_MODE) return;
+  try {
+    await queryClient.refetchQueries({ queryKey: ['conversations'] });
+  } catch {}
+  joinAllConversationRooms();
+}
+
 export function emitTypingStart(conversationId: string) {
   socketClient.emitTypingStart(conversationId);
 }
@@ -32,16 +50,13 @@ export function emitTypingStop(conversationId: string) {
   socketClient.emitTypingStop(conversationId);
 }
 
-export function emitMessageSeen(conversationId: string) {
-  socketClient.emitMessageSeen(conversationId);
-}
-
 // --- Listener registration ---
 
-function onMessageNew(msg: Message & { conversationId?: string }) {
+function onMessageNew(raw: RemoteMessage) {
   if (DEV_MODE) return;
 
-  const chatId = msg.conversationId ?? msg.groupId;
+  const msg = mapMessage(raw);
+  const chatId = raw.conversationId ?? '';
   const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
@@ -86,11 +101,30 @@ function onMessageNew(msg: Message & { conversationId?: string }) {
       return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
     },
   );
+}
 
-  // Auto-emit seen if this chat is currently open and read receipts enabled
-  if (currentChatId === chatId && usePrivacyStore.getState().readReceipts) {
-    socketClient.emitMessageSeen(chatId);
-  }
+function onMessageEdited(event: RemoteMessage) {
+  if (DEV_MODE) return;
+
+  const updated = mapMessage({ ...event, isEdited: true });
+  const chatId = event.conversationId ?? '';
+  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  const conv = conversations?.find((c) => c.id === chatId);
+  const isDM = conv?.type === 'dm';
+
+  queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+    ['messages', chatId, isDM],
+    (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          data: page.data.map((m) => (m.id === updated.id ? updated : m)),
+        })),
+      };
+    },
+  );
 }
 
 function onMessageDeleted(data: { messageId: string; conversationId: string }) {
@@ -230,7 +264,21 @@ export function initSocket(token?: string) {
 
   socketClient.connect(token);
 
+  socketClient.on('connect', onSocketConnected);
   socketClient.on('message:new', onMessageNew);
+
+  if (socketClient.isConnected) {
+    joinAllConversationRooms();
+  }
+
+  if (!unsubscribeConversations) {
+    unsubscribeConversations = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.query.queryKey[0] === 'conversations') {
+        joinAllConversationRooms();
+      }
+    });
+  }
+  socketClient.on('message:edited', onMessageEdited);
   socketClient.on('message:deleted', onMessageDeleted);
   socketClient.on('typing:start', onTypingStart);
   socketClient.on('typing:stop', onTypingStop);
@@ -247,7 +295,11 @@ export function initSocket(token?: string) {
 
 export function destroySocket() {
   Object.values(typingTimeouts).forEach((t) => clearTimeout(t));
+  unsubscribeConversations?.();
+  unsubscribeConversations = null;
+  socketClient.off('connect', onSocketConnected);
   socketClient.off('message:new', onMessageNew);
+  socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);
   socketClient.off('typing:start', onTypingStart);
   socketClient.off('typing:stop', onTypingStop);
