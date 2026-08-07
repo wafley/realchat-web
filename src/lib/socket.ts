@@ -73,11 +73,11 @@ class SocketClient {
   // --- Room ---
 
   joinRoom(conversationId: string): void {
-    this.socket?.emit('room:join', conversationId);
+    this.socket?.emit('group:join', { conversationId });
   }
 
   leaveRoom(conversationId: string): void {
-    this.socket?.emit('room:leave', conversationId);
+    this.socket?.emit('group:leave', { conversationId });
   }
 
   // --- Typing ---

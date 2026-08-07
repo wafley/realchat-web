@@ -7,7 +7,7 @@ import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, MessageStatus, PaginatedResponse, Group } from '@/types';
+import type { Message, PaginatedResponse, Group } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -38,10 +38,10 @@ export function emitMessageSeen(conversationId: string) {
 
 // --- Listener registration ---
 
-function onMessageNew(msg: Message) {
+function onMessageNew(msg: Message & { conversationId?: string }) {
   if (DEV_MODE) return;
 
-  const chatId = msg.groupId;
+  const chatId = msg.conversationId ?? msg.groupId;
   const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
@@ -63,7 +63,7 @@ function onMessageNew(msg: Message) {
   );
 
   // Update conversation preview + reorder + unread badge
-  const preview = msg.type === 'image' ? '📷 Photo' : msg.content;
+  const preview = msg.type === 'image' ? '📷 Photo' : (msg.type === 'file' ? '📎 File' : msg.type === 'video' ? '🎬 Video' : msg.content);
   const currentUserId = useAuthStore.getState().user?.id;
   queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number }[]>(
     ['conversations'],
@@ -76,7 +76,7 @@ function onMessageNew(msg: Message) {
           ? {
               ...c,
               lastMessage: preview,
-              lastTime: 'now',
+              lastTime: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : (msg.createdAt as string | undefined) ?? 'now',
               unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
             }
           : c,
@@ -93,37 +93,15 @@ function onMessageNew(msg: Message) {
   }
 }
 
-function onMessageEdited(msg: Message) {
+function onMessageDeleted(data: { messageId: string; conversationId: string }) {
   if (DEV_MODE) return;
 
   const conversations = queryClient.getQueryData<{ id: string; type: string }[]>(['conversations']);
-  const conv = conversations?.find((c) => c.id === msg.groupId);
+  const conv = conversations?.find((c) => c.id === data.conversationId);
   const isDM = conv?.type === 'dm';
 
   queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
-    ['messages', msg.groupId, isDM],
-    (prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        pages: prev.pages.map((page) => ({
-          ...page,
-          data: page.data.map((m) => (m.id === msg.id ? { ...m, content: msg.content, edited: true } : m)),
-        })),
-      };
-    },
-  );
-}
-
-function onMessageDeleted(data: { id: string; groupId: string }) {
-  if (DEV_MODE) return;
-
-  const conversations = queryClient.getQueryData<{ id: string; type: string }[]>(['conversations']);
-  const conv = conversations?.find((c) => c.id === data.groupId);
-  const isDM = conv?.type === 'dm';
-
-  queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
-    ['messages', data.groupId, isDM],
+    ['messages', data.conversationId, isDM],
     (prev) => {
       if (!prev) return prev;
       return {
@@ -131,7 +109,7 @@ function onMessageDeleted(data: { id: string; groupId: string }) {
         pages: prev.pages.map((page) => ({
           ...page,
           data: page.data.map((m) =>
-            m.id === data.id
+            m.id === data.messageId
               ? { ...m, content: 'Message deleted', type: 'text' as const, fileUrl: undefined, fileName: undefined }
               : m,
           ),
@@ -141,27 +119,13 @@ function onMessageDeleted(data: { id: string; groupId: string }) {
   );
 }
 
-function onMessageStatus(data: { id: string; status: MessageStatus; groupId: string }) {
-  if (DEV_MODE) return;
 
-  const conversations = queryClient.getQueryData<{ id: string; type: string }[]>(['conversations']);
-  const conv = conversations?.find((c) => c.id === data.groupId);
-  const isDM = conv?.type === 'dm';
 
-  queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
-    ['messages', data.groupId, isDM],
-    (prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        pages: prev.pages.map((page) => ({
-          ...page,
-          data: page.data.map((m) => (m.id === data.id ? { ...m, status: data.status } : m)),
-        })),
-      };
-    },
-  );
-}
+
+
+
+
+
 
 const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -239,6 +203,26 @@ function onNotification(data: any) {
   }
 }
 
+function onContactChanged() {
+  queryClient.invalidateQueries({ queryKey: ['contacts'] });
+}
+
+function onTypingStart(data: { conversationId: string; userId: string }) {
+  onTypingUpdate({ ...data, isTyping: true });
+}
+
+function onTypingStop(data: { conversationId: string; userId: string }) {
+  onTypingUpdate({ ...data, isTyping: false });
+}
+
+function onPresenceOnline(data: { userId: string }) {
+  onPresenceUpdate({ ...data, isOnline: true, lastSeen: null });
+}
+
+function onPresenceOffline(data: { userId: string }) {
+  onPresenceUpdate({ ...data, isOnline: false, lastSeen: null });
+}
+
 // --- Init / Destroy ---
 
 export function initSocket(token?: string) {
@@ -246,36 +230,35 @@ export function initSocket(token?: string) {
 
   socketClient.connect(token);
 
-  const userId = useAuthStore.getState().user?.id;
-  if (userId) {
-    socketClient.joinRoom(`user:${userId}`);
-  }
-
   socketClient.on('message:new', onMessageNew);
-  socketClient.on('message:edited', onMessageEdited);
   socketClient.on('message:deleted', onMessageDeleted);
-  socketClient.on('message:status', onMessageStatus);
-  socketClient.on('typing:update', onTypingUpdate);
-  socketClient.on('presence:update', onPresenceUpdate);
+  socketClient.on('typing:start', onTypingStart);
+  socketClient.on('typing:stop', onTypingStop);
+  socketClient.on('presence:online', onPresenceOnline);
+  socketClient.on('presence:offline', onPresenceOffline);
   socketClient.on('group:updated', onGroupUpdated);
-  socketClient.on('group:member:add', onGroupMemberAdd);
-  socketClient.on('group:member:remove', onGroupMemberRemove);
-  socketClient.on('group:member:role', onGroupMemberRole);
+  socketClient.on('group:member-added', onGroupMemberAdd);
+  socketClient.on('group:member-removed', onGroupMemberRemove);
+  socketClient.on('group:member-role-changed', onGroupMemberRole);
+  socketClient.on('contact:new', onContactChanged);
+  socketClient.on('contact:remove', onContactChanged);
   socketClient.on('notification:new', onNotification);
 }
 
 export function destroySocket() {
   Object.values(typingTimeouts).forEach((t) => clearTimeout(t));
   socketClient.off('message:new', onMessageNew);
-  socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);
-  socketClient.off('message:status', onMessageStatus);
-  socketClient.off('typing:update', onTypingUpdate);
-  socketClient.off('presence:update', onPresenceUpdate);
+  socketClient.off('typing:start', onTypingStart);
+  socketClient.off('typing:stop', onTypingStop);
+  socketClient.off('presence:online', onPresenceOnline);
+  socketClient.off('presence:offline', onPresenceOffline);
   socketClient.off('group:updated', onGroupUpdated);
-  socketClient.off('group:member:add', onGroupMemberAdd);
-  socketClient.off('group:member:remove', onGroupMemberRemove);
-  socketClient.off('group:member:role', onGroupMemberRole);
+  socketClient.off('group:member-added', onGroupMemberAdd);
+  socketClient.off('group:member-removed', onGroupMemberRemove);
+  socketClient.off('group:member-role-changed', onGroupMemberRole);
+  socketClient.off('contact:new', onContactChanged);
+  socketClient.off('contact:remove', onContactChanged);
   socketClient.off('notification:new', onNotification);
   socketClient.disconnect();
 }
