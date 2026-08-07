@@ -16,7 +16,7 @@ class SocketClient {
     this.socket = io(SOCKET_URL, {
       auth: { token: tk },
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
       transports: ['websocket', 'polling'],
@@ -31,7 +31,8 @@ class SocketClient {
     });
 
     this.socket.on('connect_error', (err) => {
-      if (err.message === 'Authentication error') {
+      const isAuthError = /auth(entication)?|token/i.test(err.message || '');
+      if (isAuthError) {
         const newToken = localStorage.getItem('accessToken');
         if (newToken && newToken !== tk) {
           this.socket?.close();
@@ -41,6 +42,17 @@ class SocketClient {
     });
 
     return this.socket;
+  }
+
+  refreshAuthToken(): void {
+    const newToken = localStorage.getItem('accessToken') || '';
+    if (!this.socket || !newToken) return;
+    if (!this.socket.connected) {
+      this.socket.auth = { token: newToken };
+      this.socket.connect();
+    } else if ((this.socket.auth as { token?: string } | undefined)?.token !== newToken) {
+      this.socket.auth = { token: newToken };
+    }
   }
 
   getSocket(): Socket | null {
@@ -92,12 +104,52 @@ class SocketClient {
 
   // --- Message ---
 
-  sendMessage(conversationId: string, content: string, replyTo?: { id: string }): void {
-    this.socket?.emit('message:send', { conversationId, content, replyTo });
+  sendMessage(
+    conversationId: string,
+    content: string,
+    replyToId?: string,
+    callback?: (res: { data?: any; error?: string }) => void,
+  ): void {
+    this.socket?.emit('message:send', { conversationId, content, replyToId }, callback);
   }
 
-  emitMessageSeen(conversationId: string): void {
-    this.socket?.emit('message:seen', { conversationId });
+  deleteMessage(
+    conversationId: string,
+    messageId: string,
+    callback?: (res: { data?: any; error?: string }) => void,
+  ): void {
+    this.socket?.emit('message:delete', { conversationId, messageId }, callback);
+  }
+
+  sendMessageAck(
+    conversationId: string,
+    content: string,
+    replyToId?: string,
+  ): Promise<{ data?: any; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket?.connected) {
+        resolve({ error: 'Realtime connection unavailable' });
+        return;
+      }
+      this.socket.emit('message:send', { conversationId, content, replyToId }, (res?: { data?: any; error?: string }) => {
+        resolve(res ?? { error: 'No response from server' });
+      });
+    });
+  }
+
+  deleteMessageAck(
+    conversationId: string,
+    messageId: string,
+  ): Promise<{ data?: any; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket?.connected) {
+        resolve({ error: 'Realtime connection unavailable' });
+        return;
+      }
+      this.socket.emit('message:delete', { conversationId, messageId }, (res?: { data?: any; error?: string }) => {
+        resolve(res ?? { error: 'No response from server' });
+      });
+    });
   }
 
 }
