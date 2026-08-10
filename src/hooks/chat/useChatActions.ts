@@ -223,24 +223,32 @@ export function useChatActions(props: UseChatActionsProps) {
 
   useEffect(() => {
     if (!chatId) return;
-    if (!input) return;
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
+    if (!input) {
+      emitTypingStop(chatId);
+      return;
+    }
     typingTimerRef.current = setTimeout(() => {
       emitTypingStart(chatId);
-      typingDoneTimerRef.current = setTimeout(() => {
-        emitTypingStop(chatId);
-      }, 3000);
-    }, 1500);
+    }, 300);
+    typingDoneTimerRef.current = setTimeout(() => {
+      emitTypingStop(chatId);
+    }, 10000);
     const handleBeforeUnload = () => emitTypingStop(chatId);
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [input, chatId]);
+
+  useEffect(() => {
+    return () => {
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
       emitTypingStop(chatId);
     };
-  }, [input, chatId]);
+  }, [chatId]);
 
   useEffect(() => {
     if (!chatId) return;

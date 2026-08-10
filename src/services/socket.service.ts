@@ -181,7 +181,7 @@ function onTypingUpdate(data: { userId: string; conversationId: string; isTyping
     typingTimeouts[data.conversationId] = setTimeout(() => {
       useTypingStore.getState().setTyping(data.conversationId, false);
       delete typingTimeouts[data.conversationId];
-    }, 5000);
+    }, 10000);
   }
   useTypingStore.getState().setTyping(data.conversationId, data.isTyping);
 }
