@@ -5,7 +5,7 @@ import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, type RemoteMessage } from '@/services/chat';
+import { mapMessage, saveLocalUnread, type RemoteMessage } from '@/services/chat';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, Group } from '@/types';
 import type { Conversation } from '@/types';
@@ -104,6 +104,10 @@ function onMessageNew(raw: RemoteMessage) {
       return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
     },
   );
+  const persisted = queryClient.getQueryData<{ id: string; unread?: number }[]>(['conversations']);
+  if (persisted) {
+    saveLocalUnread(Object.fromEntries(persisted.map((c) => [c.id, c.unread ?? 0])));
+  }
 }
 
 function onMessageEdited(event: RemoteMessage) {

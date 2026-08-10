@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
-import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
+import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { usePrivacyStore } from '@/store/privacyStore';
 import type { Message, ReplyTo } from '@/types';
@@ -52,7 +52,7 @@ interface UseChatActionsProps {
   setShowSearch: (v: boolean) => void;
   setSearchQuery: (v: string) => void;
   setShowEmojiPicker: (v: boolean) => void;
-  setReplyingTo: (msg: Message | null) => void;
+  setReplyingTo: React.Dispatch<React.SetStateAction<Message | null>>;
   setEditingMsg: (msg: Message | null) => void;
   setLightboxUrl: (url: string | null) => void;
   setContextMenu: (menu: { msg: Message; x: number; y: number } | null) => void;
@@ -69,9 +69,9 @@ interface UseChatActionsProps {
   setSearchMatches: (matches: string[]) => void;
   setActiveMatchIndex: (i: number) => void;
   setMuted: (v: boolean) => void;
-  setSelectedImage: (f: File | null) => void;
-  setImagePreview: (url: string | null) => void;
-  setSelectedFile: (f: File | null) => void;
+  setSelectedImage: React.Dispatch<React.SetStateAction<File | null>>;
+  setImagePreview: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedFile: React.Dispatch<React.SetStateAction<File | null>>;
   // Refs
   typingTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
   typingDoneTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
@@ -84,9 +84,9 @@ interface UseChatActionsProps {
   longPressTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
   longPressStartPosRef: React.RefObject<{ x: number; y: number } | null>;
   // Mutations
-  sendMutation: { mutate: (vars: { content: string; replyTo?: any }) => void; isPending: boolean };
-  sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any; preview?: string | null }) => void; isPending: boolean };
-  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }) => void; isPending: boolean };
+  sendMutation: { mutate: (vars: { content: string; replyTo?: any }, options?: { onError?: () => void }) => void; isPending: boolean };
+  sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any; preview?: string | null }, options?: { onError?: () => void }) => void; isPending: boolean };
+  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }, options?: { onError?: () => void }) => void; isPending: boolean };
   editMutation: { mutate: (vars: { msgId: string; content: string }) => void };
   deleteMutation: { mutate: (vars: { msgId: string; delForAll: boolean }) => void };
   pinMutation: { mutate: (msgId: string) => void };
@@ -251,6 +251,10 @@ export function useChatActions(props: UseChatActionsProps) {
       if (!prev) return prev;
       return prev.map((c) => (c.id === chatId ? { ...c, unread: 0 } : c));
     });
+    const convs = queryClient.getQueryData<{ id: string; unread?: number }[]>(['conversations']);
+    if (convs) {
+      saveLocalUnread(Object.fromEntries(convs.map((c) => [c.id, c.unread ?? 0])));
+    }
   }, [chatId]);
 
   useEffect(() => {
@@ -448,14 +452,41 @@ export function useChatActions(props: UseChatActionsProps) {
       const file = selectedImage;
       const caption = input.trim();
       const rp = buildReplyTo(replyingTo);
+      const preview = imagePreview;
       if (sendImageMutation.isPending) return;
-      sendImageMutation.mutate({ file, caption, replyTo: rp, preview: imagePreview });
+      setInput('');
+      setReplyingTo(null);
+      setSelectedImage(null);
+      setImagePreview(null);
+      sendImageMutation.mutate(
+        { file, caption, replyTo: rp, preview },
+        {
+          onError: () => {
+            setInput((prev) => prev || caption);
+            setReplyingTo((prev) => prev ?? replyingTo);
+            setSelectedImage((prev) => prev || file);
+            setImagePreview((prev) => prev || preview);
+          },
+        },
+      );
     } else if (selectedFile) {
       const file = selectedFile;
       const caption = input.trim();
       const rp = buildReplyTo(replyingTo);
       if (sendFileMutation.isPending) return;
-      sendFileMutation.mutate({ file, caption, replyTo: rp });
+      setInput('');
+      setReplyingTo(null);
+      setSelectedFile(null);
+      sendFileMutation.mutate(
+        { file, caption, replyTo: rp },
+        {
+          onError: () => {
+            setInput((prev) => prev || caption);
+            setReplyingTo((prev) => prev ?? replyingTo);
+            setSelectedFile((prev) => prev || file);
+          },
+        },
+      );
     }
   }, [selectedImage, selectedFile, input, replyingTo, imagePreview, sendImageMutation, sendFileMutation]);
 
@@ -722,7 +753,17 @@ export function useChatActions(props: UseChatActionsProps) {
     if (!text) return;
     if (sendMutation.isPending) return;
     const rp = buildReplyTo(replyingTo);
-    sendMutation.mutate({ content: text, replyTo: rp });
+    setInput('');
+    setReplyingTo(null);
+    sendMutation.mutate(
+      { content: text, replyTo: rp },
+      {
+        onError: () => {
+          setInput((prev) => prev || text);
+          setReplyingTo((prev) => prev ?? replyingTo);
+        },
+      },
+    );
   }, [selectedImage, selectedFile, input, replyingTo, sendMutation, handleSendImage]);
 
   const handleSearchUsers = useCallback(async (query: string) => {

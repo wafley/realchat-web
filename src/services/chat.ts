@@ -310,6 +310,8 @@ interface RemoteConversation {
   lastSeenAt?: string | null;
   memberCount?: number | null;
   mutedUntil?: string | null;
+  unread?: number | null;
+  unreadCount?: number | null;
   lastMessage?: {
     content: string;
     type: string;
@@ -326,6 +328,23 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
   if (lm.type === 'file') return content ? `📎 ${content}` : '📎 File';
   if (lm.type === 'video') return content ? `🎬 ${content}` : '🎬 Video';
   return content;
+}
+
+const LOCAL_UNREAD_KEY = 'hw_unread_map';
+
+function loadLocalUnread(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(LOCAL_UNREAD_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalUnread(unreadMap: Record<string, number>): void {
+  try {
+    localStorage.setItem(LOCAL_UNREAD_KEY, JSON.stringify(unreadMap));
+  } catch {}
 }
 
 export async function getConversations(): Promise<ChatConversation[]> {
@@ -350,8 +369,10 @@ export async function getConversations(): Promise<ChatConversation[]> {
     if (!Array.isArray(data) && !(data as { conversations?: unknown })?.conversations) {
       console.warn('[chat] GET /conversations unknown shape:', data);
     }
+    const localUnread = loadLocalUnread();
     return rows.map((r): ChatConversation => {
       const isPrivate = r.type === 'PRIVATE';
+      const serverUnread = r.unread ?? r.unreadCount ?? 0;
       return {
         id: r.id,
         name: r.displayName ?? r.name ?? (isPrivate ? 'Unknown' : 'Group'),
@@ -363,6 +384,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
         lastSeen: r.lastSeenAt ? new Date(r.lastSeenAt) : undefined,
         members: r.memberCount ?? (isPrivate ? 2 : undefined),
         muted: r.mutedUntil ? true : false,
+        unread: Math.max(serverUnread, localUnread[r.id] ?? 0),
       };
     });
   } catch (err) {
