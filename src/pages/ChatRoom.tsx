@@ -26,6 +26,10 @@ export default function ChatRoom() {
     setForwardSearch: state.setForwardSearch,
     setEditingMsg: state.setEditingMsg,
     setInput: state.setInput,
+    setReplyingTo: state.setReplyingTo,
+    setSelectedImage: state.setSelectedImage,
+    setImagePreview: state.setImagePreview,
+    setSelectedFile: state.setSelectedFile,
     setPinnedMessages: state.setPinnedMessages,
     setGroupInfoOpen: state.setGroupInfoOpen,
   });

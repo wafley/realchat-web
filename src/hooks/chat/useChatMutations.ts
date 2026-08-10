@@ -37,6 +37,10 @@ interface UseChatMutationsProps {
   setForwardSearch: (v: string) => void;
   setEditingMsg: (msg: Message | null) => void;
   setInput: (v: string) => void;
+  setReplyingTo: (msg: Message | null) => void;
+  setSelectedImage: (f: File | null) => void;
+  setImagePreview: (v: string | null) => void;
+  setSelectedFile: (f: File | null) => void;
   setPinnedMessages: (msgs: Message[]) => void;
   setGroupInfoOpen: (v: boolean) => void;
 }
@@ -51,6 +55,10 @@ export function useChatMutations({
   setForwardSearch,
   setEditingMsg,
   setInput,
+  setReplyingTo,
+  setSelectedImage,
+  setImagePreview,
+  setSelectedFile,
   setPinnedMessages,
   setGroupInfoOpen,
 }: UseChatMutationsProps) {
@@ -120,6 +128,8 @@ export function useChatMutations({
       sendMessage(chatId, content, isDM, rp),
     onSuccess(r) {
       onMessageSent(r);
+      setInput('');
+      setReplyingTo(null);
     },
     onError() {
       toast.error('Failed to send message. Please try again.');
@@ -127,13 +137,32 @@ export function useChatMutations({
   });
 
   const sendImageMutation = useMutation({
-    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo; preview?: string | null }) =>
       sendImageMessage(chatId, file, isDM, caption || undefined, rp),
-    onSuccess(r) {
+    onSuccess(r, vars) {
       onMessageSent(r);
+      setInput('');
+      setReplyingTo(null);
+      setSelectedImage(null);
+      setImagePreview(null);
+      if (vars.preview) URL.revokeObjectURL(vars.preview);
     },
     onError() {
       toast.error('Failed to send image. Please try again.');
+    },
+  });
+
+  const sendFileMutation = useMutation({
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
+      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
+    onSuccess(r) {
+      onMessageSent(r);
+      setInput('');
+      setReplyingTo(null);
+      setSelectedFile(null);
+    },
+    onError() {
+      toast.error('Failed to send file. Please try again.');
     },
   });
 
@@ -261,17 +290,6 @@ export function useChatMutations({
       });
     },
     onError: () => toast.error('Failed to unpin message'),
-  });
-
-  const sendFileMutation = useMutation({
-    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
-      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
-    onSuccess(r) {
-      onMessageSent(r);
-    },
-    onError() {
-      toast.error('Failed to send file. Please try again.');
-    },
   });
 
   const { data: group } = useQuery({

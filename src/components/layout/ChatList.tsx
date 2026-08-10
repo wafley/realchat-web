@@ -14,6 +14,7 @@ import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_M
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
 import type { Conversation, SearchMessageResult } from '@/types';
 
@@ -71,6 +72,8 @@ export default function ChatList() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useNow(30000);
 
   const typingMap = useTypingStore((s) => s.typingMap);
   const presenceMap = usePresenceStore((s) => s.presenceMap);

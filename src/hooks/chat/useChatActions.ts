@@ -84,9 +84,9 @@ interface UseChatActionsProps {
   longPressTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
   longPressStartPosRef: React.RefObject<{ x: number; y: number } | null>;
   // Mutations
-  sendMutation: { mutate: (vars: { content: string; replyTo?: any }) => void };
-  sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any }) => void };
-  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }) => void };
+  sendMutation: { mutate: (vars: { content: string; replyTo?: any }) => void; isPending: boolean };
+  sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any; preview?: string | null }) => void; isPending: boolean };
+  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }) => void; isPending: boolean };
   editMutation: { mutate: (vars: { msgId: string; content: string }) => void };
   deleteMutation: { mutate: (vars: { msgId: string; delForAll: boolean }) => void };
   pinMutation: { mutate: (msgId: string) => void };
@@ -448,22 +448,16 @@ export function useChatActions(props: UseChatActionsProps) {
       const file = selectedImage;
       const caption = input.trim();
       const rp = buildReplyTo(replyingTo);
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-      setSelectedImage(null);
-      setImagePreview(null);
-      setInput('');
-      setReplyingTo(null);
-      sendImageMutation.mutate({ file, caption, replyTo: rp });
+      if (sendImageMutation.isPending) return;
+      sendImageMutation.mutate({ file, caption, replyTo: rp, preview: imagePreview });
     } else if (selectedFile) {
       const file = selectedFile;
       const caption = input.trim();
       const rp = buildReplyTo(replyingTo);
-      setSelectedFile(null);
-      setInput('');
-      setReplyingTo(null);
+      if (sendFileMutation.isPending) return;
       sendFileMutation.mutate({ file, caption, replyTo: rp });
     }
-  }, [selectedImage, selectedFile, input, replyingTo, imagePreview]);
+  }, [selectedImage, selectedFile, input, replyingTo, imagePreview, sendImageMutation, sendFileMutation]);
 
   const handleCancelImage = useCallback(() => {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
@@ -726,9 +720,8 @@ export function useChatActions(props: UseChatActionsProps) {
     }
     const text = input.trim();
     if (!text) return;
+    if (sendMutation.isPending) return;
     const rp = buildReplyTo(replyingTo);
-    setInput('');
-    setReplyingTo(null);
     sendMutation.mutate({ content: text, replyTo: rp });
   }, [selectedImage, selectedFile, input, replyingTo, sendMutation, handleSendImage]);
 

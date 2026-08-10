@@ -4,6 +4,10 @@ import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
+import { useNow } from '@/hooks/useNow';
+import { useSocketStore } from '@/store/socketStore';
+
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 interface ChatHeaderProps {
   chatName: string;
@@ -56,6 +60,9 @@ export default function ChatHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [moreOpen]);
 
+  useNow(30000);
+  const socketConnected = useSocketStore((s) => s.isConnected);
+
   return (
     <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
       <button
@@ -77,7 +84,12 @@ export default function ChatHeader({
         ) : (
           <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         )}
-        {otherTyping ? (
+        {!DEV_MODE && !socketConnected ? (
+          <p className="flex items-center gap-1.5 text-xs text-amber-500">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+            Connecting…
+          </p>
+        ) : otherTyping ? (
           <p className="flex items-center gap-1 text-xs text-accent">
             <span className="flex gap-0.5">
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:0ms]" />
