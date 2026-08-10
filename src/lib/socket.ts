@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import { useSocketStore } from '@/store/socketStore';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
@@ -23,11 +24,17 @@ class SocketClient {
     });
 
     this.socket.on('connect', () => {
+      useSocketStore.getState().setConnected(true);
       console.log('[Socket] connected:', this.socket?.id);
     });
 
     this.socket.on('disconnect', (reason) => {
+      useSocketStore.getState().setConnected(false);
       console.log('[Socket] disconnected:', reason);
+    });
+
+    this.socket.io.on('reconnect_attempt', (attempt: number) => {
+      useSocketStore.getState().setReconnectAttempts(attempt);
     });
 
     this.socket.on('connect_error', (err) => {
@@ -67,6 +74,7 @@ class SocketClient {
     this.socket?.close();
     this.socket = null;
     this.listeners.clear();
+    useSocketStore.getState().setConnected(false);
   }
 
   on(event: string, callback: EventCallback): void {
