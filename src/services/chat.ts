@@ -118,10 +118,11 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
     });
     const raw = Array.isArray(data) ? (data as RemoteMessage[]) : (data?.messages ?? []);
     const mapped = raw.map(mapMessage).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    const visible = applyDeletedForMe(chatId, mapped);
     const nextCursor = !Array.isArray(data) ? (data?.nextCursor ?? null) : null;
     return {
-      data: mapped,
-      total: mapped.length,
+      data: visible,
+      total: visible.length,
       page: cursor ? 2 : 1,
       limit,
       totalPages: nextCursor ? 2 : 1,
@@ -238,6 +239,45 @@ export async function editMessage(chatId: string, messageId: string, content: st
   }
 }
 
+// --- Delete for me (client-local) ---
+
+const DELETED_FOR_ME_KEY = 'hw_deleted_for_me';
+
+function loadDeletedForMe(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_FOR_ME_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDeletedForMe(ids: Set<string>): void {
+  try {
+    localStorage.setItem(DELETED_FOR_ME_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
+function applyDeletedForMe(chatId: string, msgs: Message[]): Message[] {
+  const deleted = loadDeletedForMe();
+  if (deleted.size === 0) return msgs;
+  const prefix = `${chatId}:`;
+  return msgs.map((m) =>
+    deleted.has(prefix + m.id)
+      ? {
+          ...m,
+          isDeleted: true,
+          type: 'text' as const,
+          content: 'You deleted this message',
+          fileUrl: undefined,
+          fileName: undefined,
+          replyTo: undefined,
+          reactions: undefined,
+        }
+      : m,
+  );
+}
+
 export async function deleteMessage(chatId: string, messageId: string, deleteForAll: boolean): Promise<void> {
   try {
     if (DEV_MODE) {
@@ -261,7 +301,12 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
       return;
     }
 
-    if (!deleteForAll) return;
+    if (!deleteForAll) {
+      const deleted = loadDeletedForMe();
+      deleted.add(`${chatId}:${messageId}`);
+      persistDeletedForMe(deleted);
+      return;
+    }
 
     if (!socketClient.isConnected) {
       throw new Error('Realtime connection unavailable. Please try again.');
