@@ -42,6 +42,7 @@ export interface Message {
   isPinned?: boolean;
   isDeleted?: boolean;
   readBy?: string[];
+  lastReadAt?: Date;
   edited?: boolean;
   reactions?: Reaction[];
   createdAt: Date;
@@ -162,5 +163,5 @@ export interface SearchMessageResult {
   createdAt: Date;
 }
 
-export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+export type MessageStatus = 'pending' | 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';

@@ -5,7 +5,7 @@ import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, saveLocalUnread, type RemoteMessage } from '@/services/chat';
+import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, type RemoteMessage } from '@/services/chat';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, Group } from '@/types';
 import type { Conversation } from '@/types';
@@ -272,6 +272,48 @@ function onPresenceOffline(data: { userId: string }) {
   onPresenceUpdate({ ...data, isOnline: false, lastSeen: null });
 }
 
+// --- Read receipts (#17: message:seen in, message:status out) ---
+
+function onMessageStatus(data: {
+  messageId: string;
+  status: string;
+  userId?: string;
+  seenAt?: string | null;
+}) {
+  if (DEV_MODE) return;
+  const currentUserId = useAuthStore.getState().user?.id;
+  const status = normalizeRemoteStatus(data.status);
+  if (!status) return;
+
+  const queries = queryClient.getQueryCache().findAll({ queryKey: ['messages'] });
+  for (const query of queries) {
+    const data_ = query.state.data as InfiniteData<PaginatedResponse<Message>> | undefined;
+    if (!data_?.pages) continue;
+    let touched = false;
+    const nextPages = data_.pages.map((page) => ({
+      ...page,
+      data: page.data.map((m) => {
+        if (m.id !== data.messageId || m.senderId !== currentUserId) return m;
+        if (!statusIsAtLeast(m.status, status)) {
+          m = { ...m, status };
+          touched = true;
+        }
+        if (data.seenAt) {
+          const seen = new Date(data.seenAt);
+          if (!m.lastReadAt || seen.getTime() > m.lastReadAt.getTime()) {
+            m = { ...m, lastReadAt: seen };
+            touched = true;
+          }
+        }
+        return m;
+      }),
+    }));
+    if (touched) {
+      queryClient.setQueryData(query.queryKey, { ...data_, pages: nextPages });
+    }
+  }
+}
+
 // --- Init / Destroy ---
 
 export function initSocket(token?: string) {
@@ -295,6 +337,7 @@ export function initSocket(token?: string) {
   }
   socketClient.on('message:edited', onMessageEdited);
   socketClient.on('message:deleted', onMessageDeleted);
+  socketClient.on('message:status', onMessageStatus);
   socketClient.on('typing:start', onTypingStart);
   socketClient.on('typing:stop', onTypingStop);
   socketClient.on('presence:online', onPresenceOnline);
@@ -316,6 +359,7 @@ export function destroySocket() {
   socketClient.off('message:new', onMessageNew);
   socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);
+  socketClient.off('message:status', onMessageStatus);
   socketClient.off('typing:start', onTypingStart);
   socketClient.off('typing:stop', onTypingStop);
   socketClient.off('presence:online', onPresenceOnline);

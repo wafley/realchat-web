@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User as UserType } from '@/types';
 import { senderName, uploadGroupAvatar } from '@/services/chat';
+import { formatTime } from '@/lib/chatHelpers';
 
 interface ContextMenuData {
   msg: Message;
@@ -739,6 +740,14 @@ export default function ChatOverlays({
                   <CheckCheck size={14} className="ml-auto text-accent" />
                 </div>
               ))
+            ) : readReceiptTarget.status === 'read' && readReceiptTarget.lastReadAt ? (
+              <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-foreground">Seen at {formatTime(readReceiptTarget.lastReadAt)}</span>
+                <CheckCheck size={14} className="ml-auto text-accent" />
+              </div>
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">No read receipts available</p>
             )}

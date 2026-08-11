@@ -1,6 +1,9 @@
 import api from '@/lib/api';
 import { socketClient } from '@/lib/socket';
-import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
+import { queryClient } from '@/lib/queryClient';
+import { useAuthStore } from '@/store/authStore';
+import type { InfiniteData } from '@tanstack/react-query';
+import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { MOCK_CONTACTS } from '@/mocks/contacts';
 import { delay } from '@/mocks/utils';
@@ -10,6 +13,7 @@ import {
   MOCK_MESSAGES,
   MOCK_SENDER_MAP,
   DM_USER_MAP,
+  GROUP_MEMBER_IDS,
   populateReadBy,
   type ChatConversation,
 } from '@/mocks/chat';
@@ -65,8 +69,29 @@ export interface RemoteMessage {
   isPinned?: boolean | null;
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
+  status?: string | null;
+  seenAt?: string | null;
   createdAt?: string | null;
   editedAt?: string | null;
+}
+
+function normalizeStatus(status?: string | null): MessageStatus | undefined {
+  switch (status?.toUpperCase()) {
+    case 'PENDING':
+      return 'pending';
+    case 'SENT':
+      return 'sent';
+    case 'DELIVERED':
+      return 'delivered';
+    case 'SEEN':
+      return 'read';
+    default:
+      return undefined;
+  }
+}
+
+export function normalizeRemoteStatus(status?: string | null): MessageStatus | undefined {
+  return normalizeStatus(status);
 }
 
 export function mapMessage(row: RemoteMessage): Message {
@@ -82,6 +107,8 @@ export function mapMessage(row: RemoteMessage): Message {
     type,
     isPinned: row.isPinned ?? false,
     isDeleted: row.isDeleted ?? false,
+    status: normalizeStatus(row.status) ?? (row.senderId === useAuthStore.getState().user?.id ? 'sent' : undefined),
+    lastReadAt: row.seenAt ? new Date(row.seenAt) : undefined,
     edited: row.isEdited ?? false,
     replyTo: row.replyToId
       ? { id: row.replyToId, senderId: '', senderName: '', content: '', type: 'text' }
@@ -106,7 +133,7 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       const data = [...all].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((m) => ({
         ...m,
-        status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : undefined),
+        status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : 'read' as const),
         readBy: m.readBy ?? populateReadBy(m),
         sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
       }));
@@ -147,7 +174,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
         type: 'image',
         fileUrl: url,
         fileName: file.name,
-        status: 'sent',
+        status: 'pending',
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -170,7 +197,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
     if (caption) form.append('caption', caption);
     if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
     const { data } = await api.post<Message>(`${endpoint}`, form);
-    return data;
+    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send image');
   }
@@ -182,14 +209,13 @@ export async function sendMessage(chatId: string, content: string, _isDM: boolea
       await delay(200);
       msgCounter++;
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      const online = conv?.online ?? true;
       const msg: Message = {
         id: `msg-${msgCounter}`,
         groupId: chatId,
         senderId: DEV_USER_ID,
         content,
         type: 'text',
-        status: online ? 'delivered' as const : 'sent' as const,
+        status: 'pending',
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -318,7 +344,7 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
   }
 }
 
-export async function markConversationAsRead(chatId: string): Promise<void> {
+export async function markConversationAsSeen(chatId: string, lastSeenMessageId?: string): Promise<void> {
   try {
     if (DEV_MODE) {
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
@@ -329,18 +355,65 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
           if (m.senderId !== DEV_USER_ID && !m.readBy?.includes(DEV_USER_ID)) {
             m.readBy = [...(m.readBy ?? []), DEV_USER_ID];
             m.status = 'read';
+            m.lastReadAt = new Date();
           }
         });
       }
       return;
     }
 
-    // POST /conversations/:id/read tidak tersedia di BE (read receipts #17).
-    // Reset unread ditangani sisi cache FE (useChatActions).
-    return;
+    // Kontrak #17: client → server message:seen { conversationId, lastSeenMessageId }.
+    // userId diambil server dari socket auth. Server throttle 500ms + idempotent.
+    if (socketClient.isConnected && lastSeenMessageId) {
+      socketClient.emitMessageSeen(chatId, lastSeenMessageId);
+    }
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to mark as read');
+    throw err instanceof Error ? err : new Error('Failed to mark as seen');
   }
+}
+
+const STATUS_ORDER: Record<MessageStatus, number> = { pending: 0, sending: 1, sent: 2, delivered: 3, read: 4 };
+
+export function statusIsAtLeast(status: MessageStatus | undefined, min: MessageStatus): boolean {
+  if (!status) return false;
+  return STATUS_ORDER[status] >= STATUS_ORDER[min];
+}
+
+export function simulateDevReceipts(chatId: string, messageId: string, isDM: boolean): void {
+  if (!DEV_MODE) return;
+  const readerId = DM_USER_MAP[chatId] ?? GROUP_MEMBER_IDS[0] ?? null;
+
+  const patch = (status: MessageStatus, readBy?: string[]) => {
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+      ['messages', chatId, isDM],
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            data: page.data.map((m) => {
+              if (m.id !== messageId) return m;
+              const next: Message = { ...m, status, lastReadAt: status === 'read' ? new Date() : m.lastReadAt };
+              if (readBy && readBy.length > 0 && !m.readBy?.includes(readBy[0])) {
+                next.readBy = [...(m.readBy ?? []), ...readBy];
+              }
+              return next;
+            }),
+          })),
+        };
+      },
+    );
+    const mock = MOCK_MESSAGES[chatId];
+    const idx = mock?.findIndex((m) => m.id === messageId);
+    if (mock && idx !== undefined && idx >= 0) {
+      mock[idx] = { ...mock[idx], status, ...(status === 'read' ? { lastReadAt: new Date() } : {}), ...(readBy && readBy.length > 0 ? { readBy: [...(mock[idx].readBy ?? []), ...readBy] } : {}) };
+    }
+  };
+
+  setTimeout(() => patch('sent'), 700);
+  setTimeout(() => patch('delivered'), 1800);
+  setTimeout(() => patch('read', readerId ? [readerId] : undefined), 3500);
 }
 
 interface RemoteConversation {
@@ -557,7 +630,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
         fileName: file.name,
         fileSize: file.size,
         duration: isVideo ? 0 : undefined,
-        status: 'sent',
+        status: 'pending',
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -578,7 +651,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
     if (caption) form.append('caption', caption);
     if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
     const { data } = await api.post<Message>(`${endpoint}`, form);
-    return data;
+    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send file');
   }

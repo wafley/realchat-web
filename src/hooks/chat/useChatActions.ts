@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
-import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
+import { markConversationAsSeen, toggleMuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { usePrivacyStore } from '@/store/privacyStore';
+import { useAuthStore } from '@/store/authStore';
 import type { Message, ReplyTo } from '@/types';
 
 function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
@@ -182,6 +183,7 @@ export function useChatActions(props: UseChatActionsProps) {
   const isInitialLoadRef = useRef(true);
   const ioCooldownRef = useRef(false);
   const typingActiveRef = useRef(false);
+  const emittedReadIdsRef = useRef<Set<string>>(new Set());
 
   // --- Effects ---
 
@@ -190,6 +192,7 @@ export function useChatActions(props: UseChatActionsProps) {
     ioCooldownRef.current = false;
     prevLastMsgIdRef.current = null;
     typingActiveRef.current = false;
+    emittedReadIdsRef.current = new Set();
   }, [chatId]);
 
   useEffect(() => {
@@ -265,7 +268,7 @@ export function useChatActions(props: UseChatActionsProps) {
   useEffect(() => {
     if (!chatId) return;
     if (usePrivacyStore.getState().readReceipts) {
-      markConversationAsRead(chatId);
+      markConversationAsSeen(chatId);
     }
     queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
       if (!prev) return prev;
@@ -276,6 +279,21 @@ export function useChatActions(props: UseChatActionsProps) {
       saveLocalUnread(Object.fromEntries(convs.map((c) => [c.id, c.unread ?? 0])));
     }
   }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId || !usePrivacyStore.getState().readReceipts) return;
+    const currentUserId = useAuthStore.getState().user?.id;
+    const unseen = messages.filter(
+      (m) => m.senderId !== currentUserId && m.status !== 'read' && !m.readBy?.includes(currentUserId ?? ''),
+    );
+    if (unseen.length === 0) return;
+    const last = unseen.reduce((a, b) =>
+      new Date(b.createdAt).getTime() > new Date(a.createdAt).getTime() ? b : a,
+    );
+    if (emittedReadIdsRef.current.has(last.id)) return;
+    emittedReadIdsRef.current.add(last.id);
+    markConversationAsSeen(chatId, last.id);
+  }, [messages, chatId]);
 
   useEffect(() => {
     if (messages.length === 0) return;

@@ -25,6 +25,7 @@ import {
   deleteGroup,
   updateMemberRole,
   clearChat,
+  simulateDevReceipts,
 } from '@/services/chat';
 
 interface UseChatMutationsProps {
@@ -81,11 +82,12 @@ export function useChatMutations({
           const updated = prev.map((c) =>
             c.id === chatId ? { ...c, lastMessage: preview, lastTime: new Date().toISOString() } : c,
           );
-          const idx = updated.findIndex((c) => c.id === chatId);
-          if (idx <= 0) return updated;
-          return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
-        },
+      const idx = updated.findIndex((c) => c.id === chatId);
+      if (idx <= 0) return updated;
+      return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
+    },
       );
+      simulateDevReceipts(chatId, newMsg.id, isDM);
     },
     [chatId, isDM],
   );

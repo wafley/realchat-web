@@ -160,6 +160,12 @@ class SocketClient {
     });
   }
 
+  // --- Read receipts ---
+
+  emitMessageSeen(conversationId: string, lastSeenMessageId: string): void {
+    this.socket?.emit('message:seen', { conversationId, lastSeenMessageId });
+  }
+
 }
 
 export const socketClient = new SocketClient();
