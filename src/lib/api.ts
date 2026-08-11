@@ -83,12 +83,15 @@ api.interceptors.response.use(
 
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       return api(originalRequest);
-    } catch (refreshError) {
+    } catch (refreshError: any) {
       processQueue(refreshError, null);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      window.dispatchEvent(new CustomEvent('auth:force-logout'));
-      window.location.href = '/login';
+      const isAuthError = refreshError.response?.status === 401 || refreshError.response?.status === 403;
+      if (isAuthError) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.dispatchEvent(new CustomEvent('auth:force-logout'));
+        window.location.href = '/login';
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
