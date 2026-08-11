@@ -267,9 +267,6 @@ export function useChatActions(props: UseChatActionsProps) {
 
   useEffect(() => {
     if (!chatId) return;
-    if (usePrivacyStore.getState().readReceipts) {
-      markConversationAsSeen(chatId);
-    }
     queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
       if (!prev) return prev;
       return prev.map((c) => (c.id === chatId ? { ...c, unread: 0 } : c));

@@ -274,17 +274,17 @@ function onPresenceOffline(data: { userId: string }) {
 
 // --- Read receipts (#17: message:seen in, message:status out) ---
 
-function onMessageStatus(data: {
-  messageId: string;
-  status: string;
-  userId?: string;
-  seenAt?: string | null;
-}) {
-  if (DEV_MODE) return;
-  const currentUserId = useAuthStore.getState().user?.id;
-  const status = normalizeRemoteStatus(data.status);
-  if (!status) return;
+let statusEventBuffer = new Map<string, { messageId: string; status: string; userId?: string; seenAt?: string | null }>();
+let statusFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
+function flushStatusBuffer() {
+  statusFlushTimer = null;
+  const events = Array.from(statusEventBuffer.values());
+  statusEventBuffer.clear();
+  if (events.length === 0) return;
+
+  const currentUserId = useAuthStore.getState().user?.id;
+  const eventMap = new Map(events.map((e) => [e.messageId, e]));
   const queries = queryClient.getQueryCache().findAll({ queryKey: ['messages'] });
   for (const query of queries) {
     const data_ = query.state.data as InfiniteData<PaginatedResponse<Message>> | undefined;
@@ -293,25 +293,43 @@ function onMessageStatus(data: {
     const nextPages = data_.pages.map((page) => ({
       ...page,
       data: page.data.map((m) => {
-        if (m.id !== data.messageId || m.senderId !== currentUserId) return m;
-        if (!statusIsAtLeast(m.status, status)) {
-          m = { ...m, status };
+        if (m.senderId !== currentUserId) return m;
+        const evt = eventMap.get(m.id);
+        if (!evt) return m;
+        const status = normalizeRemoteStatus(evt.status);
+        if (!status) return m;
+        let next = m;
+        if (!statusIsAtLeast(next.status, status)) {
+          next = { ...next, status };
           touched = true;
         }
-        if (data.seenAt) {
-          const seen = new Date(data.seenAt);
-          if (!m.lastReadAt || seen.getTime() > m.lastReadAt.getTime()) {
-            m = { ...m, lastReadAt: seen };
+        if (evt.seenAt) {
+          const seen = new Date(evt.seenAt);
+          if (!next.lastReadAt || seen.getTime() > next.lastReadAt.getTime()) {
+            next = { ...next, lastReadAt: seen };
             touched = true;
           }
         }
-        return m;
+        return next;
       }),
     }));
     if (touched) {
       queryClient.setQueryData(query.queryKey, { ...data_, pages: nextPages });
     }
   }
+}
+
+function onMessageStatus(data: {
+  messageId: string;
+  status: string;
+  userId?: string;
+  seenAt?: string | null;
+}) {
+  if (DEV_MODE) return;
+  if (!normalizeRemoteStatus(data.status)) return;
+  statusEventBuffer.set(data.messageId, data);
+  if (statusFlushTimer) clearTimeout(statusFlushTimer);
+  statusFlushTimer = setTimeout(flushStatusBuffer, 120);
 }
 
 // --- Init / Destroy ---
