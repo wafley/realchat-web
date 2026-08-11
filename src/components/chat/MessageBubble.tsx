@@ -92,9 +92,9 @@ function MessageBubbleComp({
         {formatTime(msg.createdAt)}
         {isOwn && msg.status && (
           (msg.status === 'pending' || msg.status === 'sending') ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : <CheckCheck size={13} className="text-blue-300 lg:size-3.5" />
+          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-gray-300'} lg:size-3.5`} />
+          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-gray-300'} lg:size-3.5`} />
+          : <CheckCheck size={13} className="text-white lg:size-3.5" />
         )}
       </span>
     );
