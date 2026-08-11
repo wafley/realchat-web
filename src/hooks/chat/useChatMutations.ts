@@ -63,6 +63,9 @@ export function useChatMutations({
         ['messages', chatId, isDM],
         (prev) => {
            if (!prev) return prev;
+           if (prev.pages.length === 0) {
+             return { ...prev, pages: [{ data: [newMsg], total: 1, page: 1, limit: 50, totalPages: 1 }] };
+           }
            if (prev.pages[0].data.some((m) => m.id === newMsg.id)) return prev;
            const [firstPage, ...rest] = prev.pages;
            return {

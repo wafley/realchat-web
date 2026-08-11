@@ -76,6 +76,9 @@ function onMessageNew(raw: RemoteMessage) {
     ['messages', chatId, isDM],
     (prev) => {
       if (!prev) return prev;
+      if (prev.pages.length === 0) {
+        return { ...prev, pages: [{ data: [msg], total: 1, page: 1, limit: 50, totalPages: 1 }] };
+      }
       const [firstPage, ...rest] = prev.pages;
       if (firstPage.data.some((m) => m.id === msg.id)) return prev;
       return {
