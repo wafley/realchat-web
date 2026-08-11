@@ -274,17 +274,41 @@ function onPresenceOffline(data: { userId: string }) {
 
 // --- Read receipts (#17: message:seen in, message:status out) ---
 
-let statusEventBuffer = new Map<string, { messageId: string; status: string; userId?: string; seenAt?: string | null }>();
+interface StatusEvent {
+  messageId: string;
+  status: string;
+  userId?: string;
+  seenAt?: string | null;
+}
+
+let statusEventBuffer = new Map<string, StatusEvent>();
+let statusPending = new Map<string, { evt: StatusEvent; ts: number }>();
 let statusFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleStatusFlush(delay = 120) {
+  if (statusFlushTimer) clearTimeout(statusFlushTimer);
+  statusFlushTimer = setTimeout(flushStatusBuffer, delay);
+}
 
 function flushStatusBuffer() {
   statusFlushTimer = null;
-  const events = Array.from(statusEventBuffer.values());
+  const now = Date.now();
+
+  const combined = new Map<string, { evt: StatusEvent; ts: number }>();
+  for (const evt of statusEventBuffer.values()) {
+    combined.set(evt.messageId, { evt, ts: now });
+  }
   statusEventBuffer.clear();
-  if (events.length === 0) return;
+  for (const [id, p] of statusPending) {
+    if (now - p.ts > 8000) continue; // stale, drop
+    if (!combined.has(id)) combined.set(id, p);
+  }
+  statusPending.clear();
+  if (combined.size === 0) return;
 
   const currentUserId = useAuthStore.getState().user?.id;
-  const eventMap = new Map(events.map((e) => [e.messageId, e]));
+  const eventMap = new Map(Array.from(combined.values(), (p) => [p.evt.messageId, p.evt]));
+  const matched = new Set<string>();
   const queries = queryClient.getQueryCache().findAll({ queryKey: ['messages'] });
   for (const query of queries) {
     const data_ = query.state.data as InfiniteData<PaginatedResponse<Message>> | undefined;
@@ -298,6 +322,7 @@ function flushStatusBuffer() {
         if (!evt) return m;
         const status = normalizeRemoteStatus(evt.status);
         if (!status) return m;
+        matched.add(m.id);
         let next = m;
         if (!statusIsAtLeast(next.status, status)) {
           next = { ...next, status };
@@ -317,19 +342,22 @@ function flushStatusBuffer() {
       queryClient.setQueryData(query.queryKey, { ...data_, pages: nextPages });
     }
   }
+
+  // Event yang pesannya belum ada di cache: retry lagi nanti (bisa jadi pesan
+  // belum masuk cache saat event tiba — race dengan ack message:send).
+  for (const [id, p] of combined) {
+    if (!matched.has(id)) statusPending.set(id, p);
+  }
+  if (statusPending.size > 0) {
+    scheduleStatusFlush(800);
+  }
 }
 
-function onMessageStatus(data: {
-  messageId: string;
-  status: string;
-  userId?: string;
-  seenAt?: string | null;
-}) {
+function onMessageStatus(data: StatusEvent) {
   if (DEV_MODE) return;
   if (!normalizeRemoteStatus(data.status)) return;
   statusEventBuffer.set(data.messageId, data);
-  if (statusFlushTimer) clearTimeout(statusFlushTimer);
-  statusFlushTimer = setTimeout(flushStatusBuffer, 120);
+  scheduleStatusFlush(120);
 }
 
 // --- Init / Destroy ---
