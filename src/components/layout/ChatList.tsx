@@ -79,7 +79,7 @@ export default function ChatList() {
   const presenceMap = usePresenceStore((s) => s.presenceMap);
 
   const presenceOf = (chat: ChatConversation) => {
-    const uid = chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined;
+    const uid = chat.userId || (chat.type === 'dm' ? (DM_USER_MAP[chat.id] || chat.id.replace(/^dm-?/, '')) : undefined);
     const presence = uid ? presenceMap[uid] : undefined;
     return presence
       ? { online: presence.isOnline, lastSeen: presence.lastSeen }

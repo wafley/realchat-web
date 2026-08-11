@@ -430,6 +430,10 @@ interface RemoteConversation {
   mutedUntil?: string | null;
   unread?: number | null;
   unreadCount?: number | null;
+  participantId?: string | null;
+  otherUserId?: string | null;
+  userId?: string | null;
+  participant?: { id?: string } | null;
   lastMessage?: {
     content: string;
     type: string;
@@ -491,6 +495,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
     return rows.map((r): ChatConversation => {
       const isPrivate = r.type === 'PRIVATE';
       const serverUnread = r.unread ?? r.unreadCount ?? 0;
+      const dmUserId = isPrivate ? (r.participantId ?? r.otherUserId ?? r.userId ?? r.participant?.id ?? DM_USER_MAP[r.id]) : undefined;
       return {
         id: r.id,
         name: r.displayName ?? r.name ?? (isPrivate ? 'Unknown' : 'Group'),
@@ -503,6 +508,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
         members: r.memberCount ?? (isPrivate ? 2 : undefined),
         muted: r.mutedUntil ? true : false,
         unread: Math.max(serverUnread, localUnread[r.id] ?? 0),
+        userId: dmUserId ?? undefined,
       };
     });
   } catch (err) {

@@ -107,7 +107,7 @@ export function useChatState() {
   }, [chatId]);
 
   const chatName = convFromList?.name || location.state?.name || 'Chat';
-  const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
+  const otherUserId = isDM && userId ? (convFromList?.userId || DM_USER_MAP[userId] || userId) : undefined;
 
   const resolveSenderName = useCallback(
     (senderId: string): string => {
@@ -123,8 +123,8 @@ export function useChatState() {
     [currentUser, isDM, senderGroup, convFromList, chatName],
   );
   const presence = usePresenceStore((s) => (otherUserId ? s.presenceMap[otherUserId] : undefined));
-  const chatOnline = presence ? presence.isOnline : (location.state?.online ?? convFromList?.online ?? true);
-  const chatLastSeen = presence ? presence.lastSeen : (location.state?.lastSeen ?? convFromList?.lastSeen ?? null);
+  const chatOnline = presence ? presence.isOnline : (convFromList?.online ?? location.state?.online ?? true);
+  const chatLastSeen = presence ? presence.lastSeen : (convFromList?.lastSeen ?? location.state?.lastSeen ?? null);
   const memberCount = location.state?.members ?? null;
 
   const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);

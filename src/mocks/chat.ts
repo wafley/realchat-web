@@ -2,7 +2,7 @@ import type { Message } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from './users';
 import { MOCK_CONTACTS } from './contacts';
 
-interface ChatConversation {
+export interface ChatConversation {
   id: string;
   name: string;
   type: 'group' | 'dm';
@@ -14,6 +14,7 @@ interface ChatConversation {
   lastSeen?: Date;
   members?: number;
   muted?: boolean;
+  userId?: string;
 }
 
 const GROUP_CONVERSATIONS: ChatConversation[] = [
@@ -183,7 +184,6 @@ function updateConversationName(userId: string, name: string): void {
   if (conv) conv.name = name;
 }
 
-export type { ChatConversation };
 export {
   MOCK_CONVERSATIONS,
   MOCK_GROUP_OVERRIDES,

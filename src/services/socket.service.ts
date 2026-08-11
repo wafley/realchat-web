@@ -5,7 +5,7 @@ import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, type RemoteMessage } from '@/services/chat';
+import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, Group } from '@/types';
 import type { Conversation } from '@/types';
@@ -194,11 +194,54 @@ function onTypingUpdate(data: { userId: string; conversationId: string; isTyping
   useTypingStore.getState().setTyping(data.conversationId, data.isTyping);
 }
 
-function onPresenceUpdate(data: { userId: string; isOnline: boolean; lastSeen: Date | null }) {
-  usePresenceStore.getState().setPresence(data.userId, {
-    isOnline: data.isOnline,
-    lastSeen: data.lastSeen ? new Date(data.lastSeen) : null,
+function onPresenceUpdate(data: { userId?: string; id?: string; isOnline?: boolean; online?: boolean; lastSeen?: Date | string | null; lastSeenAt?: string | null }) {
+  const userId = data.userId || data.id;
+  if (!userId) return;
+
+  const isOnline = data.isOnline ?? data.online ?? false;
+  const rawLastSeen = data.lastSeen ?? data.lastSeenAt ?? null;
+  const lastSeen = rawLastSeen ? new Date(rawLastSeen) : null;
+
+  usePresenceStore.getState().setPresence(userId, {
+    isOnline,
+    lastSeen,
   });
+
+  queryClient.setQueryData<ChatConversation[]>(['conversations'], (prev) => {
+    if (!prev) return prev;
+    return prev.map((c) => {
+      const isTarget = c.userId === userId || c.id === userId || c.id === `dm-${userId}` || (c.type === 'dm' && DM_USER_MAP[c.id] === userId);
+      if (isTarget) {
+        return {
+          ...c,
+          online: isOnline,
+          lastSeen: lastSeen ?? (isOnline ? undefined : c.lastSeen),
+        };
+      }
+      return c;
+    });
+  });
+}
+
+function onPresenceOnline(data: { userId?: string; id?: string }) {
+  const uid = data?.userId ?? data?.id;
+  if (uid) onPresenceUpdate({ userId: uid, isOnline: true, lastSeen: null });
+}
+
+function onPresenceOffline(data: { userId?: string; id?: string; lastSeen?: string | Date; lastSeenAt?: string | Date }) {
+  const uid = data?.userId ?? data?.id;
+  if (uid) onPresenceUpdate({ userId: uid, isOnline: false, lastSeen: data.lastSeen ?? data.lastSeenAt ?? new Date() });
+}
+
+function onPresenceGeneral(data: { userId?: string; id?: string; isOnline?: boolean; online?: boolean; lastSeen?: string | Date; lastSeenAt?: string | Date }) {
+  const uid = data?.userId ?? data?.id;
+  if (uid) {
+    onPresenceUpdate({
+      userId: uid,
+      isOnline: data.isOnline ?? data.online ?? false,
+      lastSeen: data.lastSeen ?? data.lastSeenAt ?? null,
+    });
+  }
 }
 
 function onGroupUpdated(group: Group) {
@@ -262,14 +305,6 @@ function onTypingStart(data: { conversationId: string; userId: string }) {
 
 function onTypingStop(data: { conversationId: string; userId: string }) {
   onTypingUpdate({ ...data, isTyping: false });
-}
-
-function onPresenceOnline(data: { userId: string }) {
-  onPresenceUpdate({ ...data, isOnline: true, lastSeen: null });
-}
-
-function onPresenceOffline(data: { userId: string }) {
-  onPresenceUpdate({ ...data, isOnline: false, lastSeen: null });
 }
 
 // --- Read receipts (#17: message:seen in, message:status out) ---
@@ -388,6 +423,11 @@ export function initSocket(token?: string) {
   socketClient.on('typing:stop', onTypingStop);
   socketClient.on('presence:online', onPresenceOnline);
   socketClient.on('presence:offline', onPresenceOffline);
+  socketClient.on('presence:update', onPresenceGeneral);
+  socketClient.on('user:online', onPresenceOnline);
+  socketClient.on('user:offline', onPresenceOffline);
+  socketClient.on('user:status', onPresenceGeneral);
+  socketClient.on('user_status', onPresenceGeneral);
   socketClient.on('group:updated', onGroupUpdated);
   socketClient.on('group:member-added', onGroupMemberAdd);
   socketClient.on('group:member-removed', onGroupMemberRemove);
@@ -410,6 +450,11 @@ export function destroySocket() {
   socketClient.off('typing:stop', onTypingStop);
   socketClient.off('presence:online', onPresenceOnline);
   socketClient.off('presence:offline', onPresenceOffline);
+  socketClient.off('presence:update', onPresenceGeneral);
+  socketClient.off('user:online', onPresenceOnline);
+  socketClient.off('user:offline', onPresenceOffline);
+  socketClient.off('user:status', onPresenceGeneral);
+  socketClient.off('user_status', onPresenceGeneral);
   socketClient.off('group:updated', onGroupUpdated);
   socketClient.off('group:member-added', onGroupMemberAdd);
   socketClient.off('group:member-removed', onGroupMemberRemove);
