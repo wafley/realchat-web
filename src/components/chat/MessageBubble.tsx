@@ -170,7 +170,7 @@ function MessageBubbleComp({
                     />
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
-                  <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                  <p className={`px-3 pb-2 pt-1.5 ${isOwn ? 'pr-11' : 'pr-7'} text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words`}>
                     {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
                       <button
@@ -211,7 +211,7 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
+                  <p className={`px-3 pb-2 pt-1.5 ${isOwn ? 'pr-11' : 'pr-7'} text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words`}>
                     {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
                       <button
@@ -245,7 +245,7 @@ function MessageBubbleComp({
                 href={msg.fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 pr-14 transition-colors hover:bg-card"
+                className={`flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 ${isOwn ? 'pr-11' : 'pr-7'} transition-colors hover:bg-card`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -260,12 +260,12 @@ function MessageBubbleComp({
               </a>
             </div>
           ) : msg.isDeleted ? (
-            <p className="flex items-center gap-1.5 whitespace-pre-wrap break-words pr-14 pb-0.5 text-sm italic opacity-50">
+            <p className={`flex items-center gap-1.5 whitespace-pre-wrap break-words ${isOwn ? 'pr-11' : 'pr-7'} pb-0.5 text-sm italic opacity-50`}>
               <Ban size={13} className="shrink-0" />
               <span>{msg.content}</span>
             </p>
           ) : (
-            <p className="whitespace-pre-wrap break-words pr-14 pb-0.5">
+            <p className={`whitespace-pre-wrap break-words ${isOwn ? 'pr-11' : 'pr-7'} pb-0.5`}>
               {highlightText(displayedContent, searchQuery)}
               {showReadMore && (
                 <button
