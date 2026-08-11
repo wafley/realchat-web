@@ -283,11 +283,9 @@ export function useChatActions(props: UseChatActionsProps) {
   useEffect(() => {
     if (!chatId || !usePrivacyStore.getState().readReceipts) return;
     const currentUserId = useAuthStore.getState().user?.id;
-    const unseen = messages.filter(
-      (m) => m.senderId !== currentUserId && m.status !== 'read' && !m.readBy?.includes(currentUserId ?? ''),
-    );
-    if (unseen.length === 0) return;
-    const last = unseen.reduce((a, b) =>
+    const fromOthers = messages.filter((m) => m.senderId !== currentUserId);
+    if (fromOthers.length === 0) return;
+    const last = fromOthers.reduce((a, b) =>
       new Date(b.createdAt).getTime() > new Date(a.createdAt).getTime() ? b : a,
     );
     if (emittedReadIdsRef.current.has(last.id)) return;
