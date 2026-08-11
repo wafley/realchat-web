@@ -2,6 +2,7 @@ import api from '@/lib/api';
 import { socketClient } from '@/lib/socket';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
+import { markChatCleared } from '@/lib/chatCleared';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
@@ -973,10 +974,15 @@ export async function clearChat(chatId: string): Promise<void> {
     if (DEV_MODE) {
       await delay(200);
       delete MOCK_MESSAGES[chatId];
-      return;
     }
 
-    throw new Error('Clear chat belum tersedia di backend');
+    markChatCleared(chatId);
+
+    const unread = loadLocalUnread();
+    if (unread[chatId]) {
+      unread[chatId] = 0;
+      saveLocalUnread(unread);
+    }
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to clear chat');
   }

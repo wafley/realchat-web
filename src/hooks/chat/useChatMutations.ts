@@ -368,7 +368,7 @@ export function useChatMutations({
   const clearChatMutation = useMutation({
     mutationFn: () => clearChat(chatId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
+      queryClient.setQueryData(['messages', chatId, isDM], { pages: [], pageParams: [] });
       toast.success('Chat cleared');
     },
     onError: () => toast.error('Failed to clear chat'),

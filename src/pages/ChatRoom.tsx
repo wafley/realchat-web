@@ -147,7 +147,7 @@ export default function ChatRoom() {
         onBlockClick={() => state.setBlockConfirmOpen(true)}
         onReportClick={() => state.setReportConfirmOpen(true)}
         onGroupInfoClick={() => state.setGroupInfoOpen(true)}
-        onClearChat={() => mutations.clearChatMutation.mutate()}
+        onClearChat={() => state.setClearConfirmOpen(true)}
       />
 
       {state.showSearch && (
@@ -303,6 +303,7 @@ export default function ChatRoom() {
         lightboxUrl={state.lightboxUrl}
         blockConfirmOpen={state.blockConfirmOpen}
         reportConfirmOpen={state.reportConfirmOpen}
+        clearConfirmOpen={state.clearConfirmOpen}
         groupInfoOpen={state.groupInfoOpen}
         readReceiptTarget={state.readReceiptTarget}
         group={mutations.group}
@@ -326,6 +327,11 @@ export default function ChatRoom() {
         onBlock={actions.handleBlock}
         onCloseReport={() => state.setReportConfirmOpen(false)}
         onReport={actions.handleReport}
+        onCloseClear={() => state.setClearConfirmOpen(false)}
+        onClear={() => {
+          state.setClearConfirmOpen(false);
+          mutations.clearChatMutation.mutate();
+        }}
         onCloseGroupInfo={() => state.setGroupInfoOpen(false)}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
         onUpdateGroup={(data) =>

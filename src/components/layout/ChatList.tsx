@@ -14,6 +14,7 @@ import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_M
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
+import { isChatCleared } from '@/lib/chatCleared';
 import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
 import type { Conversation, SearchMessageResult } from '@/types';
@@ -121,7 +122,13 @@ export default function ChatList() {
   const filtered = conversations.filter((c) => {
     if (tab === 'messages' && c.type !== 'dm') return false;
     if (tab === 'groups' && c.type !== 'group') return false;
-    return c.name.toLowerCase().includes(search.toLowerCase());
+    if (!c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    const clearedAt = isChatCleared(c.id);
+    if (clearedAt) {
+      const lastTimeMs = c.lastTime ? Date.parse(c.lastTime) : NaN;
+      if (Number.isNaN(lastTimeMs) || lastTimeMs <= Date.parse(clearedAt)) return false;
+    }
+    return true;
   });
 
   const debouncedSearch = useDebounce(search, 300);

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { getMessages, getConversations, getGroup, DM_USER_MAP } from '@/services/chat';
+import { isChatCleared } from '@/lib/chatCleared';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 export function useChatState() {
@@ -32,6 +33,7 @@ export function useChatState() {
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
   const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
@@ -95,6 +97,7 @@ export function useChatState() {
     setGroupInfoOpen(false);
     setBlockConfirmOpen(false);
     setReportConfirmOpen(false);
+    setClearConfirmOpen(false);
     setReadReceiptTarget(null);
     setReactingMsgId(null);
     setReactionPickerRect(null);
@@ -151,10 +154,12 @@ export function useChatState() {
 
   const messages = useMemo(() => {
     if (!data?.pages) return [];
+    const clearedAt = isChatCleared(chatId);
+    const clearedMs = clearedAt ? new Date(clearedAt).getTime() : null;
     const raw = [...data.pages].reverse().flatMap((p) => p.data);
     const map = new Map<string, Message>();
     for (const msg of raw) {
-      if (msg && msg.id) {
+      if (msg && msg.id && (!clearedMs || new Date(msg.createdAt).getTime() >= clearedMs)) {
         map.set(msg.id, msg);
       }
     }
@@ -240,6 +245,7 @@ export function useChatState() {
     groupInfoOpen, setGroupInfoOpen,
     blockConfirmOpen, setBlockConfirmOpen,
     reportConfirmOpen, setReportConfirmOpen,
+    clearConfirmOpen, setClearConfirmOpen,
     readReceiptTarget, setReadReceiptTarget,
     reactingMsgId, setReactingMsgId,
     reactionPickerRect, setReactionPickerRect,

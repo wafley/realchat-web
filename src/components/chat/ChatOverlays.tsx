@@ -23,6 +23,7 @@ interface ChatOverlaysProps {
   lightboxUrl: string | null;
   blockConfirmOpen: boolean;
   reportConfirmOpen: boolean;
+  clearConfirmOpen: boolean;
   groupInfoOpen: boolean;
   readReceiptTarget: Message | null;
   group: Group | null;
@@ -41,6 +42,8 @@ interface ChatOverlaysProps {
   onBlock: () => void;
   onCloseReport: () => void;
   onReport: () => void;
+  onCloseClear: () => void;
+  onClear: () => void;
   onCloseGroupInfo: () => void;
   onCloseReadReceipts: () => void;
   onUpdateGroup: (data: { name?: string; description?: string; avatarUrl?: string }) => Promise<void>;
@@ -62,6 +65,7 @@ export default function ChatOverlays({
   lightboxUrl,
   blockConfirmOpen,
   reportConfirmOpen,
+  clearConfirmOpen,
   groupInfoOpen,
   readReceiptTarget,
   group,
@@ -80,6 +84,8 @@ export default function ChatOverlays({
   onBlock,
   onCloseReport,
   onReport,
+  onCloseClear,
+  onClear,
   onCloseGroupInfo,
   onCloseReadReceipts,
   onUpdateGroup,
@@ -413,6 +419,28 @@ export default function ChatOverlays({
               className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90"
             >
               Report
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {clearConfirmOpen && (
+        <Modal open={clearConfirmOpen} onClose={onCloseClear} title="Clear chat">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Are you sure you want to clear this chat? Messages will only be cleared on your side.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onCloseClear}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onClear}
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90"
+            >
+              Clear
             </button>
           </div>
         </Modal>
