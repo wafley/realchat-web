@@ -181,6 +181,7 @@ export function useChatActions(props: UseChatActionsProps) {
 
   const isInitialLoadRef = useRef(true);
   const ioCooldownRef = useRef(false);
+  const typingActiveRef = useRef(false);
 
   // --- Effects ---
 
@@ -188,6 +189,7 @@ export function useChatActions(props: UseChatActionsProps) {
     isInitialLoadRef.current = true;
     ioCooldownRef.current = false;
     prevLastMsgIdRef.current = null;
+    typingActiveRef.current = false;
   }, [chatId]);
 
   useEffect(() => {
@@ -221,34 +223,44 @@ export function useChatActions(props: UseChatActionsProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEmojiPicker]);
 
+  const stopTyping = useCallback(() => {
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    if (typingActiveRef.current) {
+      typingActiveRef.current = false;
+      emitTypingStop(chatId);
+    }
+  }, [chatId]);
+
   useEffect(() => {
     if (!chatId) return;
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
     if (!input) {
-      emitTypingStop(chatId);
+      stopTyping();
       return;
     }
-    typingTimerRef.current = setTimeout(() => {
-      emitTypingStart(chatId);
-    }, 300);
-    typingDoneTimerRef.current = setTimeout(() => {
-      emitTypingStop(chatId);
-    }, 10000);
-    const handleBeforeUnload = () => emitTypingStop(chatId);
+    if (!typingActiveRef.current && !typingTimerRef.current) {
+      typingTimerRef.current = setTimeout(() => {
+        typingTimerRef.current = null;
+        typingActiveRef.current = true;
+        emitTypingStart(chatId);
+      }, 300);
+    }
+    typingDoneTimerRef.current = setTimeout(stopTyping, 10000);
+    const handleBeforeUnload = () => stopTyping();
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [input, chatId]);
+  }, [input, chatId, stopTyping]);
 
   useEffect(() => {
     return () => {
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-      if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
-      emitTypingStop(chatId);
+      stopTyping();
     };
-  }, [chatId]);
+  }, [chatId, stopTyping]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -339,6 +351,7 @@ export function useChatActions(props: UseChatActionsProps) {
         clearTimeout(typingDoneTimerRef.current);
         typingDoneTimerRef.current = null;
       }
+      typingActiveRef.current = false;
     };
   }, []);
 

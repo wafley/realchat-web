@@ -13,6 +13,7 @@ import type { Conversation } from '@/types';
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 let currentChatId: string | null = null;
+let currentTypingChatId: string | null = null;
 let unsubscribeConversations: (() => void) | null = null;
 
 // --- Emit helpers ---
@@ -43,13 +44,20 @@ async function onSocketConnected() {
     await queryClient.refetchQueries({ queryKey: ['messages'], type: 'active' });
   } catch {}
   joinAllConversationRooms();
+  if (currentTypingChatId) {
+    socketClient.emitTypingStart(currentTypingChatId);
+  }
 }
 
 export function emitTypingStart(conversationId: string) {
+  currentTypingChatId = conversationId;
   socketClient.emitTypingStart(conversationId);
 }
 
 export function emitTypingStop(conversationId: string) {
+  if (currentTypingChatId === conversationId) {
+    currentTypingChatId = null;
+  }
   socketClient.emitTypingStop(conversationId);
 }
 
