@@ -79,6 +79,15 @@ export function useChatState() {
   }, [convFromList?.muted]);
 
   useEffect(() => {
+    const onPinnedUpdated = (e: Event) => {
+      const pinned = (e as CustomEvent<Message[]>).detail;
+      setPinnedMessages(Array.isArray(pinned) ? pinned : []);
+    };
+    window.addEventListener('chat:pinned-updated', onPinnedUpdated);
+    return () => window.removeEventListener('chat:pinned-updated', onPinnedUpdated);
+  }, []);
+
+  useEffect(() => {
     setInput('');
     setShowSearch(false);
     setSearchQuery('');

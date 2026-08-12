@@ -5,7 +5,7 @@ import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, Group } from '@/types';
@@ -172,6 +172,38 @@ function onMessageDeleted(data: { messageId: string; conversationId: string }) {
     },
   );
   refreshConversationPreview(data.conversationId, isDM);
+}
+
+function onMessagePinUpdated(data: { conversationId: string; messageId: string; isPinned: boolean }) {
+  if (DEV_MODE) return;
+
+  const chatId = data.conversationId;
+  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  const conv = conversations?.find((c) => c.id === chatId);
+  const isDM = conv?.type === 'dm';
+
+  queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+    ['messages', chatId, isDM],
+    (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          data: page.data.map((m) => (m.id === data.messageId ? { ...m, isPinned: data.isPinned } : m)),
+        })),
+      };
+    },
+  );
+
+  if (currentChatId === chatId) {
+    getPinnedMessages(chatId)
+      .then((pinned) => {
+        queryClient.setQueryData(['pinned', chatId], pinned);
+        window.dispatchEvent(new CustomEvent('chat:pinned-updated', { detail: pinned }));
+      })
+      .catch(() => {});
+  }
 }
 
 
@@ -424,6 +456,7 @@ export function initSocket(token?: string) {
   }
   socketClient.on('message:edited', onMessageEdited);
   socketClient.on('message:deleted', onMessageDeleted);
+  socketClient.on('message:pin:updated', onMessagePinUpdated);
   socketClient.on('message:status', onMessageStatus);
   socketClient.on('typing:start', onTypingStart);
   socketClient.on('typing:stop', onTypingStop);
@@ -451,6 +484,7 @@ export function destroySocket() {
   socketClient.off('message:new', onMessageNew);
   socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);
+  socketClient.off('message:pin:updated', onMessagePinUpdated);
   socketClient.off('message:status', onMessageStatus);
   socketClient.off('typing:start', onTypingStart);
   socketClient.off('typing:stop', onTypingStop);

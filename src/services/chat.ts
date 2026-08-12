@@ -76,6 +76,7 @@ export interface RemoteMessage {
   seenAt?: string | null;
   createdAt?: string | null;
   editedAt?: string | null;
+  sender?: { id: string; username?: string | null; fullName?: string | null; avatarUrl?: string | null };
 }
 
 function normalizeStatus(status?: string | null): MessageStatus | undefined {
@@ -574,7 +575,7 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
   }
 }
 
-export async function forwardMessage(targetChatId: string, msg: Message, _sourceChatId: string): Promise<Message> {
+export async function forwardMessage(targetChatId: string, msg: Message, sourceChatId: string): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(300);
@@ -601,7 +602,11 @@ export async function forwardMessage(targetChatId: string, msg: Message, _source
       return forwarded;
     }
 
-    throw new Error('Forward pesan belum tersedia di backend');
+    const { data } = await api.post<RemoteMessage>(
+      `/conversations/${sourceChatId}/messages/${msg.id}/forward`,
+      { targetConversationId: targetChatId },
+    );
+    return mapMessage(data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to forward message');
   }
@@ -619,7 +624,7 @@ export async function pinMessage(chatId: string, messageId: string): Promise<voi
       return;
     }
 
-    throw new Error('Pin pesan belum tersedia di backend');
+    await api.put(`/conversations/${chatId}/messages/${messageId}/pin`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to pin message');
   }
@@ -637,7 +642,7 @@ export async function unpinMessage(chatId: string, messageId: string): Promise<v
       return;
     }
 
-    throw new Error('Unpin pesan belum tersedia di backend');
+    await api.delete(`/conversations/${chatId}/messages/${messageId}/pin`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to unpin message');
   }
@@ -651,7 +656,24 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
       return msgs.filter((m) => m.isPinned);
     }
 
-    return [];
+    const { data } = await api.get<{ messages?: RemoteMessage[] } | RemoteMessage[]>(
+      `/conversations/${chatId}/pinned`,
+      { params: { limit: 50 } },
+    );
+    const rows = Array.isArray(data) ? (data as RemoteMessage[]) : (data?.messages ?? []);
+    return rows.map((row) => {
+      const msg = mapMessage(row);
+      if (row.sender) {
+        const sender = msg.sender ?? { id: row.senderId, username: '', fullName: '', email: '', status: 'offline' as const, createdAt: new Date() };
+        msg.sender = {
+          ...sender,
+          username: row.sender.username ?? '',
+          fullName: row.sender.fullName ?? '',
+          avatarUrl: row.sender.avatarUrl ?? undefined,
+        };
+      }
+      return msg;
+    });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get pinned messages');
   }
