@@ -26,12 +26,12 @@ import {
   updateMemberRole,
   clearChat,
   simulateDevReceipts,
+  refreshConversationPreview,
 } from '@/services/chat';
 
 interface UseChatMutationsProps {
   chatId: string;
   isDM: boolean;
-  deleteTarget: Message | null;
   setDeleteTarget: (msg: Message | null) => void;
   setDeleteLoading: (v: boolean) => void;
   setForwardTarget: (msg: Message | null) => void;
@@ -45,7 +45,6 @@ interface UseChatMutationsProps {
 export function useChatMutations({
   chatId,
   isDM,
-  deleteTarget,
   setDeleteTarget,
   setDeleteLoading,
   setForwardTarget,
@@ -216,20 +215,8 @@ export function useChatMutations({
       }
       toast.error('Failed to delete message. Please try again.');
     },
-    onSuccess: (_data, { delForAll }) => {
-      if (!delForAll) {
-        queryClient.setQueryData<{ id: string; lastMessage?: string }[]>(
-          ['conversations'],
-          (prev) => {
-            if (!prev) return prev;
-            return prev.map((c) =>
-              c.id === chatId && c.lastMessage === deleteTarget?.content
-                ? { ...c, lastMessage: 'You deleted this message' }
-                : c,
-            );
-          },
-        );
-      }
+    onSuccess: () => {
+      refreshConversationPreview(chatId, isDM);
       toast.success('Message deleted');
     },
     onSettled: () => {

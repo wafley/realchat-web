@@ -3,6 +3,7 @@ import { socketClient } from '@/lib/socket';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
 import { markChatCleared } from '@/lib/chatCleared';
+import { hideChats, isChatDeleted } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
@@ -54,6 +55,7 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
   const { data } = await api.post<{ id?: string; conversationId?: string; conversation?: { id?: string }; data?: { id?: string } }>('/conversations', { type: 'PRIVATE', participantId: userId });
   const id = data?.id ?? data?.conversation?.id ?? data?.conversationId ?? data?.data?.id;
   if (!id) throw new Error('Failed to create conversation: no id in response');
+  DM_USER_MAP[id] = userId;
   return id;
 }
 
@@ -146,6 +148,11 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
     });
     const raw = Array.isArray(data) ? (data as RemoteMessage[]) : (data?.messages ?? []);
     const mapped = raw.map(mapMessage).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (_isDM && !DM_USER_MAP[chatId]) {
+      const me = useAuthStore.getState().user?.id;
+      const peer = mapped.find((m) => m.senderId !== me)?.senderId;
+      if (peer) DM_USER_MAP[chatId] = peer;
+    }
     const visible = applyDeletedForMe(chatId, mapped);
     const nextCursor = !Array.isArray(data) ? (data?.nextCursor ?? null) : null;
     return {
@@ -289,20 +296,7 @@ function applyDeletedForMe(chatId: string, msgs: Message[]): Message[] {
   const deleted = loadDeletedForMe();
   if (deleted.size === 0) return msgs;
   const prefix = `${chatId}:`;
-  return msgs.map((m) =>
-    deleted.has(prefix + m.id)
-      ? {
-          ...m,
-          isDeleted: true,
-          type: 'text' as const,
-          content: 'You deleted this message',
-          fileUrl: undefined,
-          fileName: undefined,
-          replyTo: undefined,
-          reactions: undefined,
-        }
-      : m,
-  );
+  return msgs.filter((m) => !deleted.has(prefix + m.id));
 }
 
 export async function deleteMessage(chatId: string, messageId: string, deleteForAll: boolean): Promise<void> {
@@ -434,6 +428,7 @@ interface RemoteConversation {
   participantId?: string | null;
   otherUserId?: string | null;
   userId?: string | null;
+  peerId?: string | null;
   participant?: { id?: string } | null;
   lastMessage?: {
     content: string;
@@ -451,6 +446,45 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
   if (lm.type === 'file') return content ? `📎 ${content}` : '📎 File';
   if (lm.type === 'video') return content ? `🎬 ${content}` : '🎬 Video';
   return content;
+}
+
+export function messagePreview(m: Message): string {
+  if (m.type === 'image') return '📷 Photo';
+  if (m.type === 'file') return '📎 File';
+  if (m.type === 'video') return '🎬 Video';
+  return m.content;
+}
+
+export function refreshConversationPreview(chatId: string, isDM: boolean): void {
+  const msgs = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
+    'messages',
+    chatId,
+    isDM,
+  ]);
+  const all = msgs?.pages.flatMap((p) => p.data) ?? [];
+  const last = all
+    .filter((m) => m && !m.isDeleted)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .pop();
+  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+    ['conversations'],
+    (prev) => {
+      if (!prev) return prev;
+      return prev.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: last ? messagePreview(last) : '',
+              lastTime: last?.createdAt
+                ? last.createdAt instanceof Date
+                  ? last.createdAt.toISOString()
+                  : (last.createdAt as string)
+                : c.lastTime,
+            }
+          : c,
+      );
+    },
+  );
 }
 
 const LOCAL_UNREAD_KEY = 'hw_unread_map';
@@ -492,11 +526,12 @@ export async function getConversations(): Promise<ChatConversation[]> {
     if (!Array.isArray(data) && !(data as { conversations?: unknown })?.conversations) {
       console.warn('[chat] GET /conversations unknown shape:', data);
     }
+    const visibleRows = rows.filter((r) => !isChatDeleted(r.id));
     const localUnread = loadLocalUnread();
-    return rows.map((r): ChatConversation => {
+    return visibleRows.map((r): ChatConversation => {
       const isPrivate = r.type === 'PRIVATE';
       const serverUnread = r.unread ?? r.unreadCount ?? 0;
-      const dmUserId = isPrivate ? (r.participantId ?? r.otherUserId ?? r.userId ?? r.participant?.id ?? DM_USER_MAP[r.id]) : undefined;
+      const dmUserId = isPrivate ? (r.peerId ?? r.participantId ?? r.otherUserId ?? r.userId ?? r.participant?.id ?? DM_USER_MAP[r.id]) : undefined;
       return {
         id: r.id,
         name: r.displayName ?? r.name ?? (isPrivate ? 'Unknown' : 'Group'),
@@ -530,7 +565,10 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
       return;
     }
 
-    throw new Error('Bulk delete belum tersedia di backend');
+    hideChats(ids);
+    ids.forEach((id) => {
+      queryClient.removeQueries({ queryKey: ['messages', id] });
+    });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete conversations');
   }

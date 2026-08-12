@@ -19,7 +19,6 @@ export default function ChatRoom() {
   const mutations = useChatMutations({
     chatId: state.chatId,
     isDM: state.isDM,
-    deleteTarget: state.deleteTarget,
     setDeleteTarget: state.setDeleteTarget,
     setDeleteLoading: state.setDeleteLoading,
     setForwardTarget: state.setForwardTarget,

@@ -68,7 +68,6 @@ export default function ChatList() {
     setMenuPos({ x, y });
   }, [contextMenu]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [alsoDeleteMedia, setAlsoDeleteMedia] = useState(true);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
@@ -80,7 +79,7 @@ export default function ChatList() {
   const presenceMap = usePresenceStore((s) => s.presenceMap);
 
   const presenceOf = (chat: ChatConversation) => {
-    const uid = chat.userId || (chat.type === 'dm' ? (DM_USER_MAP[chat.id] || chat.id.replace(/^dm-?/, '')) : undefined);
+    const uid = chat.userId || (chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined);
     const presence = uid ? presenceMap[uid] : undefined;
     return presence
       ? { online: presence.isOnline, lastSeen: presence.lastSeen }
@@ -104,10 +103,12 @@ export default function ChatList() {
       }
       setToast({ message: 'Failed to delete chats. Please try again.' });
     },
+    onSuccess: () => {
+      setToast({ message: pendingDeleteIds.length > 1 ? 'Chats deleted' : 'Chat deleted' });
+    },
     onSettled: () => {
       setDeleteConfirmOpen(false);
       setDeleteLoading(false);
-      setAlsoDeleteMedia(true);
       exitSelectionMode();
     },
   });
@@ -558,26 +559,15 @@ export default function ChatList() {
         </div>
       )}
 
-      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }} title="Delete Chat">
+      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); }} title="Delete Chat">
         <p className="mb-4 text-sm text-muted-foreground">
           {pendingDeleteIds.length === 1
             ? 'This chat will be deleted from your chat list. This action cannot be undone.'
             : `${pendingDeleteIds.length} chats will be deleted from your chat list. This action cannot be undone.`}
         </p>
-        <label className="mb-4 flex items-start gap-3 rounded-lg bg-accent/5 px-3 py-3">
-          <input
-            type="checkbox"
-            checked={alsoDeleteMedia}
-            onChange={(e) => setAlsoDeleteMedia(e.target.checked)}
-            className="mt-0.5 shrink-0 accent-accent"
-          />
-          <span className="text-sm text-foreground">
-            Also delete media received in {pendingDeleteIds.length === 1 ? 'this chat' : 'these chats'} from the device gallery
-          </span>
-        </label>
         <div className="flex justify-end gap-3">
           <button
-            onClick={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }}
+            onClick={() => { setDeleteConfirmOpen(false); }}
             className="rounded-lg border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
           >
             Cancel

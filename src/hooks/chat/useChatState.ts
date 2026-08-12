@@ -110,7 +110,7 @@ export function useChatState() {
   }, [chatId]);
 
   const chatName = convFromList?.name || location.state?.name || 'Chat';
-  const otherUserId = isDM && userId ? (convFromList?.userId || DM_USER_MAP[userId] || userId) : undefined;
+  const otherUserId = isDM && userId ? (convFromList?.userId || DM_USER_MAP[userId]) : undefined;
 
   const resolveSenderName = useCallback(
     (senderId: string): string => {

@@ -5,7 +5,8 @@ import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, Group } from '@/types';
 import type { Conversation } from '@/types';
@@ -68,6 +69,7 @@ function onMessageNew(raw: RemoteMessage) {
 
   const msg = mapMessage(raw);
   const chatId = raw.conversationId ?? '';
+  if (isChatDeleted(chatId)) unhideChat(chatId);
   const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
@@ -169,6 +171,7 @@ function onMessageDeleted(data: { messageId: string; conversationId: string }) {
       };
     },
   );
+  refreshConversationPreview(data.conversationId, isDM);
 }
 
 
