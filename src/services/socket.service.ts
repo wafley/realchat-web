@@ -74,6 +74,10 @@ function onMessageNew(raw: RemoteMessage) {
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
 
+  if (!conv) {
+    queryClient.invalidateQueries({ queryKey: ['conversations'] });
+  }
+
   queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
     ['messages', chatId, isDM],
     (prev) => {

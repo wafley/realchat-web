@@ -527,7 +527,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
     if (!Array.isArray(data) && !(data as { conversations?: unknown })?.conversations) {
       console.warn('[chat] GET /conversations unknown shape:', data);
     }
-    const visibleRows = rows.filter((r) => !isChatDeleted(r.id));
+    const visibleRows = rows.filter((r) => !isChatDeleted(r.id) && (r.type !== 'PRIVATE' || !!r.lastMessage));
     const localUnread = loadLocalUnread();
     return visibleRows.map((r): ChatConversation => {
       const isPrivate = r.type === 'PRIVATE';

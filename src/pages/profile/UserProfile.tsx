@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info } from 'lucide-react';
@@ -8,7 +8,7 @@ import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/lib/chatHelpers';
 import { getUser } from '@/services/user';
-import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers } from '@/services/chat';
+import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
@@ -235,11 +235,15 @@ export default function UserProfile() {
     if (e.key === 'Escape') handleCancelEdit();
   };
 
-  const { data: dmId } = useQuery({
-    queryKey: ['dm', userId],
-    queryFn: () => findOrCreateConversation(userId!),
-    enabled: !!userId && !isSelf,
+  const { data: conversations = [] } = useQuery({
+    queryKey: ['conversations'],
+    queryFn: getConversations,
   });
+
+  const dmId = useMemo(
+    () => conversations.find((c) => c.type === 'dm' && c.userId === userId)?.id ?? null,
+    [conversations, userId],
+  );
 
   const { data: sharedMedia = [] } = useQuery({
     queryKey: ['shared-media', dmId],
