@@ -70,6 +70,8 @@ export interface RemoteMessage {
   content: string;
   replyToId?: string | null;
   isPinned?: boolean | null;
+  isStarred?: boolean | null;
+  starredAt?: string | null;
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
   status?: string | null;
@@ -77,6 +79,13 @@ export interface RemoteMessage {
   createdAt?: string | null;
   editedAt?: string | null;
   sender?: { id: string; username?: string | null; fullName?: string | null; avatarUrl?: string | null };
+  conversation?: { id: string; type?: string; name?: string | null; avatarUrl?: string | null };
+}
+
+export interface StarredMessage extends Message {
+  conversationName?: string;
+  conversationType?: string;
+  conversationAvatarUrl?: string;
 }
 
 function normalizeStatus(status?: string | null): MessageStatus | undefined {
@@ -110,6 +119,8 @@ export function mapMessage(row: RemoteMessage): Message {
     content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
     type,
     isPinned: row.isPinned ?? false,
+    isStarred: row.isStarred ?? false,
+    starredAt: row.starredAt ? new Date(row.starredAt) : null,
     isDeleted: row.isDeleted ?? false,
     status: normalizeStatus(row.status) ?? (row.senderId === useAuthStore.getState().user?.id ? 'sent' : undefined),
     lastReadAt: row.seenAt ? new Date(row.seenAt) : undefined,
@@ -676,6 +687,80 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
     });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get pinned messages');
+  }
+}
+
+export async function starMessage(chatId: string, messageId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      msgs[idx] = { ...msgs[idx], isStarred: true, starredAt: new Date() };
+      return;
+    }
+
+    await api.put(`/conversations/${chatId}/messages/${messageId}/star`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to star message');
+  }
+}
+
+export async function unstarMessage(chatId: string, messageId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      msgs[idx] = { ...msgs[idx], isStarred: false, starredAt: null };
+      return;
+    }
+
+    await api.delete(`/conversations/${chatId}/messages/${messageId}/star`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to unstar message');
+  }
+}
+
+export async function getStarredMessages(cursor?: string, limit = 50): Promise<StarredMessage[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      return Object.values(MOCK_MESSAGES)
+        .flat()
+        .filter((m) => m.isStarred);
+    }
+
+    const { data } = await api.get<{ messages?: RemoteMessage[]; nextCursor?: string | null }>(
+      `/messages/starred`,
+      { params: { ...(cursor ? { cursor } : {}), limit } },
+    );
+    const rows = data?.messages ?? [];
+    return rows.map((row) => {
+      const msg = mapMessage(row);
+      if (row.sender) {
+        const sender = msg.sender ?? { id: row.senderId, username: '', fullName: '', email: '', status: 'offline' as const, createdAt: new Date() };
+        msg.sender = {
+          ...sender,
+          username: row.sender.username ?? '',
+          fullName: row.sender.fullName ?? '',
+          avatarUrl: row.sender.avatarUrl ?? undefined,
+        };
+      }
+      const starred: StarredMessage = { ...msg };
+      if (row.conversation) {
+        starred.conversationName = row.conversation.name ?? '';
+        starred.conversationType = row.conversation.type === 'PRIVATE' ? 'dm' : 'group';
+        starred.conversationAvatarUrl = row.conversation.avatarUrl ?? undefined;
+      }
+      return starred;
+    });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get starred messages');
   }
 }
 

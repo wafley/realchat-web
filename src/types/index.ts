@@ -40,6 +40,8 @@ export interface Message {
   status?: MessageStatus;
   replyTo?: ReplyTo;
   isPinned?: boolean;
+  isStarred?: boolean;
+  starredAt?: Date | null;
   isDeleted?: boolean;
   readBy?: string[];
   lastReadAt?: Date;
