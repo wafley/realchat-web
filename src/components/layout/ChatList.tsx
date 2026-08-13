@@ -2,12 +2,11 @@ import { useState, useRef, useEffect, useMemo, useLayoutEffect, type ElementType
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
+import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2, Star } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
-import NotificationBell from '@/components/layout/NotificationBell';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP, type ChatConversation } from '@/services/chat';
@@ -300,15 +299,24 @@ export default function ChatList() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => navigate('/starred')}
+              aria-label="Starred messages"
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
+                location.pathname === '/starred'
+                  ? 'border-accent bg-accent/10 text-accent'
+                  : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+              )}
+            >
+              <Star size={18} />
+            </button>
+            <button
               onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
               aria-label="New chat"
               className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
             >
               <Plus size={20} />
             </button>
-            <div className="lg:hidden">
-              <NotificationBell />
-            </div>
             <Link to="/profile" className="lg:hidden">
               <Avatar className="h-8 w-8">
                 {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
