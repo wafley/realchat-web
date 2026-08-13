@@ -336,7 +336,7 @@ function onNotification(data: any) {
   });
 
   const prefs = loadPrefs();
-  const isGroup = data?.type === 'group' || data?.conversationType === 'group';
+  const isGroup = ['group', 'group_invite', 'mention'].includes(data?.type) || data?.conversationType === 'group';
 
   if (isGroup && !prefs.groups) return;
   if (!isGroup && !prefs.messages) return;

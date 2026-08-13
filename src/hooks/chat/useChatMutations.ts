@@ -338,7 +338,7 @@ export function useChatMutations({
   });
 
   const updateGroupMutation = useMutation({
-    mutationFn: (data: { name?: string; description?: string; avatarUrl?: string }) =>
+    mutationFn: (data: { name?: string; description?: string }) =>
       updateGroup(chatId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
