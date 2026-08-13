@@ -31,6 +31,11 @@ function formatTime(time?: string): string {
   return formatLastSeen(date) ?? time;
 }
 
+function clampText(s?: string, max = 50): string {
+  if (!s) return s ?? '';
+  return s.length > max ? `${s.slice(0, max).trimEnd()}...` : s;
+}
+
 export default function ChatList() {
   const navigate = useNavigate();
   const { groupId, userId } = useParams();
@@ -380,7 +385,7 @@ export default function ChatList() {
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{chat.name}</span>
                           <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatTime(chat.lastTime)}</span>
                         </div>
-                        <p className="truncate text-xs text-muted-foreground lg:text-sm">{chat.lastMessage}</p>
+                        <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm">{clampText(chat.lastMessage)}</p>
                       </div>
                     </Link>
                   );
@@ -411,9 +416,9 @@ export default function ChatList() {
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{msg.conversationName}</span>
                         <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatLastSeen(msg.createdAt)}</span>
                       </div>
-                      <p className="truncate text-xs text-muted-foreground lg:text-sm">
+                      <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm">
                         <span className="text-foreground/70">{msg.senderName}: </span>
-                        {msg.content}
+                        {clampText(msg.content)}
                       </p>
                     </div>
                   </Link>
@@ -510,15 +515,15 @@ export default function ChatList() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
+                      <span className="line-clamp-1 min-w-0 flex-1 text-xs text-muted-foreground lg:text-sm">
                         {typingMap[chat.id] ? (
                           <span className="text-accent">typing...</span>
                         ) : online ? (
-                          chat.lastMessage
+                          clampText(chat.lastMessage)
                         ) : lastSeen && shouldShowLastSeen() ? (
                           <span className="text-muted-foreground">last seen {formatLastSeen(lastSeen)}</span>
                         ) : (
-                          chat.lastMessage
+                          clampText(chat.lastMessage)
                         )}
                       </span>
                       <div className="flex shrink-0 items-center gap-2">

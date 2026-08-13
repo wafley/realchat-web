@@ -153,7 +153,7 @@ export default function Starred() {
                           : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
                       }`}>
                         <span className="flex min-w-0 items-end gap-1.5">
-                          <span className="min-w-0 whitespace-pre-wrap break-words pb-0.5">
+                          <span className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5">
                             {msg.content || (msg.type === 'image' ? '📷 Photo' : msg.type === 'video' ? '🎬 Video' : msg.type === 'file' ? (msg.fileName ?? '📎 Document') : '')}
                           </span>
                           <span className={`inline-flex select-none items-center gap-1 shrink-0 pb-0.5 text-[9px] lg:text-[10px] ${

@@ -173,7 +173,7 @@ function MessageBubbleComp({
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
                   <div className="flex items-end gap-1">
-                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap break-words`}>
+                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap [overflow-wrap:anywhere]`}>
                       {highlightText(displayedContent, searchQuery)}
                       {showReadMore && (
                         <button
@@ -217,7 +217,7 @@ function MessageBubbleComp({
                     preload="metadata"
                   />
                   <div className="flex items-end gap-1">
-                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap break-words`}>
+                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap [overflow-wrap:anywhere]`}>
                       {highlightText(displayedContent, searchQuery)}
                       {showReadMore && (
                         <button
@@ -270,7 +270,7 @@ function MessageBubbleComp({
             </div>
           ) : msg.isDeleted ? (
             <div className="flex items-end gap-1">
-              <p className="whitespace-pre-wrap break-words pb-0.5 text-sm italic opacity-50">
+              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5 text-sm italic opacity-50">
                 <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
                 <span>{msg.content}</span>
               </p>
@@ -278,7 +278,7 @@ function MessageBubbleComp({
             </div>
           ) : (
             <div className="flex min-w-0 items-end gap-1">
-              <p className="min-w-0 whitespace-pre-wrap break-words pb-0.5">
+              <p className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5">
                 {highlightText(displayedContent, searchQuery)}
                 {showReadMore && (
                   <button
