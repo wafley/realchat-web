@@ -134,52 +134,52 @@ export default function Starred() {
                   className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                   onClick={() => navigate(linkTo, { state: { name: meta.name } })}
                 >
-                  <div className="flex items-start gap-2.5">
-                  <Avatar className="mt-0.5 h-6 w-6 shrink-0">
-                    {meta.avatarUrl && <AvatarImage src={meta.avatarUrl} />}
-                    <AvatarFallback className="text-[9px]">
-                      {meta.type === 'group' ? <Users size={12} /> : <User size={12} />}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground lg:text-sm">
-                        {meta.name}
+                  <div className="flex w-full items-start gap-2.5">
+                    <Avatar className="mt-0.5 h-6 w-6 shrink-0">
+                      {meta.avatarUrl && <AvatarImage src={meta.avatarUrl} />}
+                      <AvatarFallback className="text-[9px]">
+                        {meta.type === 'group' ? <Users size={12} /> : <User size={12} />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex min-w-0 flex-1 flex-col items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="min-w-0 truncate text-xs font-medium text-foreground lg:text-sm">
+                          {meta.name}
+                        </span>
+                      </div>
+                      <span className={`inline-flex max-w-full rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base ${
+                        isOwn
+                          ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
+                          : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
+                      }`}>
+                        <span className="flex min-w-0 items-end gap-1.5">
+                          <span className="min-w-0 whitespace-pre-wrap break-words pb-0.5">
+                            {msg.content || (msg.type === 'image' ? '📷 Photo' : msg.type === 'video' ? '🎬 Video' : msg.type === 'file' ? (msg.fileName ?? '📎 Document') : '')}
+                          </span>
+                          <span className={`inline-flex select-none items-center gap-1 shrink-0 pb-0.5 text-[9px] lg:text-[10px] ${
+                            isOwn ? 'text-white/60' : 'text-muted-foreground/75'
+                          }`}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                unstarMutation.mutate({ convId: msg.groupId, msgId: msg.id });
+                              }}
+                              disabled={unstarMutation.isPending}
+                              aria-label="Unstar message"
+                              title="Unstar"
+                              className="transition-opacity hover:opacity-70 disabled:opacity-50"
+                            >
+                              {unstarMutation.isPending && unstarMutation.variables?.msgId === msg.id ? (
+                                <Loader2 size={10} className="animate-spin" />
+                              ) : (
+                                <Star size={10} className="fill-current" />
+                              )}
+                            </button>
+                            {clockTime(msg.createdAt)}
+                          </span>
+                        </span>
                       </span>
                     </div>
-                    <span className={`inline-flex max-w-full rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base ${
-                      isOwn
-                        ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
-                        : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
-                    }`}>
-                      <span className="flex min-w-0 items-end gap-1">
-                        <span className="min-w-0 truncate pb-0.5">
-                          {msg.content || (msg.type === 'image' ? '📷 Photo' : msg.type === 'video' ? '🎬 Video' : msg.type === 'file' ? (msg.fileName ?? '📎 Document') : '')}
-                        </span>
-                        <span className={`inline-flex select-none items-center gap-1 pb-0.5 text-[9px] lg:text-[10px] ${
-                          isOwn ? 'text-white/60' : 'text-muted-foreground/75'
-                        }`}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              unstarMutation.mutate({ convId: msg.groupId, msgId: msg.id });
-                            }}
-                            disabled={unstarMutation.isPending}
-                            aria-label="Unstar message"
-                            title="Unstar"
-                            className="transition-opacity hover:opacity-70 disabled:opacity-50"
-                          >
-                            {unstarMutation.isPending && unstarMutation.variables?.msgId === msg.id ? (
-                              <Loader2 size={10} className="animate-spin" />
-                            ) : (
-                              <Star size={10} className="fill-current" />
-                            )}
-                          </button>
-                          {clockTime(msg.createdAt)}
-                        </span>
-                      </span>
-                    </span>
-                  </div>
                   </div>
                 </div>
               );
