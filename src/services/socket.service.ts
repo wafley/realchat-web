@@ -6,9 +6,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
 import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, PaginatedResponse, Group } from '@/types';
+import type { Message, PaginatedResponse } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -241,21 +242,63 @@ function onMessageStarUpdated(data: { messageId: string; isStarred: boolean }) {
 }
 
 const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
+const typingNameCache = new Map<string, string>();
 
-function onTypingUpdate(data: { userId: string; conversationId: string; isTyping: boolean }) {
+async function fetchTypingName(userId: string): Promise<string> {
+  const cached = typingNameCache.get(userId);
+  if (cached) return cached;
+  try {
+    const user = await getUser(userId);
+    const name = user.fullName || user.username || '';
+    typingNameCache.set(userId, name);
+    return name;
+  } catch {
+    return '';
+  }
+}
+
+async function resolveTypingName(userId: string, conversationId: string): Promise<string> {
+  const convs = queryClient.getQueryData<
+    { id: string; type: string; name?: string; userId?: string }[]
+  >(['conversations']);
+  const conv = convs?.find((c) => c.id === conversationId);
+  if (conv?.type === 'dm') return conv.name || (await fetchTypingName(userId));
+  const group = queryClient.getQueryData<{
+    members?: { userId: string; user?: { fullName?: string | null; username?: string | null } }[];
+  }>(['group', conversationId]);
+  const member = group?.members?.find((m) => m.userId === userId);
+  const local = member?.user?.fullName || member?.user?.username;
+  if (local) return local;
+  return fetchTypingName(userId);
+}
+
+async function onTypingUpdate(data: { userId: string; conversationId: string; isTyping: boolean }) {
   const currentUserId = useAuthStore.getState().user?.id;
   if (data.userId === currentUserId) return;
-  if (typingTimeouts[data.conversationId]) {
-    clearTimeout(typingTimeouts[data.conversationId]);
-    delete typingTimeouts[data.conversationId];
+  const key = `${data.conversationId}:${data.userId}`;
+  if (typingTimeouts[key]) {
+    clearTimeout(typingTimeouts[key]);
+    delete typingTimeouts[key];
   }
   if (data.isTyping) {
-    typingTimeouts[data.conversationId] = setTimeout(() => {
-      useTypingStore.getState().setTyping(data.conversationId, false);
-      delete typingTimeouts[data.conversationId];
+    const name = await resolveTypingName(data.userId, data.conversationId);
+    typingTimeouts[key] = setTimeout(() => {
+      useTypingStore.getState().setTyping(data.conversationId, false, {
+        userId: data.userId,
+        name: '',
+      });
+      delete typingTimeouts[key];
     }, 10000);
+    useTypingStore.getState().setTyping(data.conversationId, true, {
+      userId: data.userId,
+      name,
+    });
+    return;
   }
-  useTypingStore.getState().setTyping(data.conversationId, data.isTyping);
+  useTypingStore.getState().setTyping(data.conversationId, false, {
+    userId: data.userId,
+    name: '',
+  });
 }
 
 function onPresenceUpdate(data: { userId?: string; id?: string; isOnline?: boolean; online?: boolean; lastSeen?: Date | string | null; lastSeenAt?: string | null }) {
@@ -308,21 +351,58 @@ function onPresenceGeneral(data: { userId?: string; id?: string; isOnline?: bool
   }
 }
 
-function onGroupUpdated(group: Group) {
-  queryClient.invalidateQueries({ queryKey: ['group', group.id] });
+function onGroupCreated(data: { conversationId: string; name?: string }) {
+  if (!data?.conversationId) return;
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
+  // 3.8: langsung join room grup baru
+  socketClient.joinRoom(data.conversationId);
+}
+
+function onGroupUpdated(data: { id: string }) {
+  queryClient.invalidateQueries({ queryKey: ['group', data.id] });
   queryClient.invalidateQueries({ queryKey: ['conversations'] });
 }
 
-function onGroupMemberAdd(data: { groupId: string }) {
-  queryClient.invalidateQueries({ queryKey: ['group', data.groupId] });
+function onGroupAvatarUpdated(data: { id: string }) {
+  queryClient.invalidateQueries({ queryKey: ['group', data.id] });
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
 }
 
-function onGroupMemberRemove(data: { groupId: string; userId: string }) {
-  queryClient.invalidateQueries({ queryKey: ['group', data.groupId] });
+function onGroupMemberAdd(data: { conversationId?: string; groupId?: string }) {
+  const id = data?.conversationId ?? data?.groupId;
+  if (!id) return;
+  queryClient.invalidateQueries({ queryKey: ['group', id] });
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
 }
 
-function onGroupMemberRole(data: { groupId: string }) {
-  queryClient.invalidateQueries({ queryKey: ['group', data.groupId] });
+function onGroupMemberRemove(data: { conversationId?: string; groupId?: string; targetUserId?: string; removedBy?: string }) {
+  const id = data?.conversationId ?? data?.groupId;
+  if (!id) return;
+  queryClient.invalidateQueries({ queryKey: ['group', id] });
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
+
+  // User sendiri dikeluarkan/di-remove dari grup → arahkan keluar chat room.
+  const currentUserId = useAuthStore.getState().user?.id;
+  const selfRemoved = data.targetUserId === currentUserId || data.removedBy === currentUserId;
+  if (selfRemoved) {
+    window.dispatchEvent(new CustomEvent('chat:forced-leave', { detail: { conversationId: id } }));
+  }
+}
+
+function onGroupMemberRole(data: { conversationId?: string; groupId?: string; targetUserId?: string; newRole?: string }) {
+  const id = data?.conversationId ?? data?.groupId;
+  if (!id) return;
+  queryClient.invalidateQueries({ queryKey: ['group', id] });
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
+}
+
+function onGroupDismissed(data: { conversationId: string }) {
+  const id = data?.conversationId;
+  if (!id) return;
+  queryClient.setQueryData<{ id: string }[]>(['conversations'], (prev) => (prev ?? []).filter((c) => c.id !== id));
+  queryClient.removeQueries({ queryKey: ['group', id] });
+  queryClient.removeQueries({ queryKey: ['messages', id] });
+  window.dispatchEvent(new CustomEvent('chat:forced-leave', { detail: { conversationId: id } }));
 }
 
 function onNotification(data: any) {
@@ -494,10 +574,13 @@ export function initSocket(token?: string) {
   socketClient.on('user:offline', onPresenceOffline);
   socketClient.on('user:status', onPresenceGeneral);
   socketClient.on('user_status', onPresenceGeneral);
+  socketClient.on('group:created', onGroupCreated);
   socketClient.on('group:updated', onGroupUpdated);
+  socketClient.on('group:avatar-updated', onGroupAvatarUpdated);
   socketClient.on('group:member-added', onGroupMemberAdd);
   socketClient.on('group:member-removed', onGroupMemberRemove);
   socketClient.on('group:member-role-changed', onGroupMemberRole);
+  socketClient.on('group:dismissed', onGroupDismissed);
   socketClient.on('contact:new', onContactChanged);
   socketClient.on('contact:remove', onContactChanged);
   socketClient.on('notification:new', onNotification);
@@ -523,10 +606,13 @@ export function destroySocket() {
   socketClient.off('user:offline', onPresenceOffline);
   socketClient.off('user:status', onPresenceGeneral);
   socketClient.off('user_status', onPresenceGeneral);
+  socketClient.off('group:created', onGroupCreated);
   socketClient.off('group:updated', onGroupUpdated);
+  socketClient.off('group:avatar-updated', onGroupAvatarUpdated);
   socketClient.off('group:member-added', onGroupMemberAdd);
   socketClient.off('group:member-removed', onGroupMemberRemove);
   socketClient.off('group:member-role-changed', onGroupMemberRole);
+  socketClient.off('group:dismissed', onGroupDismissed);
   socketClient.off('contact:new', onContactChanged);
   socketClient.off('contact:remove', onContactChanged);
   socketClient.off('notification:new', onNotification);

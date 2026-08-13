@@ -3,6 +3,7 @@ import { Loader2, AlertCircle, RefreshCw, MessageSquareText, ChevronDown } from 
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
+import { formatTypingLabel } from '@/store/typingStore';
 
 interface MessageListProps {
   chatId: string;
@@ -17,7 +18,7 @@ interface MessageListProps {
   activeMatchIndex: number;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
-  otherTyping: boolean;
+  typingNames: string[];
   currentUserId: string | undefined;
   scrollTriggerRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
@@ -49,7 +50,7 @@ export default function MessageList({
   activeMatchIndex,
   hasNextPage,
   isFetchingNextPage,
-  otherTyping,
+  typingNames,
   currentUserId,
   scrollTriggerRef,
   messagesEndRef,
@@ -213,7 +214,7 @@ export default function MessageList({
             );
           })}
           <div ref={messagesEndRef} />
-          {otherTyping && (
+          {typingNames.length > 0 && (
             <div className="flex items-center gap-2 px-1 py-1">
               <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-chat-incoming-bg px-4 py-3">
                 <div className="flex gap-1">
@@ -221,7 +222,7 @@ export default function MessageList({
                   <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
                   <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
                 </div>
-                <span className="text-xs text-muted-foreground">typing</span>
+                <span className="text-xs text-muted-foreground">{isDM ? 'typing...' : formatTypingLabel(typingNames)}</span>
               </div>
             </div>
           )}
