@@ -7,7 +7,6 @@ import { ArrowLeft, Star, Users, User, AlertCircle, RefreshCw, Loader2 } from 'l
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import { getStarredMessages, getConversations, unstarMessage, type StarredMessage } from '@/services/chat';
-import { formatLastSeen } from '@/utils/time';
 import { useAuthStore } from '@/store/authStore';
 import type { Message, PaginatedResponse } from '@/types';
 
@@ -145,9 +144,6 @@ export default function Starred() {
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground lg:text-sm">
                         {meta.name}
-                      </span>
-                      <span className="shrink-0 text-[10px] text-muted-foreground lg:text-xs">
-                        {formatLastSeen(msg.starredAt ?? msg.createdAt)}
                       </span>
                     </div>
                     <span className={`inline-flex max-w-full rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base ${
