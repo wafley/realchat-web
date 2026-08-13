@@ -210,13 +210,35 @@ function onMessagePinUpdated(data: { conversationId: string; messageId: string; 
   }
 }
 
+function onMessageStarUpdated(data: { messageId: string; isStarred: boolean }) {
+  if (DEV_MODE) return;
 
+  queryClient.invalidateQueries({ queryKey: ['starred'] });
 
+  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  if (!conversations) return;
 
-
-
-
-
+  for (const conv of conversations) {
+    const isDM = conv?.type === 'dm';
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+      ['messages', conv.id, isDM],
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            data: page.data.map((m) =>
+              m.id === data.messageId
+                ? { ...m, isStarred: data.isStarred, starredAt: data.isStarred ? new Date() : null }
+                : m,
+            ),
+          })),
+        };
+      },
+    );
+  }
+}
 
 const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -461,6 +483,7 @@ export function initSocket(token?: string) {
   socketClient.on('message:edited', onMessageEdited);
   socketClient.on('message:deleted', onMessageDeleted);
   socketClient.on('message:pin:updated', onMessagePinUpdated);
+  socketClient.on('message:star:updated', onMessageStarUpdated);
   socketClient.on('message:status', onMessageStatus);
   socketClient.on('typing:start', onTypingStart);
   socketClient.on('typing:stop', onTypingStop);
@@ -489,6 +512,7 @@ export function destroySocket() {
   socketClient.off('message:edited', onMessageEdited);
   socketClient.off('message:deleted', onMessageDeleted);
   socketClient.off('message:pin:updated', onMessagePinUpdated);
+  socketClient.off('message:star:updated', onMessageStarUpdated);
   socketClient.off('message:status', onMessageStatus);
   socketClient.off('typing:start', onTypingStart);
   socketClient.off('typing:stop', onTypingStop);
