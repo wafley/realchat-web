@@ -13,6 +13,8 @@ import {
   forwardMessage,
   pinMessage,
   unpinMessage,
+  starMessage,
+  unstarMessage,
   getPinnedMessages,
   sendFileMessage,
   getConversations,
@@ -267,6 +269,47 @@ export function useChatMutations({
     onError: () => toast.error('Failed to unpin message'),
   });
 
+  const updateMsgStar = useCallback(
+    (msgId: string, starred: boolean) => {
+      queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+        ['messages', chatId, isDM],
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              data: page.data.map((m) =>
+                m.id === msgId
+                  ? { ...m, isStarred: starred, starredAt: starred ? new Date() : null }
+                  : m,
+              ),
+            })),
+          };
+        },
+      );
+    },
+    [chatId, isDM],
+  );
+
+  const starMutation = useMutation({
+    mutationFn: (msgId: string) => starMessage(chatId, msgId),
+    onSuccess: (_data, msgId) => {
+      updateMsgStar(msgId, true);
+      queryClient.invalidateQueries({ queryKey: ['starred'] });
+    },
+    onError: () => toast.error('Failed to star message'),
+  });
+
+  const unstarMutation = useMutation({
+    mutationFn: (msgId: string) => unstarMessage(chatId, msgId),
+    onSuccess: (_data, msgId) => {
+      updateMsgStar(msgId, false);
+      queryClient.invalidateQueries({ queryKey: ['starred'] });
+    },
+    onError: () => toast.error('Failed to unstar message'),
+  });
+
   const { data: group } = useQuery({
     queryKey: ['group', chatId],
     queryFn: () => getGroup(chatId),
@@ -381,6 +424,8 @@ export function useChatMutations({
     forwardMutation,
     pinMutation,
     unpinMutation,
+    starMutation,
+    unstarMutation,
     sendFileMutation,
     toggleReactionMutation,
     updateGroupMutation,

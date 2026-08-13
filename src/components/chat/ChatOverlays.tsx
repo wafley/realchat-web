@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User as UserType } from '@/types';
@@ -283,6 +283,25 @@ export default function ChatOverlays({
               <Forward size={15} className="text-muted-foreground" />
               Forward
             </button>
+            {contextMenu.msg.isStarred ? (
+              <button
+                onClick={() => onContextMenuAction('unstar')}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                role="menuitem"
+              >
+                <StarOff size={15} className="text-muted-foreground" />
+                Unstar
+              </button>
+            ) : (
+              <button
+                onClick={() => onContextMenuAction('star')}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                role="menuitem"
+              >
+                <Star size={15} className="text-muted-foreground" />
+                Star
+              </button>
+            )}
             {contextMenu.msg.isPinned ? (
               <button
                 onClick={() => onContextMenuAction('unpin')}

@@ -98,6 +98,8 @@ export default function ChatRoom() {
     deleteMutation: mutations.deleteMutation,
     pinMutation: mutations.pinMutation,
     unpinMutation: mutations.unpinMutation,
+    starMutation: mutations.starMutation,
+    unstarMutation: mutations.unstarMutation,
     toggleReactionMutation: mutations.toggleReactionMutation,
     forwardMutation: mutations.forwardMutation,
     refetchPinned: mutations.refetchPinned,

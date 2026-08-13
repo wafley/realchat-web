@@ -92,6 +92,8 @@ interface UseChatActionsProps {
   deleteMutation: { mutate: (vars: { msgId: string; delForAll: boolean }) => void };
   pinMutation: { mutate: (msgId: string) => void };
   unpinMutation: { mutate: (msgId: string) => void };
+  starMutation: { mutate: (msgId: string) => void };
+  unstarMutation: { mutate: (msgId: string) => void };
   toggleReactionMutation: { mutate: (vars: { msgId: string; emoji: string }) => void };
   forwardMutation: { mutate: (vars: { targetChatId: string; msg: Message }) => void };
   refetchPinned: () => Promise<any>;
@@ -171,6 +173,8 @@ export function useChatActions(props: UseChatActionsProps) {
     deleteMutation,
     pinMutation,
     unpinMutation,
+    starMutation,
+    unstarMutation,
     toggleReactionMutation,
     forwardMutation,
     refetchPinned,
@@ -640,6 +644,12 @@ export function useChatActions(props: UseChatActionsProps) {
           break;
         case 'unpin':
           unpinMutation.mutate(msg.id);
+          break;
+        case 'star':
+          starMutation.mutate(msg.id);
+          break;
+        case 'unstar':
+          unstarMutation.mutate(msg.id);
           break;
         case 'read-receipts':
           setReadReceiptTarget(msg);
