@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User, Ban } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User, Ban } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
@@ -90,6 +90,7 @@ function MessageBubbleComp({
           : `pb-0.5 text-[9px] lg:text-[10px] ${isOwn ? 'text-white/60' : 'text-muted-foreground/75'}`
       }`}>
         {msg.isPinned && <Pin size={10} className={`shrink-0 ${isOverlay ? 'text-white' : 'text-foreground/80'}`} aria-label="Pinned" />}
+        {msg.isStarred && <Star size={10} className="shrink-0 fill-current" aria-label="Starred" />}
         {formatTime(msg.createdAt)}
         {isOwn && msg.status && (
           (msg.status === 'pending' || msg.status === 'sending') ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
