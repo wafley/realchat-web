@@ -50,7 +50,6 @@ export default function ChatRoom() {
     searchMatchIds: state.searchMatchIds,
     activeMatchIndex: state.activeMatchIndex,
     searchQuery: state.searchQuery,
-    muted: state.muted,
     chatName: state.chatName,
     otherUserId: state.otherUserId,
     selectedImage: state.selectedImage,
@@ -123,11 +122,23 @@ export default function ChatRoom() {
     };
   }, [state.chatId, state.isDM]);
 
+  // Dikeluarkan/di-remove dari grup atau grup di-dismiss → kembali ke daftar chat.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ conversationId: string }>).detail;
+      if (detail?.conversationId && detail.conversationId === state.chatId) {
+        navigate('/');
+      }
+    };
+    window.addEventListener('chat:forced-leave', handler);
+    return () => window.removeEventListener('chat:forced-leave', handler);
+  }, [state.chatId, navigate]);
+
   return (
     <div className="flex h-full flex-col">
       <ChatHeader
         chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
-        otherTyping={state.otherTyping}
+        typingLabel={state.typingLabel}
         chatOnline={state.chatOnline}
         isDM={state.isDM}
         muted={state.muted}
@@ -144,7 +155,7 @@ export default function ChatRoom() {
             state.setShowSearch(true);
           }
         }}
-        onToggleMute={actions.handleToggleMute}
+        onToggleMute={() => state.setMuteDialogOpen(true)}
         onBlockClick={() => state.setBlockConfirmOpen(true)}
         onReportClick={() => state.setReportConfirmOpen(true)}
         onGroupInfoClick={() => state.setGroupInfoOpen(true)}
@@ -230,7 +241,7 @@ export default function ChatRoom() {
         hasActiveSearch={state.hasActiveSearch}
         searchMatchIds={state.searchMatchIds}
         activeMatchIndex={state.activeMatchIndex}
-        otherTyping={state.otherTyping}
+        typingNames={state.typingNames}
         currentUserId={state.currentUser?.id}
         onRetry={() => state.refetch()}
         scrollTriggerRef={
@@ -333,6 +344,10 @@ export default function ChatRoom() {
           state.setClearConfirmOpen(false);
           mutations.clearChatMutation.mutate();
         }}
+        muteDialogOpen={state.muteDialogOpen}
+        muted={state.muted}
+        onCloseMute={() => state.setMuteDialogOpen(false)}
+        onMute={actions.handleMute}
         onCloseGroupInfo={() => state.setGroupInfoOpen(false)}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
         onUpdateGroup={(data) =>

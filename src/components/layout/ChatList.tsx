@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useMemo, useLayoutEffect, type ElementType
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2, Star } from 'lucide-react';
+import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2, Star, BellOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
-import { useTypingStore } from '@/store/typingStore';
+import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP, type ChatConversation } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
@@ -518,14 +518,19 @@ export default function ChatList() {
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">
                         {chat.name}
                       </span>
+                      {chat.muted && !isSelectionMode && (
+                        <BellOff size={13} className="shrink-0 text-muted-foreground/60" aria-label="Muted" />
+                      )}
                       <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">
                         {formatTime(chat.lastTime)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="line-clamp-1 min-w-0 flex-1 text-xs text-muted-foreground lg:text-sm">
-                        {typingMap[chat.id] ? (
-                          <span className="text-accent">typing...</span>
+                        {typingMap[chat.id]?.length ? (
+                          <span className="text-accent">
+                            {chat.type === 'dm' ? 'typing...' : formatTypingLabel(typingMap[chat.id]!.map((t) => t.name))}
+                          </span>
                         ) : online ? (
                           clampText(chat.lastMessage)
                         ) : lastSeen && shouldShowLastSeen() ? (

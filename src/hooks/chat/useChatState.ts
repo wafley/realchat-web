@@ -3,7 +3,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Message, User } from '@/types';
 import { useAuthStore } from '@/store/authStore';
-import { useTypingStore } from '@/store/typingStore';
+import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { getMessages, getConversations, getGroup, DM_USER_MAP } from '@/services/chat';
 import { isChatCleared } from '@/lib/chatCleared';
@@ -34,6 +34,7 @@ export function useChatState() {
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [muteDialogOpen, setMuteDialogOpen] = useState(false);
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
   const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
@@ -114,12 +115,14 @@ export function useChatState() {
     setSearchMatches([]);
     setActiveMatchIndex(0);
     return () => {
-      useTypingStore.getState().setTyping(chatId, false);
+      useTypingStore.getState().clearTyping(chatId);
     };
   }, [chatId]);
 
   const chatName = convFromList?.name || location.state?.name || 'Chat';
   const otherUserId = isDM && userId ? (convFromList?.userId || DM_USER_MAP[userId]) : undefined;
+
+  const senderNameCacheRef = useRef<Map<string, string>>(new Map());
 
   const resolveSenderName = useCallback(
     (senderId: string): string => {
@@ -130,7 +133,7 @@ export function useChatState() {
         if (name) return name;
       }
       if (isDM) return convFromList?.name || chatName;
-      return 'Unknown';
+      return senderNameCacheRef.current.get(senderId) || 'Unknown';
     },
     [currentUser, isDM, senderGroup, convFromList, chatName],
   );
@@ -139,7 +142,14 @@ export function useChatState() {
   const chatLastSeen = presence ? presence.lastSeen : (convFromList?.lastSeen ?? location.state?.lastSeen ?? null);
   const memberCount = location.state?.members ?? null;
 
-  const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);
+  const typers = useTypingStore((s) => s.typingMap[chatId]);
+  const otherTyping = (typers?.length ?? 0) > 0;
+  const typingNames = useMemo(() => (typers ?? []).map((t) => t.name).filter(Boolean), [typers]);
+  const typingLabel = useMemo(() => {
+    if (!otherTyping) return null;
+    if (isDM) return 'typing...';
+    return formatTypingLabel(typingNames);
+  }, [otherTyping, isDM, typingNames]);
 
   const {
     data,
@@ -166,6 +176,10 @@ export function useChatState() {
     const clearedAt = isChatCleared(chatId);
     const clearedMs = clearedAt ? new Date(clearedAt).getTime() : null;
     const raw = [...data.pages].reverse().flatMap((p) => p.data);
+    for (const msg of raw) {
+      const name = msg?.sender?.fullName;
+      if (name && msg?.senderId) senderNameCacheRef.current.set(msg.senderId, name);
+    }
     const map = new Map<string, Message>();
     for (const msg of raw) {
       if (msg && msg.id && (!clearedMs || new Date(msg.createdAt).getTime() >= clearedMs)) {
@@ -241,6 +255,8 @@ export function useChatState() {
     imagePreview, setImagePreview,
     showEmojiPicker, setShowEmojiPicker,
     otherTyping,
+    typingNames,
+    typingLabel,
     replyingTo, setReplyingTo,
     editingMsg, setEditingMsg,
     lightboxUrl, setLightboxUrl,
@@ -255,6 +271,7 @@ export function useChatState() {
     blockConfirmOpen, setBlockConfirmOpen,
     reportConfirmOpen, setReportConfirmOpen,
     clearConfirmOpen, setClearConfirmOpen,
+    muteDialogOpen, setMuteDialogOpen,
     readReceiptTarget, setReadReceiptTarget,
     reactingMsgId, setReactingMsgId,
     reactionPickerRect, setReactionPickerRect,

@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User, BellOff, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User as UserType } from '@/types';
@@ -44,9 +44,13 @@ interface ChatOverlaysProps {
   onReport: () => void;
   onCloseClear: () => void;
   onClear: () => void;
+  muteDialogOpen: boolean;
+  muted: boolean;
+  onCloseMute: () => void;
+  onMute: (option: 'unmute' | 'forever' | string) => Promise<void> | void;
   onCloseGroupInfo: () => void;
   onCloseReadReceipts: () => void;
-  onUpdateGroup: (data: { name?: string; description?: string; avatarUrl?: string }) => Promise<void>;
+  onUpdateGroup: (data: { name?: string; description?: string }) => Promise<void>;
   onAddMember: (userId: string) => Promise<void>;
   onRemoveMember: (userId: string) => Promise<void>;
   onLeaveGroup: () => Promise<void>;
@@ -86,6 +90,10 @@ export default function ChatOverlays({
   onReport,
   onCloseClear,
   onClear,
+  muteDialogOpen,
+  muted,
+  onCloseMute,
+  onMute,
   onCloseGroupInfo,
   onCloseReadReceipts,
   onUpdateGroup,
@@ -119,7 +127,7 @@ export default function ChatOverlays({
 
   const [savingEdit, setSavingEdit] = useState(false);
   const [roleLoading, setRoleLoading] = useState<string | null>(null);
-  const [_avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,16 +160,20 @@ export default function ChatOverlays({
   const handleSaveEdit = async () => {
     if (!editName.trim()) return;
     setSavingEdit(true);
-    let avatarUrl: string | undefined;
-    if (_avatarFile && group) {
-      avatarUrl = await uploadGroupAvatar(group.id, _avatarFile);
+    try {
+      // BREAKING (3.3): updateGroup PUT strict hanya name/description.
+      // Avatar di-upload terpisah via PUT /groups/:id/avatar.
+      if (avatarFile && group) {
+        await uploadGroupAvatar(group.id, avatarFile);
+      }
+      await onUpdateGroup({ name: editName.trim(), description: editDesc.trim() });
+    } finally {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      setSavingEdit(false);
+      setEditing(false);
     }
-    await onUpdateGroup({ name: editName.trim(), description: editDesc.trim(), avatarUrl: avatarUrl ?? avatarPreview ?? undefined });
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarFile(null);
-    setAvatarPreview(null);
-    setSavingEdit(false);
-    setEditing(false);
   };
 
   const handleAddSearch = async (q: string) => {
@@ -798,6 +810,42 @@ export default function ChatOverlays({
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">No read receipts available</p>
             )}
+          </div>
+        </Modal>
+      )}
+    {muteDialogOpen && (
+        <Modal open={muteDialogOpen} onClose={onCloseMute} title="Mute notifications">
+          <div className="space-y-1.5">
+            {muted && (
+              <button
+                onClick={() => { onCloseMute(); onMute('unmute'); }}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+              >
+                <span className="font-medium">Unmute</span>
+                <BellOff size={15} className="text-muted-foreground" />
+              </button>
+            )}
+            {[
+              { label: '15 minutes', ms: 15 * 60 * 1000 },
+              { label: '1 hour', ms: 60 * 60 * 1000 },
+              { label: '8 hours', ms: 8 * 60 * 60 * 1000 },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                onClick={() => { onCloseMute(); onMute(new Date(Date.now() + opt.ms).toISOString()); }}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+              >
+                <span>{opt.label}</span>
+                <Clock size={15} className="text-muted-foreground" />
+              </button>
+            ))}
+            <button
+              onClick={() => { onCloseMute(); onMute('forever'); }}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              <span>Forever</span>
+              <BellOff size={15} className="text-muted-foreground" />
+            </button>
           </div>
         </Modal>
       )}
