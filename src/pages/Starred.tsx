@@ -38,7 +38,9 @@ export default function Starred() {
     const found = conversations?.find((c) => c.id === msg.groupId);
     const isDM = (msg.conversationType ?? found?.type) === 'dm';
     let name = msg.conversationName ?? found?.name;
-    if (!name && isDM && msg.senderId !== me) {
+    if (msg.senderId === me) {
+      name = 'You';
+    } else if (!name && isDM && msg.senderId !== me) {
       name = msg.sender?.fullName || msg.sender?.username || '';
     }
     return {
@@ -123,6 +125,7 @@ export default function Starred() {
           <div role="list">
             {rows.map((msg) => {
               const meta = convMetaOf(msg);
+              const isOwn = msg.senderId === me;
               const linkTo = meta.type === 'dm' ? `/dm/${msg.groupId}` : `/chat/${msg.groupId}`;
               return (
                 <div
@@ -138,7 +141,7 @@ export default function Starred() {
                       {meta.type === 'group' ? <Users size={12} /> : <User size={12} />}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground lg:text-sm">
                         {meta.name}
@@ -148,7 +151,7 @@ export default function Starred() {
                       </span>
                     </div>
                     <span className={`inline-flex max-w-full rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base ${
-                      msg.senderId === me
+                      isOwn
                         ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
                         : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
                     }`}>
@@ -157,7 +160,7 @@ export default function Starred() {
                           {msg.content || (msg.type === 'image' ? '📷 Photo' : msg.type === 'video' ? '🎬 Video' : msg.type === 'file' ? (msg.fileName ?? '📎 Document') : '')}
                         </span>
                         <span className={`inline-flex select-none items-center gap-1 pb-0.5 text-[9px] lg:text-[10px] ${
-                          msg.senderId === me ? 'text-white/60' : 'text-muted-foreground/75'
+                          isOwn ? 'text-white/60' : 'text-muted-foreground/75'
                         }`}>
                           <button
                             onClick={(e) => {
