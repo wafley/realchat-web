@@ -87,10 +87,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await authService.getMe();
       set({ user, token, isAuthenticated: true, isLoading: false });
-    } catch {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+    } catch (error: any) {
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+      } else {
+        // Server down / Network error / 5xx error: keep token & authenticated state
+        set({ token, isAuthenticated: true, isLoading: false });
+      }
     }
   },
   updateProfile: async (payload: UpdateProfilePayload) => {

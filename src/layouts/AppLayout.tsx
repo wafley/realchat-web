@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
 import { useAuthStore } from '@/store/authStore';
-import { useSocketStore } from '@/store/socketStore';
 import { initSocket, destroySocket } from '@/services/socket.service';
 
 
@@ -12,11 +11,9 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    useSocketStore.getState().connect();
     initSocket();
     return () => {
       destroySocket();
-      useSocketStore.getState().disconnect();
     };
   }, [isAuthenticated]);
 

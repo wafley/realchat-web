@@ -28,6 +28,7 @@
   --chat-incoming-foreground: #fafafa;
   --chat-outgoing-bg: #3b82f6;
   --chat-outgoing-foreground: #fafafa;
+  --chat-status-unread: color-mix(in srgb, var(--chat-outgoing-bg) 40%, white);
   --chat-tile-overlay: rgba(0, 0, 0, 0.6);
   --scrollbar-track: #27272a;
   --scrollbar-thumb: #3f3f46;
@@ -58,6 +59,7 @@
   --chat-incoming-foreground: #18181b;
   --chat-outgoing-bg: #3b82f6;
   --chat-outgoing-foreground: #ffffff;
+  --chat-status-unread: color-mix(in srgb, var(--chat-outgoing-bg) 40%, white);
   --chat-tile-overlay: rgba(250, 250, 250, 0.85);
   --scrollbar-track: #f4f4f5;
   --scrollbar-thumb: #d4d4d8;
@@ -88,6 +90,7 @@
   --color-chat-incoming-foreground: var(--chat-incoming-foreground);
   --color-chat-outgoing-bg: var(--chat-outgoing-bg);
   --color-chat-outgoing-foreground: var(--chat-outgoing-foreground);
+  --color-chat-status-unread: var(--chat-status-unread);
   --color-chat-tile-overlay: var(--chat-tile-overlay);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { socketClient } from '@/lib/socket';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -76,16 +77,21 @@ api.interceptors.response.use(
       localStorage.setItem('accessToken', newAccessToken);
       localStorage.setItem('refreshToken', newRefreshToken);
 
+      socketClient.refreshAuthToken();
+
       processQueue(null, newAccessToken);
 
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       return api(originalRequest);
-    } catch (refreshError) {
+    } catch (refreshError: any) {
       processQueue(refreshError, null);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      window.dispatchEvent(new CustomEvent('auth:force-logout'));
-      window.location.href = '/login';
+      const isAuthError = refreshError.response?.status === 401 || refreshError.response?.status === 403;
+      if (isAuthError) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.dispatchEvent(new CustomEvent('auth:force-logout'));
+        window.location.href = '/login';
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

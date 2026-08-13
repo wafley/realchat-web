@@ -4,6 +4,7 @@ import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
+import { useNow } from '@/hooks/useNow';
 
 interface ChatHeaderProps {
   chatName: string;
@@ -55,6 +56,8 @@ export default function ChatHeader({
     if (moreOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [moreOpen]);
+
+  useNow(30000);
 
   return (
     <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">

@@ -60,6 +60,10 @@ export const router = createBrowserRouter([
                 path: 'dm/:userId',
                 lazy: () => import('@/pages/ChatRoom').then((m) => ({ Component: m.default })),
               },
+              {
+                path: 'starred',
+                lazy: () => import('@/pages/Starred').then((m) => ({ Component: m.default })),
+              },
             ],
           },
           {

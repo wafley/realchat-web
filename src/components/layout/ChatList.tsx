@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, type ElementType } from 'react';
+import { useState, useRef, useEffect, useMemo, useLayoutEffect, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,8 @@ import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_M
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
+import { isChatCleared } from '@/lib/chatCleared';
+import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
 import type { Conversation, SearchMessageResult } from '@/types';
 
@@ -46,18 +48,38 @@ export default function ChatList() {
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setMenuPos(null);
+      return;
+    }
+    const el = contextMenuRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const MARGIN = 8;
+    let x = contextMenu.x;
+    let y = contextMenu.y;
+    if (x + w > window.innerWidth - MARGIN) x = Math.max(MARGIN, window.innerWidth - w - MARGIN);
+    if (y + h > window.innerHeight - MARGIN) y = Math.max(MARGIN, window.innerHeight - h - MARGIN);
+    setMenuPos({ x, y });
+  }, [contextMenu]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [alsoDeleteMedia, setAlsoDeleteMedia] = useState(true);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useNow(30000);
+
   const typingMap = useTypingStore((s) => s.typingMap);
   const presenceMap = usePresenceStore((s) => s.presenceMap);
 
   const presenceOf = (chat: ChatConversation) => {
-    const uid = chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined;
+    const uid = chat.userId || (chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined);
     const presence = uid ? presenceMap[uid] : undefined;
     return presence
       ? { online: presence.isOnline, lastSeen: presence.lastSeen }
@@ -81,10 +103,12 @@ export default function ChatList() {
       }
       setToast({ message: 'Failed to delete chats. Please try again.' });
     },
+    onSuccess: () => {
+      setToast({ message: pendingDeleteIds.length > 1 ? 'Chats deleted' : 'Chat deleted' });
+    },
     onSettled: () => {
       setDeleteConfirmOpen(false);
       setDeleteLoading(false);
-      setAlsoDeleteMedia(true);
       exitSelectionMode();
     },
   });
@@ -99,7 +123,13 @@ export default function ChatList() {
   const filtered = conversations.filter((c) => {
     if (tab === 'messages' && c.type !== 'dm') return false;
     if (tab === 'groups' && c.type !== 'group') return false;
-    return c.name.toLowerCase().includes(search.toLowerCase());
+    if (!c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    const clearedAt = isChatCleared(c.id);
+    if (clearedAt) {
+      const lastTimeMs = c.lastTime ? Date.parse(c.lastTime) : NaN;
+      if (Number.isNaN(lastTimeMs) || lastTimeMs <= Date.parse(clearedAt)) return false;
+    }
+    return true;
   });
 
   const debouncedSearch = useDebounce(search, 300);
@@ -510,8 +540,9 @@ export default function ChatList() {
       {contextMenu && (
         <div className="fixed inset-0 z-50" onMouseDown={() => setContextMenu(null)}>
           <div
+            ref={contextMenuRef}
             className="absolute w-48 rounded-lg border border-border bg-popover py-1 shadow-lg"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            style={{ left: menuPos?.x ?? contextMenu.x, top: menuPos?.y ?? contextMenu.y }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
@@ -528,26 +559,15 @@ export default function ChatList() {
         </div>
       )}
 
-      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }} title="Delete Chat">
+      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); }} title="Delete Chat">
         <p className="mb-4 text-sm text-muted-foreground">
           {pendingDeleteIds.length === 1
             ? 'This chat will be deleted from your chat list. This action cannot be undone.'
             : `${pendingDeleteIds.length} chats will be deleted from your chat list. This action cannot be undone.`}
         </p>
-        <label className="mb-4 flex items-start gap-3 rounded-lg bg-accent/5 px-3 py-3">
-          <input
-            type="checkbox"
-            checked={alsoDeleteMedia}
-            onChange={(e) => setAlsoDeleteMedia(e.target.checked)}
-            className="mt-0.5 shrink-0 accent-accent"
-          />
-          <span className="text-sm text-foreground">
-            Also delete media received in {pendingDeleteIds.length === 1 ? 'this chat' : 'these chats'} from the device gallery
-          </span>
-        </label>
         <div className="flex justify-end gap-3">
           <button
-            onClick={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }}
+            onClick={() => { setDeleteConfirmOpen(false); }}
             className="rounded-lg border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
           >
             Cancel

@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message, Group, GroupMember, User as UserType } from '@/types';
 import { senderName, uploadGroupAvatar } from '@/services/chat';
+import { formatTime } from '@/lib/chatHelpers';
 
 interface ContextMenuData {
   msg: Message;
@@ -22,6 +23,7 @@ interface ChatOverlaysProps {
   lightboxUrl: string | null;
   blockConfirmOpen: boolean;
   reportConfirmOpen: boolean;
+  clearConfirmOpen: boolean;
   groupInfoOpen: boolean;
   readReceiptTarget: Message | null;
   group: Group | null;
@@ -40,6 +42,8 @@ interface ChatOverlaysProps {
   onBlock: () => void;
   onCloseReport: () => void;
   onReport: () => void;
+  onCloseClear: () => void;
+  onClear: () => void;
   onCloseGroupInfo: () => void;
   onCloseReadReceipts: () => void;
   onUpdateGroup: (data: { name?: string; description?: string; avatarUrl?: string }) => Promise<void>;
@@ -61,6 +65,7 @@ export default function ChatOverlays({
   lightboxUrl,
   blockConfirmOpen,
   reportConfirmOpen,
+  clearConfirmOpen,
   groupInfoOpen,
   readReceiptTarget,
   group,
@@ -79,6 +84,8 @@ export default function ChatOverlays({
   onBlock,
   onCloseReport,
   onReport,
+  onCloseClear,
+  onClear,
   onCloseGroupInfo,
   onCloseReadReceipts,
   onUpdateGroup,
@@ -115,6 +122,26 @@ export default function ChatOverlays({
   const [_avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setMenuPos(null);
+      return;
+    }
+    const el = contextMenuRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const MARGIN = 8;
+    let x = contextMenu.x;
+    let y = contextMenu.y;
+    if (x + w > window.innerWidth - MARGIN) x = Math.max(MARGIN, window.innerWidth - w - MARGIN);
+    if (y + h > window.innerHeight - MARGIN) y = Math.max(MARGIN, window.innerHeight - h - MARGIN);
+    setMenuPos({ x, y });
+  }, [contextMenu]);
 
   const handleStartEdit = () => {
     setEditName(group?.name ?? '');
@@ -207,8 +234,9 @@ export default function ChatOverlays({
       {contextMenu && (
         <div className="fixed inset-0 z-[90]" onClick={onCloseContextMenu}>
           <div
-            className="absolute w-48 origin-top-left animate-scale-in overflow-hidden rounded-xl border border-border bg-card py-1 shadow-2xl"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            ref={contextMenuRef}
+            className="absolute w-48 origin-top-left animate-scale-in max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-2xl"
+            style={{ left: menuPos?.x ?? contextMenu.x, top: menuPos?.y ?? contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
             role="menu"
             aria-label="Message actions"
@@ -255,6 +283,25 @@ export default function ChatOverlays({
               <Forward size={15} className="text-muted-foreground" />
               Forward
             </button>
+            {contextMenu.msg.isStarred ? (
+              <button
+                onClick={() => onContextMenuAction('unstar')}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                role="menuitem"
+              >
+                <StarOff size={15} className="text-muted-foreground" />
+                Unstar
+              </button>
+            ) : (
+              <button
+                onClick={() => onContextMenuAction('star')}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                role="menuitem"
+              >
+                <Star size={15} className="text-muted-foreground" />
+                Star
+              </button>
+            )}
             {contextMenu.msg.isPinned ? (
               <button
                 onClick={() => onContextMenuAction('unpin')}
@@ -391,6 +438,28 @@ export default function ChatOverlays({
               className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90"
             >
               Report
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {clearConfirmOpen && (
+        <Modal open={clearConfirmOpen} onClose={onCloseClear} title="Clear chat">
+          <p className="mb-4 text-sm text-muted-foreground">
+            Are you sure you want to clear this chat? Messages will only be cleared on your side.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onCloseClear}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent/10"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onClear}
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-90"
+            >
+              Clear
             </button>
           </div>
         </Modal>
@@ -718,6 +787,14 @@ export default function ChatOverlays({
                   <CheckCheck size={14} className="ml-auto text-accent" />
                 </div>
               ))
+            ) : readReceiptTarget.status === 'read' && readReceiptTarget.lastReadAt ? (
+              <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-foreground">Seen at {formatTime(readReceiptTarget.lastReadAt)}</span>
+                <CheckCheck size={14} className="ml-auto text-accent" />
+              </div>
             ) : (
               <p className="py-4 text-center text-sm text-muted-foreground">No read receipts available</p>
             )}

@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User, Ban } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
@@ -7,7 +7,9 @@ import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 interface MessageBubbleProps {
   msg: Message;
   isOwn: boolean;
-  name: string;
+  name?: string;
+  showAvatar: boolean;
+  showSpacer: boolean;
   searchQuery: string;
   hasActiveSearch: boolean;
   searchMatchIds: string[];
@@ -31,6 +33,8 @@ function MessageBubbleComp({
   msg,
   isOwn,
   name,
+  showAvatar,
+  showSpacer,
   searchQuery,
   hasActiveSearch,
   searchMatchIds,
@@ -78,19 +82,21 @@ function MessageBubbleComp({
     ? (msg.content || '').slice(0, 500) + '...'
     : (msg.content || '');
 
-  const renderTimestamp = (isOverlay = false) => {
+  const renderMeta = (isOverlay = false) => {
     return (
-      <span className={`inline-flex items-center gap-1 text-[9px] lg:text-[10px] select-none ${
-        isOverlay 
-          ? 'text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium' 
-          : `${isOwn ? 'text-white/60' : 'text-muted-foreground/75'} absolute bottom-1 right-2`
+      <span className={`inline-flex items-center gap-1 select-none ${
+        isOverlay
+          ? 'text-[9px] lg:text-[10px] text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium'
+          : `pb-0.5 text-[9px] lg:text-[10px] ${isOwn ? 'text-white/60' : 'text-muted-foreground/75'}`
       }`}>
+        {msg.isPinned && <Pin size={10} className={`shrink-0 ${isOverlay ? 'text-white' : 'text-foreground/80'}`} aria-label="Pinned" />}
+        {msg.isStarred && <Star size={10} className="shrink-0 fill-current" aria-label="Starred" />}
         {formatTime(msg.createdAt)}
         {isOwn && msg.status && (
-          msg.status === 'sending' ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : <CheckCheck size={13} className="text-blue-300 lg:size-3.5" />
+          (msg.status === 'pending' || msg.status === 'sending') ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
+          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
+          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
+          : <CheckCheck size={13} className="text-white lg:size-3.5" />
         )}
       </span>
     );
@@ -108,15 +114,17 @@ function MessageBubbleComp({
         >
           {isSelected ? <CheckSquare size={18} className="text-accent" /> : <Square size={18} className="text-muted-foreground" />}
         </button>
-      ) : !isOwn ? (
+      ) : showAvatar ? (
         <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
           <AvatarFallback className="text-xs lg:text-sm">
             <User size={14} />
           </AvatarFallback>
         </Avatar>
+      ) : showSpacer ? (
+        <div className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10" aria-hidden="true" />
       ) : null}
       <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''} flex flex-col min-w-0`}>
-        {!isOwn && (
+        {!isOwn && name && (
           <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
             {name}
           </p>
@@ -124,15 +132,7 @@ function MessageBubbleComp({
         <div
           onContextMenu={(e) => {
             e.preventDefault();
-            let x = e.clientX;
-            let y = e.clientY;
-            const menuW = 180;
-            const menuH = 200;
-            if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 8;
-            if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 8;
-            if (x < 8) x = 8;
-            if (y < 8) y = 8;
-            onContextMenu(msg, x, y);
+            onContextMenu(msg, e.clientX, e.clientY);
           }}
           onPointerDown={(e) => onLongPressStart(msg, e)}
           onPointerMove={onLongPressMove}
@@ -172,20 +172,23 @@ function MessageBubbleComp({
                     />
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
-                  <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
-                    {highlightText(displayedContent, searchQuery)}
-                    {showReadMore && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsExpanded(!isExpanded);
-                        }}
-                        className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
-                      >
-                        {isExpanded ? 'Read less' : 'Read more'}
-                      </button>
-                    )}
-                  </p>
+                  <div className="flex items-end gap-1">
+                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap break-words`}>
+                      {highlightText(displayedContent, searchQuery)}
+                      {showReadMore && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                          }}
+                          className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                        >
+                          {isExpanded ? 'Read less' : 'Read more'}
+                        </button>
+                      )}
+                    </p>
+                    {renderMeta(false)}
+                  </div>
                 </>
               ) : (
                 <div className="relative overflow-hidden">
@@ -198,7 +201,7 @@ function MessageBubbleComp({
                     loading="lazy"
                     decoding="async"
                   />
-                  {renderTimestamp(true)}
+                  {renderMeta(true)}
                 </div>
               )}
             </div>
@@ -213,20 +216,23 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  <p className="px-3 pb-2 pt-1.5 pr-14 text-sm lg:px-4 lg:pb-3 lg:pt-2 lg:text-base whitespace-pre-wrap break-words">
-                    {highlightText(displayedContent, searchQuery)}
-                    {showReadMore && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsExpanded(!isExpanded);
-                        }}
-                        className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
-                      >
-                        {isExpanded ? 'Read less' : 'Read more'}
-                      </button>
-                    )}
-                  </p>
+                  <div className="flex items-end gap-1">
+                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap break-words`}>
+                      {highlightText(displayedContent, searchQuery)}
+                      {showReadMore && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                          }}
+                          className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                        >
+                          {isExpanded ? 'Read less' : 'Read more'}
+                        </button>
+                      )}
+                    </p>
+                    {renderMeta(false)}
+                  </div>
                 </>
               ) : (
                 <div className="relative">
@@ -237,17 +243,17 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  {renderTimestamp(true)}
+                  {renderMeta(true)}
                 </div>
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="pb-1">
+            <div className="flex items-end gap-1 pb-0.5">
               <a
                 href={msg.fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 pr-14 transition-colors hover:bg-card"
+                className={`flex flex-1 items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 min-w-0 transition-colors hover:bg-card`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -260,34 +266,34 @@ function MessageBubbleComp({
                   )}
                 </div>
               </a>
+              {renderMeta(false)}
+            </div>
+          ) : msg.isDeleted ? (
+            <div className="flex items-end gap-1">
+              <p className="whitespace-pre-wrap break-words pb-0.5 text-sm italic opacity-50">
+                <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
+                <span>{msg.content}</span>
+              </p>
+              {renderMeta(false)}
             </div>
           ) : (
-            <p className="whitespace-pre-wrap break-words pr-14 pb-0.5">
-              {highlightText(displayedContent, searchQuery)}
-              {showReadMore && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
-                >
-                  {isExpanded ? 'Read less' : 'Read more'}
-                </button>
-              )}
-            </p>
-          )}
-          {msg.isPinned && !hasActiveSearch && (
-            <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground/50">
-              <Pin size={10} /> Pinned
-            </span>
-          )}
-
-          {/* Timestamps inside the bubble */}
-          {msg.type === 'image' || msg.type === 'video' ? (
-            msg.content && renderTimestamp(false)
-          ) : (
-            renderTimestamp(false)
+            <div className="flex min-w-0 items-end gap-1">
+              <p className="min-w-0 whitespace-pre-wrap break-words pb-0.5">
+                {highlightText(displayedContent, searchQuery)}
+                {showReadMore && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                  >
+                    {isExpanded ? 'Read less' : 'Read more'}
+                  </button>
+                )}
+              </p>
+              {renderMeta(false)}
+            </div>
           )}
         </div>
         {msg.edited && (

@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
-import { markConversationAsRead, toggleMuteConversation, blockUser, reportUser, searchUsers } from '@/services/chat';
+import { markConversationAsSeen, toggleMuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { usePrivacyStore } from '@/store/privacyStore';
+import { useAuthStore } from '@/store/authStore';
 import type { Message, ReplyTo } from '@/types';
 
 function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
@@ -52,7 +53,7 @@ interface UseChatActionsProps {
   setShowSearch: (v: boolean) => void;
   setSearchQuery: (v: string) => void;
   setShowEmojiPicker: (v: boolean) => void;
-  setReplyingTo: (msg: Message | null) => void;
+  setReplyingTo: React.Dispatch<React.SetStateAction<Message | null>>;
   setEditingMsg: (msg: Message | null) => void;
   setLightboxUrl: (url: string | null) => void;
   setContextMenu: (menu: { msg: Message; x: number; y: number } | null) => void;
@@ -69,9 +70,9 @@ interface UseChatActionsProps {
   setSearchMatches: (matches: string[]) => void;
   setActiveMatchIndex: (i: number) => void;
   setMuted: (v: boolean) => void;
-  setSelectedImage: (f: File | null) => void;
-  setImagePreview: (url: string | null) => void;
-  setSelectedFile: (f: File | null) => void;
+  setSelectedImage: React.Dispatch<React.SetStateAction<File | null>>;
+  setImagePreview: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedFile: React.Dispatch<React.SetStateAction<File | null>>;
   // Refs
   typingTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
   typingDoneTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
@@ -84,13 +85,15 @@ interface UseChatActionsProps {
   longPressTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
   longPressStartPosRef: React.RefObject<{ x: number; y: number } | null>;
   // Mutations
-  sendMutation: { mutate: (vars: { content: string; replyTo?: any }) => void };
-  sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any }) => void };
-  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }) => void };
+  sendMutation: { mutate: (vars: { content: string; replyTo?: any }, options?: { onError?: () => void }) => void; isPending: boolean };
+  sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any; preview?: string | null }, options?: { onError?: () => void }) => void; isPending: boolean };
+  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }, options?: { onError?: () => void }) => void; isPending: boolean };
   editMutation: { mutate: (vars: { msgId: string; content: string }) => void };
   deleteMutation: { mutate: (vars: { msgId: string; delForAll: boolean }) => void };
   pinMutation: { mutate: (msgId: string) => void };
   unpinMutation: { mutate: (msgId: string) => void };
+  starMutation: { mutate: (msgId: string) => void };
+  unstarMutation: { mutate: (msgId: string) => void };
   toggleReactionMutation: { mutate: (vars: { msgId: string; emoji: string }) => void };
   forwardMutation: { mutate: (vars: { targetChatId: string; msg: Message }) => void };
   refetchPinned: () => Promise<any>;
@@ -170,6 +173,8 @@ export function useChatActions(props: UseChatActionsProps) {
     deleteMutation,
     pinMutation,
     unpinMutation,
+    starMutation,
+    unstarMutation,
     toggleReactionMutation,
     forwardMutation,
     refetchPinned,
@@ -181,6 +186,8 @@ export function useChatActions(props: UseChatActionsProps) {
 
   const isInitialLoadRef = useRef(true);
   const ioCooldownRef = useRef(false);
+  const typingActiveRef = useRef(false);
+  const emittedReadIdsRef = useRef<Set<string>>(new Set());
 
   // --- Effects ---
 
@@ -188,6 +195,8 @@ export function useChatActions(props: UseChatActionsProps) {
     isInitialLoadRef.current = true;
     ioCooldownRef.current = false;
     prevLastMsgIdRef.current = null;
+    typingActiveRef.current = false;
+    emittedReadIdsRef.current = new Set();
   }, [chatId]);
 
   useEffect(() => {
@@ -221,37 +230,69 @@ export function useChatActions(props: UseChatActionsProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEmojiPicker]);
 
-  useEffect(() => {
-    if (!chatId) return;
-    if (!input) return;
-    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
-    typingTimerRef.current = setTimeout(() => {
-      emitTypingStart(chatId);
-      typingDoneTimerRef.current = setTimeout(() => {
-        emitTypingStop(chatId);
-      }, 3000);
-    }, 1500);
-    const handleBeforeUnload = () => emitTypingStop(chatId);
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-      if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
+  const stopTyping = useCallback(() => {
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    if (typingActiveRef.current) {
+      typingActiveRef.current = false;
       emitTypingStop(chatId);
-    };
-  }, [input, chatId]);
+    }
+  }, [chatId]);
 
   useEffect(() => {
     if (!chatId) return;
-    if (usePrivacyStore.getState().readReceipts) {
-      markConversationAsRead(chatId);
+    if (typingDoneTimerRef.current) clearTimeout(typingDoneTimerRef.current);
+    if (!input) {
+      stopTyping();
+      return;
     }
+    if (!typingActiveRef.current && !typingTimerRef.current) {
+      typingTimerRef.current = setTimeout(() => {
+        typingTimerRef.current = null;
+        typingActiveRef.current = true;
+        emitTypingStart(chatId);
+      }, 300);
+    }
+    typingDoneTimerRef.current = setTimeout(stopTyping, 10000);
+    const handleBeforeUnload = () => stopTyping();
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [input, chatId, stopTyping]);
+
+  useEffect(() => {
+    return () => {
+      stopTyping();
+    };
+  }, [chatId, stopTyping]);
+
+  useEffect(() => {
+    if (!chatId) return;
     queryClient.setQueryData<{ id: string; unread?: number }[]>(['conversations'], (prev) => {
       if (!prev) return prev;
       return prev.map((c) => (c.id === chatId ? { ...c, unread: 0 } : c));
     });
+    const convs = queryClient.getQueryData<{ id: string; unread?: number }[]>(['conversations']);
+    if (convs) {
+      saveLocalUnread(Object.fromEntries(convs.map((c) => [c.id, c.unread ?? 0])));
+    }
   }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId || !usePrivacyStore.getState().readReceipts) return;
+    const currentUserId = useAuthStore.getState().user?.id;
+    const fromOthers = messages.filter((m) => m.senderId !== currentUserId);
+    if (fromOthers.length === 0) return;
+    const last = fromOthers.reduce((a, b) =>
+      new Date(b.createdAt).getTime() > new Date(a.createdAt).getTime() ? b : a,
+    );
+    if (emittedReadIdsRef.current.has(last.id)) return;
+    emittedReadIdsRef.current.add(last.id);
+    markConversationAsSeen(chatId, last.id);
+  }, [messages, chatId]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -327,6 +368,7 @@ export function useChatActions(props: UseChatActionsProps) {
         clearTimeout(typingDoneTimerRef.current);
         typingDoneTimerRef.current = null;
       }
+      typingActiveRef.current = false;
     };
   }, []);
 
@@ -448,22 +490,43 @@ export function useChatActions(props: UseChatActionsProps) {
       const file = selectedImage;
       const caption = input.trim();
       const rp = buildReplyTo(replyingTo);
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-      setSelectedImage(null);
-      setImagePreview(null);
+      const preview = imagePreview;
+      if (sendImageMutation.isPending) return;
       setInput('');
       setReplyingTo(null);
-      sendImageMutation.mutate({ file, caption, replyTo: rp });
+      setSelectedImage(null);
+      setImagePreview(null);
+      sendImageMutation.mutate(
+        { file, caption, replyTo: rp, preview },
+        {
+          onError: () => {
+            setInput((prev) => prev || caption);
+            setReplyingTo((prev) => prev ?? replyingTo);
+            setSelectedImage((prev) => prev || file);
+            setImagePreview((prev) => prev || preview);
+          },
+        },
+      );
     } else if (selectedFile) {
       const file = selectedFile;
       const caption = input.trim();
       const rp = buildReplyTo(replyingTo);
-      setSelectedFile(null);
+      if (sendFileMutation.isPending) return;
       setInput('');
       setReplyingTo(null);
-      sendFileMutation.mutate({ file, caption, replyTo: rp });
+      setSelectedFile(null);
+      sendFileMutation.mutate(
+        { file, caption, replyTo: rp },
+        {
+          onError: () => {
+            setInput((prev) => prev || caption);
+            setReplyingTo((prev) => prev ?? replyingTo);
+            setSelectedFile((prev) => prev || file);
+          },
+        },
+      );
     }
-  }, [selectedImage, selectedFile, input, replyingTo, imagePreview]);
+  }, [selectedImage, selectedFile, input, replyingTo, imagePreview, sendImageMutation, sendFileMutation]);
 
   const handleCancelImage = useCallback(() => {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
@@ -581,6 +644,12 @@ export function useChatActions(props: UseChatActionsProps) {
           break;
         case 'unpin':
           unpinMutation.mutate(msg.id);
+          break;
+        case 'star':
+          starMutation.mutate(msg.id);
+          break;
+        case 'unstar':
+          unstarMutation.mutate(msg.id);
           break;
         case 'read-receipts':
           setReadReceiptTarget(msg);
@@ -726,10 +795,19 @@ export function useChatActions(props: UseChatActionsProps) {
     }
     const text = input.trim();
     if (!text) return;
+    if (sendMutation.isPending) return;
     const rp = buildReplyTo(replyingTo);
     setInput('');
     setReplyingTo(null);
-    sendMutation.mutate({ content: text, replyTo: rp });
+    sendMutation.mutate(
+      { content: text, replyTo: rp },
+      {
+        onError: () => {
+          setInput((prev) => prev || text);
+          setReplyingTo((prev) => prev ?? replyingTo);
+        },
+      },
+    );
   }, [selectedImage, selectedFile, input, replyingTo, sendMutation, handleSendImage]);
 
   const handleSearchUsers = useCallback(async (query: string) => {

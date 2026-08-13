@@ -13,6 +13,8 @@ import {
   forwardMessage,
   pinMessage,
   unpinMessage,
+  starMessage,
+  unstarMessage,
   getPinnedMessages,
   sendFileMessage,
   getConversations,
@@ -25,12 +27,13 @@ import {
   deleteGroup,
   updateMemberRole,
   clearChat,
+  simulateDevReceipts,
+  refreshConversationPreview,
 } from '@/services/chat';
 
 interface UseChatMutationsProps {
   chatId: string;
   isDM: boolean;
-  deleteTarget: Message | null;
   setDeleteTarget: (msg: Message | null) => void;
   setDeleteLoading: (v: boolean) => void;
   setForwardTarget: (msg: Message | null) => void;
@@ -44,7 +47,6 @@ interface UseChatMutationsProps {
 export function useChatMutations({
   chatId,
   isDM,
-  deleteTarget,
   setDeleteTarget,
   setDeleteLoading,
   setForwardTarget,
@@ -62,6 +64,9 @@ export function useChatMutations({
         ['messages', chatId, isDM],
         (prev) => {
            if (!prev) return prev;
+           if (prev.pages.length === 0) {
+             return { ...prev, pages: [{ data: [newMsg], total: 1, page: 1, limit: 50, totalPages: 1 }] };
+           }
            if (prev.pages[0].data.some((m) => m.id === newMsg.id)) return prev;
            const [firstPage, ...rest] = prev.pages;
            return {
@@ -81,11 +86,12 @@ export function useChatMutations({
           const updated = prev.map((c) =>
             c.id === chatId ? { ...c, lastMessage: preview, lastTime: new Date().toISOString() } : c,
           );
-          const idx = updated.findIndex((c) => c.id === chatId);
-          if (idx <= 0) return updated;
-          return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
-        },
+      const idx = updated.findIndex((c) => c.id === chatId);
+      if (idx <= 0) return updated;
+      return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
+    },
       );
+      simulateDevReceipts(chatId, newMsg.id, isDM);
     },
     [chatId, isDM],
   );
@@ -127,13 +133,25 @@ export function useChatMutations({
   });
 
   const sendImageMutation = useMutation({
-    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo; preview?: string | null }) =>
       sendImageMessage(chatId, file, isDM, caption || undefined, rp),
+    onSuccess(r, vars) {
+      onMessageSent(r);
+      if (vars.preview) URL.revokeObjectURL(vars.preview);
+    },
+    onError() {
+      toast.error('Failed to send image. Please try again.');
+    },
+  });
+
+  const sendFileMutation = useMutation({
+    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
+      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
     onSuccess(r) {
       onMessageSent(r);
     },
     onError() {
-      toast.error('Failed to send image. Please try again.');
+      toast.error('Failed to send file. Please try again.');
     },
   });
 
@@ -181,6 +199,7 @@ export function useChatMutations({
                             fileUrl: undefined,
                             fileName: undefined,
                             replyTo: undefined,
+                            isDeleted: true,
                           }
                         : m,
                     ),
@@ -198,20 +217,8 @@ export function useChatMutations({
       }
       toast.error('Failed to delete message. Please try again.');
     },
-    onSuccess: (_data, { delForAll }) => {
-      if (!delForAll) {
-        queryClient.setQueryData<{ id: string; lastMessage?: string }[]>(
-          ['conversations'],
-          (prev) => {
-            if (!prev) return prev;
-            return prev.map((c) =>
-              c.id === chatId && c.lastMessage === deleteTarget?.content
-                ? { ...c, lastMessage: 'You deleted this message' }
-                : c,
-            );
-          },
-        );
-      }
+    onSuccess: () => {
+      refreshConversationPreview(chatId, isDM);
       toast.success('Message deleted');
     },
     onSettled: () => {
@@ -262,15 +269,45 @@ export function useChatMutations({
     onError: () => toast.error('Failed to unpin message'),
   });
 
-  const sendFileMutation = useMutation({
-    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
-      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
-    onSuccess(r) {
-      onMessageSent(r);
+  const updateMsgStar = useCallback(
+    (msgId: string, starred: boolean) => {
+      queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+        ['messages', chatId, isDM],
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              data: page.data.map((m) =>
+                m.id === msgId
+                  ? { ...m, isStarred: starred, starredAt: starred ? new Date() : null }
+                  : m,
+              ),
+            })),
+          };
+        },
+      );
     },
-    onError() {
-      toast.error('Failed to send file. Please try again.');
+    [chatId, isDM],
+  );
+
+  const starMutation = useMutation({
+    mutationFn: (msgId: string) => starMessage(chatId, msgId),
+    onSuccess: (_data, msgId) => {
+      updateMsgStar(msgId, true);
+      queryClient.invalidateQueries({ queryKey: ['starred'] });
     },
+    onError: () => toast.error('Failed to star message'),
+  });
+
+  const unstarMutation = useMutation({
+    mutationFn: (msgId: string) => unstarMessage(chatId, msgId),
+    onSuccess: (_data, msgId) => {
+      updateMsgStar(msgId, false);
+      queryClient.invalidateQueries({ queryKey: ['starred'] });
+    },
+    onError: () => toast.error('Failed to unstar message'),
   });
 
   const { data: group } = useQuery({
@@ -364,7 +401,7 @@ export function useChatMutations({
   const clearChatMutation = useMutation({
     mutationFn: () => clearChat(chatId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
+      queryClient.setQueryData(['messages', chatId, isDM], { pages: [], pageParams: [] });
       toast.success('Chat cleared');
     },
     onError: () => toast.error('Failed to clear chat'),
@@ -387,6 +424,8 @@ export function useChatMutations({
     forwardMutation,
     pinMutation,
     unpinMutation,
+    starMutation,
+    unstarMutation,
     sendFileMutation,
     toggleReactionMutation,
     updateGroupMutation,

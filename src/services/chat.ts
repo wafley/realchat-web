@@ -1,5 +1,11 @@
 import api from '@/lib/api';
-import type { Message, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
+import { socketClient } from '@/lib/socket';
+import { queryClient } from '@/lib/queryClient';
+import { useAuthStore } from '@/store/authStore';
+import { markChatCleared } from '@/lib/chatCleared';
+import { hideChats, isChatDeleted } from '@/lib/chatDeleted';
+import type { InfiniteData } from '@tanstack/react-query';
+import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { MOCK_CONTACTS } from '@/mocks/contacts';
 import { delay } from '@/mocks/utils';
@@ -9,6 +15,7 @@ import {
   MOCK_MESSAGES,
   MOCK_SENDER_MAP,
   DM_USER_MAP,
+  GROUP_MEMBER_IDS,
   populateReadBy,
   type ChatConversation,
 } from '@/mocks/chat';
@@ -48,13 +55,14 @@ export async function findOrCreateConversation(userId: string): Promise<string> 
   const { data } = await api.post<{ id?: string; conversationId?: string; conversation?: { id?: string }; data?: { id?: string } }>('/conversations', { type: 'PRIVATE', participantId: userId });
   const id = data?.id ?? data?.conversation?.id ?? data?.conversationId ?? data?.data?.id;
   if (!id) throw new Error('Failed to create conversation: no id in response');
+  DM_USER_MAP[id] = userId;
   return id;
 }
 
 let groupIdCounter = 10;
 let msgCounter = 100;
 
-interface RemoteMessage {
+export interface RemoteMessage {
   id: string;
   conversationId?: string;
   senderId: string;
@@ -62,12 +70,44 @@ interface RemoteMessage {
   content: string;
   replyToId?: string | null;
   isPinned?: boolean | null;
+  isStarred?: boolean | null;
+  starredAt?: string | null;
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
+  status?: string | null;
+  seenAt?: string | null;
   createdAt?: string | null;
+  editedAt?: string | null;
+  sender?: { id: string; username?: string | null; fullName?: string | null; avatarUrl?: string | null };
+  conversation?: { id: string; type?: string; name?: string | null; avatarUrl?: string | null };
 }
 
-function mapMessage(row: RemoteMessage): Message {
+export interface StarredMessage extends Message {
+  conversationName?: string;
+  conversationType?: string;
+  conversationAvatarUrl?: string;
+}
+
+function normalizeStatus(status?: string | null): MessageStatus | undefined {
+  switch (status?.toUpperCase()) {
+    case 'PENDING':
+      return 'pending';
+    case 'SENT':
+      return 'sent';
+    case 'DELIVERED':
+      return 'delivered';
+    case 'SEEN':
+      return 'read';
+    default:
+      return undefined;
+  }
+}
+
+export function normalizeRemoteStatus(status?: string | null): MessageStatus | undefined {
+  return normalizeStatus(status);
+}
+
+export function mapMessage(row: RemoteMessage): Message {
   const type: Message['type'] =
     row.type === 'image' || row.type === 'file' || row.type === 'video' || row.type === 'system'
       ? row.type
@@ -79,6 +119,11 @@ function mapMessage(row: RemoteMessage): Message {
     content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
     type,
     isPinned: row.isPinned ?? false,
+    isStarred: row.isStarred ?? false,
+    starredAt: row.starredAt ? new Date(row.starredAt) : null,
+    isDeleted: row.isDeleted ?? false,
+    status: normalizeStatus(row.status) ?? (row.senderId === useAuthStore.getState().user?.id ? 'sent' : undefined),
+    lastReadAt: row.seenAt ? new Date(row.seenAt) : undefined,
     edited: row.isEdited ?? false,
     replyTo: row.replyToId
       ? { id: row.replyToId, senderId: '', senderName: '', content: '', type: 'text' }
@@ -103,7 +148,7 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
       const data = [...all].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()).map((m) => ({
         ...m,
-        status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : undefined),
+        status: m.status ?? (m.senderId === DEV_USER_ID ? conv?.online ? 'delivered' as const : 'sent' as const : 'read' as const),
         readBy: m.readBy ?? populateReadBy(m),
         sender: { id: m.senderId, username: '', fullName: senderName(m.senderId), email: '', status: 'online' as const, createdAt: new Date() },
       }));
@@ -115,10 +160,16 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
     });
     const raw = Array.isArray(data) ? (data as RemoteMessage[]) : (data?.messages ?? []);
     const mapped = raw.map(mapMessage).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    if (_isDM && !DM_USER_MAP[chatId]) {
+      const me = useAuthStore.getState().user?.id;
+      const peer = mapped.find((m) => m.senderId !== me)?.senderId;
+      if (peer) DM_USER_MAP[chatId] = peer;
+    }
+    const visible = applyDeletedForMe(chatId, mapped);
     const nextCursor = !Array.isArray(data) ? (data?.nextCursor ?? null) : null;
     return {
-      data: mapped,
-      total: mapped.length,
+      data: visible,
+      total: visible.length,
       page: cursor ? 2 : 1,
       limit,
       totalPages: nextCursor ? 2 : 1,
@@ -143,7 +194,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
         type: 'image',
         fileUrl: url,
         fileName: file.name,
-        status: 'sent',
+        status: 'pending',
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -166,7 +217,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
     if (caption) form.append('caption', caption);
     if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
     const { data } = await api.post<Message>(`${endpoint}`, form);
-    return data;
+    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send image');
   }
@@ -178,14 +229,13 @@ export async function sendMessage(chatId: string, content: string, _isDM: boolea
       await delay(200);
       msgCounter++;
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      const online = conv?.online ?? true;
       const msg: Message = {
         id: `msg-${msgCounter}`,
         groupId: chatId,
         senderId: DEV_USER_ID,
         content,
         type: 'text',
-        status: online ? 'delivered' as const : 'sent' as const,
+        status: 'pending',
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -201,11 +251,14 @@ export async function sendMessage(chatId: string, content: string, _isDM: boolea
       return msg;
     }
 
-    const { data } = await api.post<Message>(`/conversations/${chatId}/messages`, {
-      content,
-      replyToId: replyTo?.id,
-    });
-    return data;
+    const replyToId = replyTo?.id;
+    if (!socketClient.isConnected) {
+      throw new Error('Realtime connection unavailable. Please try again.');
+    }
+    const res = await socketClient.sendMessageAck(chatId, content, replyToId);
+    if (res.error) throw new Error(res.error);
+    if (!res.data) throw new Error('Failed to send message');
+    return mapMessage(res.data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send message');
   }
@@ -225,11 +278,37 @@ export async function editMessage(chatId: string, messageId: string, content: st
       return { ...msgs[idx] };
     }
 
-    const { data } = await api.put<Message>(`/conversations/${chatId}/messages/${messageId}`, { content });
-    return data;
+    const { data } = await api.put<RemoteMessage>(`/conversations/${chatId}/messages/${messageId}`, { content });
+    return mapMessage({ ...data, isEdited: true });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to edit message');
   }
+}
+
+// --- Delete for me (client-local) ---
+
+const DELETED_FOR_ME_KEY = 'hw_deleted_for_me';
+
+function loadDeletedForMe(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DELETED_FOR_ME_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDeletedForMe(ids: Set<string>): void {
+  try {
+    localStorage.setItem(DELETED_FOR_ME_KEY, JSON.stringify(Array.from(ids)));
+  } catch {}
+}
+
+function applyDeletedForMe(chatId: string, msgs: Message[]): Message[] {
+  const deleted = loadDeletedForMe();
+  if (deleted.size === 0) return msgs;
+  const prefix = `${chatId}:`;
+  return msgs.filter((m) => !deleted.has(prefix + m.id));
 }
 
 export async function deleteMessage(chatId: string, messageId: string, deleteForAll: boolean): Promise<void> {
@@ -255,15 +334,24 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
       return;
     }
 
-    await api.delete(`/conversations/${chatId}/messages/${messageId}`, {
-      data: { deleteForAll },
-    });
+    if (!deleteForAll) {
+      const deleted = loadDeletedForMe();
+      deleted.add(`${chatId}:${messageId}`);
+      persistDeletedForMe(deleted);
+      return;
+    }
+
+    if (!socketClient.isConnected) {
+      throw new Error('Realtime connection unavailable. Please try again.');
+    }
+    const res = await socketClient.deleteMessageAck(chatId, messageId);
+    if (res.error) throw new Error(res.error);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete message');
   }
 }
 
-export async function markConversationAsRead(chatId: string): Promise<void> {
+export async function markConversationAsSeen(chatId: string, lastSeenMessageId?: string): Promise<void> {
   try {
     if (DEV_MODE) {
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
@@ -274,16 +362,65 @@ export async function markConversationAsRead(chatId: string): Promise<void> {
           if (m.senderId !== DEV_USER_ID && !m.readBy?.includes(DEV_USER_ID)) {
             m.readBy = [...(m.readBy ?? []), DEV_USER_ID];
             m.status = 'read';
+            m.lastReadAt = new Date();
           }
         });
       }
       return;
     }
 
-    await api.post(`/conversations/${chatId}/read`);
+    // Kontrak #17: client → server message:seen { conversationId, lastSeenMessageId }.
+    // userId diambil server dari socket auth. Server throttle 500ms + idempotent.
+    if (socketClient.isConnected && lastSeenMessageId) {
+      socketClient.emitMessageSeen(chatId, lastSeenMessageId);
+    }
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to mark as read');
+    throw err instanceof Error ? err : new Error('Failed to mark as seen');
   }
+}
+
+const STATUS_ORDER: Record<MessageStatus, number> = { pending: 0, sending: 1, sent: 2, delivered: 3, read: 4 };
+
+export function statusIsAtLeast(status: MessageStatus | undefined, min: MessageStatus): boolean {
+  if (!status) return false;
+  return STATUS_ORDER[status] >= STATUS_ORDER[min];
+}
+
+export function simulateDevReceipts(chatId: string, messageId: string, isDM: boolean): void {
+  if (!DEV_MODE) return;
+  const readerId = DM_USER_MAP[chatId] ?? GROUP_MEMBER_IDS[0] ?? null;
+
+  const patch = (status: MessageStatus, readBy?: string[]) => {
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+      ['messages', chatId, isDM],
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            data: page.data.map((m) => {
+              if (m.id !== messageId) return m;
+              const next: Message = { ...m, status, lastReadAt: status === 'read' ? new Date() : m.lastReadAt };
+              if (readBy && readBy.length > 0 && !m.readBy?.includes(readBy[0])) {
+                next.readBy = [...(m.readBy ?? []), ...readBy];
+              }
+              return next;
+            }),
+          })),
+        };
+      },
+    );
+    const mock = MOCK_MESSAGES[chatId];
+    const idx = mock?.findIndex((m) => m.id === messageId);
+    if (mock && idx !== undefined && idx >= 0) {
+      mock[idx] = { ...mock[idx], status, ...(status === 'read' ? { lastReadAt: new Date() } : {}), ...(readBy && readBy.length > 0 ? { readBy: [...(mock[idx].readBy ?? []), ...readBy] } : {}) };
+    }
+  };
+
+  setTimeout(() => patch('sent'), 700);
+  setTimeout(() => patch('delivered'), 1800);
+  setTimeout(() => patch('read', readerId ? [readerId] : undefined), 3500);
 }
 
 interface RemoteConversation {
@@ -298,6 +435,13 @@ interface RemoteConversation {
   lastSeenAt?: string | null;
   memberCount?: number | null;
   mutedUntil?: string | null;
+  unread?: number | null;
+  unreadCount?: number | null;
+  participantId?: string | null;
+  otherUserId?: string | null;
+  userId?: string | null;
+  peerId?: string | null;
+  participant?: { id?: string } | null;
   lastMessage?: {
     content: string;
     type: string;
@@ -314,6 +458,62 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
   if (lm.type === 'file') return content ? `📎 ${content}` : '📎 File';
   if (lm.type === 'video') return content ? `🎬 ${content}` : '🎬 Video';
   return content;
+}
+
+export function messagePreview(m: Message): string {
+  if (m.type === 'image') return '📷 Photo';
+  if (m.type === 'file') return '📎 File';
+  if (m.type === 'video') return '🎬 Video';
+  return m.content;
+}
+
+export function refreshConversationPreview(chatId: string, isDM: boolean): void {
+  const msgs = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
+    'messages',
+    chatId,
+    isDM,
+  ]);
+  const all = msgs?.pages.flatMap((p) => p.data) ?? [];
+  const last = all
+    .filter((m) => m && !m.isDeleted)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .pop();
+  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+    ['conversations'],
+    (prev) => {
+      if (!prev) return prev;
+      return prev.map((c) =>
+        c.id === chatId
+          ? {
+              ...c,
+              lastMessage: last ? messagePreview(last) : '',
+              lastTime: last?.createdAt
+                ? last.createdAt instanceof Date
+                  ? last.createdAt.toISOString()
+                  : (last.createdAt as string)
+                : c.lastTime,
+            }
+          : c,
+      );
+    },
+  );
+}
+
+const LOCAL_UNREAD_KEY = 'hw_unread_map';
+
+function loadLocalUnread(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(LOCAL_UNREAD_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveLocalUnread(unreadMap: Record<string, number>): void {
+  try {
+    localStorage.setItem(LOCAL_UNREAD_KEY, JSON.stringify(unreadMap));
+  } catch {}
 }
 
 export async function getConversations(): Promise<ChatConversation[]> {
@@ -338,8 +538,12 @@ export async function getConversations(): Promise<ChatConversation[]> {
     if (!Array.isArray(data) && !(data as { conversations?: unknown })?.conversations) {
       console.warn('[chat] GET /conversations unknown shape:', data);
     }
-    return rows.map((r): ChatConversation => {
+    const visibleRows = rows.filter((r) => !isChatDeleted(r.id) && (r.type !== 'PRIVATE' || !!r.lastMessage));
+    const localUnread = loadLocalUnread();
+    return visibleRows.map((r): ChatConversation => {
       const isPrivate = r.type === 'PRIVATE';
+      const serverUnread = r.unread ?? r.unreadCount ?? 0;
+      const dmUserId = isPrivate ? (r.peerId ?? r.participantId ?? r.otherUserId ?? r.userId ?? r.participant?.id ?? DM_USER_MAP[r.id]) : undefined;
       return {
         id: r.id,
         name: r.displayName ?? r.name ?? (isPrivate ? 'Unknown' : 'Group'),
@@ -351,6 +555,8 @@ export async function getConversations(): Promise<ChatConversation[]> {
         lastSeen: r.lastSeenAt ? new Date(r.lastSeenAt) : undefined,
         members: r.memberCount ?? (isPrivate ? 2 : undefined),
         muted: r.mutedUntil ? true : false,
+        unread: Math.max(serverUnread, localUnread[r.id] ?? 0),
+        userId: dmUserId ?? undefined,
       };
     });
   } catch (err) {
@@ -371,7 +577,10 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
       return;
     }
 
-    await api.post(`/conversations/bulk-delete`, { ids });
+    hideChats(ids);
+    ids.forEach((id) => {
+      queryClient.removeQueries({ queryKey: ['messages', id] });
+    });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to delete conversations');
   }
@@ -404,10 +613,11 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
       return forwarded;
     }
 
-    const { data } = await api.post<Message>(`/messages/forward`, {
-      targetChatId, messageId: msg.id, sourceChatId,
-    });
-    return data;
+    const { data } = await api.post<RemoteMessage>(
+      `/conversations/${sourceChatId}/messages/${msg.id}/forward`,
+      { targetConversationId: targetChatId },
+    );
+    return mapMessage(data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to forward message');
   }
@@ -425,7 +635,7 @@ export async function pinMessage(chatId: string, messageId: string): Promise<voi
       return;
     }
 
-    await api.post(`/messages/${messageId}/pin`);
+    await api.put(`/conversations/${chatId}/messages/${messageId}/pin`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to pin message');
   }
@@ -443,7 +653,7 @@ export async function unpinMessage(chatId: string, messageId: string): Promise<v
       return;
     }
 
-    await api.delete(`/messages/${messageId}/pin`);
+    await api.delete(`/conversations/${chatId}/messages/${messageId}/pin`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to unpin message');
   }
@@ -457,10 +667,100 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
       return msgs.filter((m) => m.isPinned);
     }
 
-    const { data } = await api.get<Message[]>(`/messages/${chatId}/pinned`);
-    return data;
+    const { data } = await api.get<{ messages?: RemoteMessage[] } | RemoteMessage[]>(
+      `/conversations/${chatId}/pinned`,
+      { params: { limit: 50 } },
+    );
+    const rows = Array.isArray(data) ? (data as RemoteMessage[]) : (data?.messages ?? []);
+    return rows.map((row) => {
+      const msg = mapMessage(row);
+      if (row.sender) {
+        const sender = msg.sender ?? { id: row.senderId, username: '', fullName: '', email: '', status: 'offline' as const, createdAt: new Date() };
+        msg.sender = {
+          ...sender,
+          username: row.sender.username ?? '',
+          fullName: row.sender.fullName ?? '',
+          avatarUrl: row.sender.avatarUrl ?? undefined,
+        };
+      }
+      return msg;
+    });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get pinned messages');
+  }
+}
+
+export async function starMessage(chatId: string, messageId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      msgs[idx] = { ...msgs[idx], isStarred: true, starredAt: new Date() };
+      return;
+    }
+
+    await api.put(`/conversations/${chatId}/messages/${messageId}/star`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to star message');
+  }
+}
+
+export async function unstarMessage(chatId: string, messageId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const msgs = MOCK_MESSAGES[chatId];
+      if (!msgs) return;
+      const idx = msgs.findIndex((m) => m.id === messageId);
+      if (idx === -1) return;
+      msgs[idx] = { ...msgs[idx], isStarred: false, starredAt: null };
+      return;
+    }
+
+    await api.delete(`/conversations/${chatId}/messages/${messageId}/star`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to unstar message');
+  }
+}
+
+export async function getStarredMessages(cursor?: string, limit = 50): Promise<StarredMessage[]> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      return Object.values(MOCK_MESSAGES)
+        .flat()
+        .filter((m) => m.isStarred);
+    }
+
+    const { data } = await api.get<{ messages?: RemoteMessage[]; nextCursor?: string | null }>(
+      `/messages/starred`,
+      { params: { ...(cursor ? { cursor } : {}), limit } },
+    );
+    const rows = data?.messages ?? [];
+    return rows.map((row) => {
+      const msg = mapMessage(row);
+      if (row.sender) {
+        const sender = msg.sender ?? { id: row.senderId, username: '', fullName: '', email: '', status: 'offline' as const, createdAt: new Date() };
+        msg.sender = {
+          ...sender,
+          username: row.sender.username ?? '',
+          fullName: row.sender.fullName ?? '',
+          avatarUrl: row.sender.avatarUrl ?? undefined,
+        };
+      }
+      const starred: StarredMessage = { ...msg };
+      if (row.conversation) {
+        starred.conversationName = row.conversation.name ?? '';
+        starred.conversationType = row.conversation.type === 'PRIVATE' ? 'dm' : 'group';
+        starred.conversationAvatarUrl = row.conversation.avatarUrl ?? undefined;
+      }
+      return starred;
+    });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to get starred messages');
   }
 }
 
@@ -482,7 +782,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
         fileName: file.name,
         fileSize: file.size,
         duration: isVideo ? 0 : undefined,
-        status: 'sent',
+        status: 'pending',
         replyTo,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
@@ -503,7 +803,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
     if (caption) form.append('caption', caption);
     if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
     const { data } = await api.post<Message>(`${endpoint}`, form);
-    return data;
+    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to send file');
   }
@@ -808,8 +1108,7 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
       return [...current];
     }
 
-    const { data } = await api.post<{ reactions: Reaction[] }>(`/messages/${messageId}/reactions`, { emoji });
-    return data.reactions;
+    throw new Error('Reaksi belum tersedia di backend');
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to toggle reaction');
   }
@@ -820,10 +1119,15 @@ export async function clearChat(chatId: string): Promise<void> {
     if (DEV_MODE) {
       await delay(200);
       delete MOCK_MESSAGES[chatId];
-      return;
     }
 
-    await api.delete(`/chats/${chatId}/messages`);
+    markChatCleared(chatId);
+
+    const unread = loadLocalUnread();
+    if (unread[chatId]) {
+      unread[chatId] = 0;
+      saveLocalUnread(unread);
+    }
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to clear chat');
   }

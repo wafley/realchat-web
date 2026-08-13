@@ -10,8 +10,7 @@ import ChatOverlays from '@/components/chat/ChatOverlays';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
-import { usePrivacyStore } from '@/store/privacyStore';
-import { joinRoom, leaveRoom, emitMessageSeen, setCurrentChat } from '@/services/socket.service';
+import { joinRoom, joinAllConversationRooms, setCurrentChat } from '@/services/socket.service';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
@@ -20,7 +19,6 @@ export default function ChatRoom() {
   const mutations = useChatMutations({
     chatId: state.chatId,
     isDM: state.isDM,
-    deleteTarget: state.deleteTarget,
     setDeleteTarget: state.setDeleteTarget,
     setDeleteLoading: state.setDeleteLoading,
     setForwardTarget: state.setForwardTarget,
@@ -100,6 +98,8 @@ export default function ChatRoom() {
     deleteMutation: mutations.deleteMutation,
     pinMutation: mutations.pinMutation,
     unpinMutation: mutations.unpinMutation,
+    starMutation: mutations.starMutation,
+    unstarMutation: mutations.unstarMutation,
     toggleReactionMutation: mutations.toggleReactionMutation,
     forwardMutation: mutations.forwardMutation,
     refetchPinned: mutations.refetchPinned,
@@ -115,12 +115,9 @@ export default function ChatRoom() {
 
     setCurrentChat(state.chatId, state.isDM);
     joinRoom(state.chatId);
-    if (usePrivacyStore.getState().readReceipts) {
-      emitMessageSeen(state.chatId);
-    }
 
     return () => {
-      leaveRoom(state.chatId);
+      joinAllConversationRooms();
       setCurrentChat(null, false);
       sessionStorage.removeItem(`scrollPos-${state.chatId}`);
     };
@@ -151,7 +148,7 @@ export default function ChatRoom() {
         onBlockClick={() => state.setBlockConfirmOpen(true)}
         onReportClick={() => state.setReportConfirmOpen(true)}
         onGroupInfoClick={() => state.setGroupInfoOpen(true)}
-        onClearChat={() => mutations.clearChatMutation.mutate()}
+        onClearChat={() => state.setClearConfirmOpen(true)}
       />
 
       {state.showSearch && (
@@ -222,6 +219,7 @@ export default function ChatRoom() {
 
       <MessageList
         chatId={state.chatId}
+        isDM={state.isDM}
         filteredMessages={state.filteredMessages}
         searchQuery={state.searchQuery}
         isPending={state.isPending}
@@ -306,6 +304,7 @@ export default function ChatRoom() {
         lightboxUrl={state.lightboxUrl}
         blockConfirmOpen={state.blockConfirmOpen}
         reportConfirmOpen={state.reportConfirmOpen}
+        clearConfirmOpen={state.clearConfirmOpen}
         groupInfoOpen={state.groupInfoOpen}
         readReceiptTarget={state.readReceiptTarget}
         group={mutations.group}
@@ -329,6 +328,11 @@ export default function ChatRoom() {
         onBlock={actions.handleBlock}
         onCloseReport={() => state.setReportConfirmOpen(false)}
         onReport={actions.handleReport}
+        onCloseClear={() => state.setClearConfirmOpen(false)}
+        onClear={() => {
+          state.setClearConfirmOpen(false);
+          mutations.clearChatMutation.mutate();
+        }}
         onCloseGroupInfo={() => state.setGroupInfoOpen(false)}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
         onUpdateGroup={(data) =>
