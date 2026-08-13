@@ -18,6 +18,7 @@ export default function Starred() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const me = useAuthStore((s) => s.user?.id);
+  const myAvatar = useAuthStore((s) => s.user?.avatarUrl);
 
   const { data: convData } = useQuery({
     queryKey: ['conversations'],
@@ -45,7 +46,7 @@ export default function Starred() {
     return {
       name: name || (isDM ? 'Direct message' : 'Group'),
       type: isDM ? 'dm' : 'group',
-      avatarUrl: msg.conversationAvatarUrl ?? found?.avatarUrl,
+      avatarUrl: msg.senderId === me ? myAvatar : msg.conversationAvatarUrl ?? found?.avatarUrl,
     };
   };
 
