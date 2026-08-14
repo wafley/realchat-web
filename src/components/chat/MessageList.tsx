@@ -8,6 +8,7 @@ import { queryClient } from '@/lib/queryClient';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface MessageListProps {
+  highlightedMsgId?: string | null;
   chatId: string;
   isDM: boolean;
   isPending: boolean;
@@ -40,6 +41,7 @@ interface MessageListProps {
 }
 
 export default function MessageList({
+  highlightedMsgId,
   chatId,
   isDM,
   isPending,
@@ -201,6 +203,7 @@ export default function MessageList({
                   </div>
                 )}
                 <MessageBubble
+                  isHighlighted={highlightedMsgId === msg.id}
                   msg={msg}
                   isOwn={isOwn}
                   isFirstInRun={isFirstInRun}

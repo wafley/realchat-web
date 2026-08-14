@@ -5,6 +5,7 @@ import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 
 interface MessageBubbleProps {
+  isHighlighted?: boolean;
   msg: Message;
   isOwn: boolean;
   isFirstInRun?: boolean;
@@ -51,6 +52,7 @@ function getSenderColor(nameStr?: string) {
 }
 
 function MessageBubbleComp({
+  isHighlighted = false,
   msg,
   isOwn,
   isFirstInRun = true,
@@ -118,7 +120,8 @@ function MessageBubbleComp({
           (msg.status === 'pending' || msg.status === 'sending') ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
           : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
           : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
-          : <CheckCheck size={13} className="text-white lg:size-3.5" />
+          : msg.status === 'read' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-read'} lg:size-3.5`} />
+          : null
         )}
       </span>
     );
@@ -126,7 +129,7 @@ function MessageBubbleComp({
 
   return (
     <div
-      className={`flex items-start gap-2 ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''}`}
+      className={`flex items-start gap-2 transition-all duration-700 rounded-xl ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''} ${isHighlighted ? 'bg-accent/15 py-1 px-1.5' : ''}`}
       onClick={() => { if (inSelectionMode) toggleSelect(msg.id); }}
     >
       {inSelectionMode ? (
@@ -163,12 +166,12 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`cursor-pointer relative ${
+          className={`cursor-pointer relative transition-all duration-700 ${
             msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-3 py-2 text-sm lg:px-3.5 lg:py-2 lg:text-base'
           } ${isOwn
             ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'rounded-tr-xs' : ''}`
             : `bg-chat-incoming-bg text-chat-incoming-foreground border border-black/5 ${isFirstInRun ? 'rounded-tl-xs' : ''}`
-          } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''}`}
+          } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''} ${isHighlighted ? 'ring-2 ring-accent shadow-lg shadow-accent/40 bg-accent/30 dark:bg-accent/40' : ''}`}
         >
           {!isOwn && name && (
             <div className="mb-1 flex items-center justify-between gap-3 text-xs font-semibold">

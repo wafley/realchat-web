@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSearchBar from '@/components/chat/ChatSearchBar';
@@ -14,7 +14,32 @@ import { joinRoom, joinAllConversationRooms, setCurrentChat } from '@/services/s
 
 export default function ChatRoom() {
   const navigate = useNavigate();
+  const location = useLocation();
   const state = useChatState();
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const targetId = location.state?.highlightMessageId;
+    if (targetId) {
+      setHighlightedMsgId(targetId);
+
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`msg-${targetId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+
+      const fadeTimer = setTimeout(() => {
+        setHighlightedMsgId(null);
+      }, 3000);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(fadeTimer);
+      };
+    }
+  }, [location.state?.highlightMessageId, state.filteredMessages.length]);
 
   const mutations = useChatMutations({
     chatId: state.chatId,
@@ -229,6 +254,7 @@ export default function ChatRoom() {
       )}
 
       <MessageList
+        highlightedMsgId={highlightedMsgId}
         chatId={state.chatId}
         isDM={state.isDM}
         filteredMessages={state.filteredMessages}
