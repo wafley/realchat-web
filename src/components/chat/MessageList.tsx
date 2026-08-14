@@ -184,13 +184,13 @@ export default function MessageList({
           {filteredMessages.map((msg, idx) => {
             const isOwn = msg.sender?.id === currentUserId || msg.senderId === currentUserId;
             const prevMsg = idx > 0 ? filteredMessages[idx - 1] : null;
-            const isFirstInRun = !prevMsg || prevMsg.senderId !== msg.senderId;
-            const name = isOwn || isDM || !isFirstInRun ? undefined : (msg.sender?.fullName ?? 'Unknown');
-            const showAvatar = !isOwn && !isDM && isFirstInRun;
-            const showSpacer = !isOwn && !isDM && !showAvatar;
             const prevDateKey = idx > 0 ? getDateKey(filteredMessages[idx - 1].createdAt) : null;
             const currDateKey = getDateKey(msg.createdAt);
             const showDateSeparator = prevDateKey !== currDateKey;
+            const isFirstInRun = !prevMsg || prevMsg.senderId !== msg.senderId || showDateSeparator;
+            const name = isOwn || isDM || !isFirstInRun ? undefined : (msg.sender?.fullName ?? 'Unknown');
+            const showAvatar = !isOwn && !isDM && isFirstInRun;
+            const showSpacer = !isOwn && !isDM && !showAvatar;
             return (
               <div key={msg.id}>
                 {showDateSeparator && (
@@ -203,6 +203,7 @@ export default function MessageList({
                 <MessageBubble
                   msg={msg}
                   isOwn={isOwn}
+                  isFirstInRun={isFirstInRun}
                   name={name}
                   showAvatar={showAvatar}
                   showSpacer={showSpacer}

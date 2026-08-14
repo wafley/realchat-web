@@ -7,6 +7,7 @@ import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 interface MessageBubbleProps {
   msg: Message;
   isOwn: boolean;
+  isFirstInRun?: boolean;
   name?: string;
   showAvatar: boolean;
   showSpacer: boolean;
@@ -29,9 +30,30 @@ interface MessageBubbleProps {
   toggleSelect: (msgId: string) => void;
 }
 
+const SENDER_COLORS = [
+  'text-rose-400',
+  'text-amber-400',
+  'text-emerald-400',
+  'text-sky-400',
+  'text-indigo-400',
+  'text-pink-400',
+  'text-teal-400',
+  'text-purple-400',
+];
+
+function getSenderColor(nameStr?: string) {
+  if (!nameStr) return SENDER_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < nameStr.length; i++) {
+    hash = nameStr.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
+}
+
 function MessageBubbleComp({
   msg,
   isOwn,
+  isFirstInRun = true,
   name,
   showAvatar,
   showSpacer,
@@ -124,11 +146,6 @@ function MessageBubbleComp({
         <div className="mt-0.5 h-8 w-8 shrink-0 lg:h-9 lg:w-9" aria-hidden="true" />
       ) : null}
       <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col min-w-0`}>
-        {!isOwn && name && (
-          <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
-            {name}
-          </p>
-        )}
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -144,16 +161,32 @@ function MessageBubbleComp({
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
           className={`cursor-pointer relative ${
-            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base'
+            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-3 py-2 text-sm lg:px-3.5 lg:py-2 lg:text-base'
           } ${isOwn
-            ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
-            : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
+            ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'rounded-tr-xs' : ''}`
+            : `bg-chat-incoming-bg text-chat-incoming-foreground border border-black/5 ${isFirstInRun ? 'rounded-tl-xs' : ''}`
           } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''}`}
         >
+          {!isOwn && name && (
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs font-semibold">
+              <span className={`truncate ${getSenderColor(name)}`}>
+                ~ {name}
+              </span>
+              {msg.sender?.username && (
+                <span className="shrink-0 text-[10px] font-normal opacity-60">
+                  @{msg.sender.username}
+                </span>
+              )}
+            </div>
+          )}
           {msg.replyTo && (
-            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${isOwn ? 'border-white/40 bg-white/10' : 'border-black/30 bg-black/8'}`}>
-              <p className="text-[11px] font-semibold text-foreground/90 lg:text-xs">{msg.replyTo.senderName}</p>
-              <p className="truncate text-foreground/70">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
+            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${
+              isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
+            }`}>
+              <p className={`text-[11px] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)} lg:text-xs`}>
+                ~ {msg.replyTo.senderName}
+              </p>
+              <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
             </div>
           )}
           {msg.type === 'image' && msg.fileUrl ? (
@@ -172,7 +205,7 @@ function MessageBubbleComp({
                     />
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
-                  <div className="flex items-end gap-1">
+                  <div className="flex w-full items-end justify-between gap-3">
                     <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap [overflow-wrap:anywhere]`}>
                       {highlightText(displayedContent, searchQuery)}
                       {showReadMore && (
@@ -187,7 +220,9 @@ function MessageBubbleComp({
                         </button>
                       )}
                     </p>
-                    {renderMeta(false)}
+                    <div className="shrink-0 pb-0.5 pr-1">
+                      {renderMeta(false)}
+                    </div>
                   </div>
                 </>
               ) : (
@@ -216,7 +251,7 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  <div className="flex items-end gap-1">
+                  <div className="flex w-full items-end justify-between gap-3">
                     <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap [overflow-wrap:anywhere]`}>
                       {highlightText(displayedContent, searchQuery)}
                       {showReadMore && (
@@ -231,7 +266,9 @@ function MessageBubbleComp({
                         </button>
                       )}
                     </p>
-                    {renderMeta(false)}
+                    <div className="shrink-0 pb-0.5 pr-1">
+                      {renderMeta(false)}
+                    </div>
                   </div>
                 </>
               ) : (
@@ -248,7 +285,7 @@ function MessageBubbleComp({
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="flex items-end gap-1 pb-0.5">
+            <div className="flex w-full items-end justify-between gap-3 pb-0.5">
               <a
                 href={msg.fileUrl}
                 target="_blank"
@@ -266,18 +303,22 @@ function MessageBubbleComp({
                   )}
                 </div>
               </a>
-              {renderMeta(false)}
+              <div className="shrink-0">
+                {renderMeta(false)}
+              </div>
             </div>
           ) : msg.isDeleted ? (
-            <div className="flex items-end gap-1">
+            <div className="flex w-full items-end justify-between gap-3">
               <p className="whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5 text-sm italic opacity-50">
                 <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
                 <span>{msg.content}</span>
               </p>
-              {renderMeta(false)}
+              <div className="shrink-0">
+                {renderMeta(false)}
+              </div>
             </div>
           ) : (
-            <div className="flex min-w-0 items-end gap-1">
+            <div className="flex w-full min-w-0 items-end justify-between gap-3">
               <p className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5">
                 {highlightText(displayedContent, searchQuery)}
                 {showReadMore && (
@@ -292,7 +333,9 @@ function MessageBubbleComp({
                   </button>
                 )}
               </p>
-              {renderMeta(false)}
+              <div className="shrink-0 self-end">
+                {renderMeta(false)}
+              </div>
             </div>
           )}
         </div>
