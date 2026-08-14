@@ -5,7 +5,7 @@ import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -101,7 +101,7 @@ function onMessageNew(raw: RemoteMessage) {
   // Update conversation preview + reorder + unread badge
   const preview = msg.type === 'image' ? '📷 Photo' : (msg.type === 'file' ? '📎 File' : msg.type === 'video' ? '🎬 Video' : msg.content);
   const currentUserId = useAuthStore.getState().user?.id;
-  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number }[]>(
+  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number; lastSenderName?: string }[]>(
     ['conversations'],
     (prev) => {
       if (!prev) return prev;
@@ -112,6 +112,7 @@ function onMessageNew(raw: RemoteMessage) {
           ? {
               ...c,
               lastMessage: preview,
+              lastSenderName: isDM ? undefined : messageSenderName(msg),
               lastTime: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : (msg.createdAt as string | undefined) ?? 'now',
               unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
             }

@@ -465,6 +465,14 @@ export function messagePreview(m: Message): string {
   return m.content;
 }
 
+export function messageSenderName(m: Pick<Message, 'sender' | 'senderId'>): string | undefined {
+  if (m.sender?.username) return m.sender.username;
+  if (m.sender?.fullName) return m.sender.fullName;
+  const me = useAuthStore.getState().user;
+  if (me && m.senderId === me.id) return me.username || me.fullName || undefined;
+  return undefined;
+}
+
 export function refreshConversationPreview(chatId: string, isDM: boolean): void {
   const msgs = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
     'messages',

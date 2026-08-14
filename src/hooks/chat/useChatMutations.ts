@@ -29,6 +29,7 @@ import {
   clearChat,
   simulateDevReceipts,
   refreshConversationPreview,
+  messageSenderName,
 } from '@/services/chat';
 
 interface UseChatMutationsProps {
@@ -88,7 +89,7 @@ export function useChatMutations({
               ? {
                   ...c,
                   lastMessage: preview,
-                  lastSenderName: !isDM && newMsg.sender ? (newMsg.sender.username || newMsg.sender.fullName || undefined) : undefined,
+                  lastSenderName: !isDM ? messageSenderName(newMsg) : undefined,
                   lastTime: new Date().toISOString(),
                 }
               : c,
