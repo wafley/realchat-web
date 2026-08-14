@@ -48,6 +48,7 @@ export default function ChatList() {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<'all' | 'groups' | 'unread'>('all');
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -130,6 +131,8 @@ export default function ChatList() {
   const conversations = Array.isArray(data) ? data : [];
 
   const filtered = conversations.filter((c) => {
+    if (category === 'groups' && c.type !== 'group') return false;
+    if (category === 'unread' && (c.unread ?? 0) <= 0) return false;
     if (!c.name.toLowerCase().includes(search.toLowerCase())) return false;
     const clearedAt = isChatCleared(c.id);
     if (clearedAt) {
@@ -285,7 +288,7 @@ export default function ChatList() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col border-b border-border">
+        <div className="flex flex-col">
           <div className="flex items-center justify-between gap-2 p-4 pb-2 lg:px-5 lg:pb-3 lg:pt-5">
             <h1 className="text-xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
             <div className="flex items-center gap-2">
@@ -330,9 +333,31 @@ export default function ChatList() {
                 placeholder="Search chats..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
+                className="w-full rounded-full border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
               />
             </div>
+          </div>
+          <div className="flex gap-2 px-4 pb-4 lg:px-5 lg:pb-4">
+            {(
+              [
+                { id: 'all', label: 'Chat' },
+                { id: 'groups', label: 'Groups' },
+                { id: 'unread', label: 'Unread' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => { setCategory(id); setSearch(''); }}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-medium transition-colors lg:text-sm',
+                  category === id
+                    ? 'bg-accent text-accent-foreground'
+                    : 'border border-border text-muted-foreground hover:bg-accent/10 hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -370,7 +395,7 @@ export default function ChatList() {
                       key={chat.id}
                       to={linkTo}
                       state={{ name: chat.name, online, lastSeen, members: chat.members }}
-                      className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                     >
                       <div className="relative shrink-0">
                         <Avatar className="lg:h-12 lg:w-12">
@@ -402,7 +427,7 @@ export default function ChatList() {
                     key={msg.messageId}
                     to={msg.conversationType === 'dm' ? `/dm/${msg.conversationId}` : `/chat/${msg.conversationId}`}
                     state={{ name: msg.conversationName }}
-                    className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                   >
                     <div className="relative shrink-0">
                       <Avatar className="lg:h-12 lg:w-12">
@@ -480,7 +505,7 @@ export default function ChatList() {
                     }
                   }}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
+                    'flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
                     isActive && !isSelectionMode
                       ? 'bg-accent/10'
                       : 'hover:bg-accent/5',
