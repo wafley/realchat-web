@@ -34,7 +34,7 @@ function ChatPreview({ chat }: { chat: ChatConversation }) {
   return (
     <>
       {chat.type === 'group' && chat.lastSenderName && (
-        <span className="text-accent">{chat.lastSenderName}: </span>
+        <span className="text-muted-foreground">{chat.lastSenderName}: </span>
       )}
       {clampText(chat.lastMessage)}
     </>
