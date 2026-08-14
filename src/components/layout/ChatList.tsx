@@ -285,49 +285,54 @@ export default function ChatList() {
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 border-b border-border p-4 lg:px-5 lg:py-4">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground lg:left-3.5"
-            />
-            <input
-              type="text"
-              aria-label="Search chats"
-              placeholder="Search chats..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
-            />
+        <div className="flex flex-col border-b border-border">
+          <div className="flex items-center justify-between gap-2 p-4 pb-2 lg:px-5 lg:pb-3 lg:pt-5">
+            <h1 className="text-xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/starred')}
+                aria-label="Starred messages"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
+                  location.pathname === '/starred'
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <Star size={18} />
+              </button>
+              <button
+                onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
+                aria-label="New chat"
+                className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
+              >
+                <Plus size={20} />
+              </button>
+              <Link to="/profile" className="lg:hidden">
+                <Avatar className="h-8 w-8">
+                  {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                  <AvatarFallback className="text-xs font-semibold">
+                    {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/starred')}
-              aria-label="Starred messages"
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
-                location.pathname === '/starred'
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              <Star size={18} />
-            </button>
-            <button
-              onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
-              aria-label="New chat"
-              className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
-            >
-              <Plus size={20} />
-            </button>
-            <Link to="/profile" className="lg:hidden">
-              <Avatar className="h-8 w-8">
-                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                <AvatarFallback className="text-xs font-semibold">
-                  {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
+          <div className="px-4 pb-4 lg:px-5 lg:pb-4">
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground lg:left-3.5"
+              />
+              <input
+                type="text"
+                aria-label="Search chats"
+                placeholder="Search chats..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
+              />
+            </div>
           </div>
         </div>
       )}
