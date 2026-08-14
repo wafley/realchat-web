@@ -241,7 +241,7 @@ export default function ChatRoom() {
         hasActiveSearch={state.hasActiveSearch}
         searchMatchIds={state.searchMatchIds}
         activeMatchIndex={state.activeMatchIndex}
-        typingNames={state.typingNames}
+        typingUsers={state.typers ?? []}
         currentUserId={state.currentUser?.id}
         onRetry={() => state.refetch()}
         scrollTriggerRef={

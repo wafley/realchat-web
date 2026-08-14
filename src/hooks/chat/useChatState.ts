@@ -255,6 +255,7 @@ export function useChatState() {
     imagePreview, setImagePreview,
     showEmojiPicker, setShowEmojiPicker,
     otherTyping,
+    typers,
     typingNames,
     typingLabel,
     replyingTo, setReplyingTo,

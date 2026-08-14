@@ -1,9 +1,11 @@
-import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react';
+import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback, useLayoutEffect, useEffect, useMemo } from 'react';
 import { Loader2, AlertCircle, RefreshCw, MessageSquareText, ChevronDown } from 'lucide-react';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
-import { formatTypingLabel } from '@/store/typingStore';
+import { type TypingUser } from '@/store/typingStore';
+import { queryClient } from '@/lib/queryClient';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface MessageListProps {
   chatId: string;
@@ -18,7 +20,7 @@ interface MessageListProps {
   activeMatchIndex: number;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
-  typingNames: string[];
+  typingUsers: TypingUser[];
   currentUserId: string | undefined;
   scrollTriggerRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
@@ -50,7 +52,7 @@ export default function MessageList({
   activeMatchIndex,
   hasNextPage,
   isFetchingNextPage,
-  typingNames,
+  typingUsers,
   currentUserId,
   scrollTriggerRef,
   messagesEndRef,
@@ -70,6 +72,18 @@ export default function MessageList({
 }: MessageListProps) {
   const [showScrollDown, setShowScrollDown] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const typingAvatars = useMemo(() => {
+    const map = new Map<string, string>();
+    if (isDM) return map;
+    const group = queryClient.getQueryData<{
+      members?: { userId: string; user?: { avatarUrl?: string | null } | null }[];
+    }>(['group', chatId]);
+    for (const m of group?.members ?? []) {
+      if (m?.user?.avatarUrl) map.set(m.userId, m.user.avatarUrl);
+    }
+    return map;
+  }, [chatId, isDM]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -214,15 +228,28 @@ export default function MessageList({
             );
           })}
           <div ref={messagesEndRef} />
-          {typingNames.length > 0 && (
-            <div className="flex items-center gap-2 px-1 py-1">
-              <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-chat-incoming-bg px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:0ms]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:150ms]" />
-                  <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:300ms]" />
+          {typingUsers.length > 0 && (
+            <div className="flex items-end gap-2 px-1 py-1">
+              {!isDM && (
+                <div className="flex -space-x-2">
+                  {typingUsers.slice(0, 3).map((t) => {
+                    const avatar = typingAvatars.get(t.userId);
+                    const initials = (t.name || '?').trim().charAt(0).toUpperCase() || '?';
+                    return (
+                      <Avatar key={t.userId} className="h-7 w-7 ring-2 ring-background">
+                        {avatar && <AvatarImage src={avatar} alt={t.name} />}
+                        <AvatarFallback className="bg-chat-incoming-bg text-[10px] text-muted-foreground">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                    );
+                  })}
                 </div>
-                <span className="text-xs text-muted-foreground">{isDM ? 'typing...' : formatTypingLabel(typingNames)}</span>
+              )}
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-chat-incoming-bg px-3.5 py-2.5">
+                <span className="typing-dot" />
+                <span className="typing-dot" style={{ animationDelay: '150ms' }} />
+                <span className="typing-dot" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           )}
