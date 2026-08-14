@@ -11,7 +11,6 @@ import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
 import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
-import { queryClient } from '@/lib/queryClient';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
@@ -153,26 +152,10 @@ export default function ChatRoom() {
 
     return () => {
       joinAllConversationRooms();
+      emitSeenForConversation(state.chatId, state.isDM, undefined, true);
       setCurrentChat(null, false);
       sessionStorage.removeItem(`scrollPos-${state.chatId}`);
     };
-  }, [state.chatId, state.isDM]);
-
-  // Read receipt: emit message:seen saat pesan (baru/fetch) tersedia di chat aktif.
-  useEffect(() => {
-    if (!state.chatId) return;
-    const emit = () => emitSeenForConversation(state.chatId, state.isDM);
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      if (
-        event.type === 'updated' &&
-        event.query.queryKey[0] === 'messages' &&
-        event.query.queryKey[1] === state.chatId
-      ) {
-        emit();
-      }
-    });
-    emit();
-    return unsubscribe;
   }, [state.chatId, state.isDM]);
 
   // Dikeluarkan/di-remove dari grup atau grup di-dismiss → kembali ke daftar chat.

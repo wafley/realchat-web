@@ -138,7 +138,7 @@ function onMessageNew(raw: RemoteMessage) {
 
 // --- Read receipts (kirim message:seen ke server) ---
 
-export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessageId?: string): void {
+export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessageId?: string, force = false): void {
   if (DEV_MODE) return;
   if (!usePrivacyStore.getState().readReceipts) return;
   if (!socketClient.isConnected) return;
@@ -154,7 +154,7 @@ export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessa
     lastId = all[all.length - 1]?.id;
   }
   if (!lastId) return;
-  if (emittedSeenRef.get(chatId) === lastId) return;
+  if (!force && emittedSeenRef.get(chatId) === lastId) return;
   emittedSeenRef.set(chatId, lastId);
   socketClient.emitMessageSeen(chatId, lastId);
 }
