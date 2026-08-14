@@ -1,4 +1,4 @@
-import { type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { Send, ImagePlus, Smile, FileText, X, Check } from 'lucide-react';
 import type { Message } from '@/types';
 import { useThemeStore } from '@/store/themeStore';
@@ -55,6 +55,14 @@ export default function ChatInput({
   emojiToggleRef,
 }: ChatInputProps) {
   const theme = useThemeStore((s) => s.theme);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
 
   return (
     <div className="relative border-t border-border">
@@ -159,19 +167,21 @@ export default function ChatInput({
         >
           <Smile size={18} className="lg:size-5" />
         </button>
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
+          rows={1}
           placeholder={imagePreview ? 'Add a caption...' : 'Type a message...'}
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
               if (editingMsg) onUpdateEdit();
               else if (imagePreview) onSendImage();
               else onSend();
             }
           }}
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:text-base"
+          className="max-h-40 flex-1 resize-none bg-transparent py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:text-base"
         />
         <button
           onClick={() => {
