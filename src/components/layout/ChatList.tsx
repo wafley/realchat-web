@@ -30,6 +30,17 @@ function clampText(s?: string, max = 50): string {
   return s.length > max ? `${s.slice(0, max).trimEnd()}...` : s;
 }
 
+function ChatPreview({ chat }: { chat: ChatConversation }) {
+  return (
+    <>
+      {chat.type === 'group' && chat.lastSenderName && (
+        <span className="text-accent">{chat.lastSenderName}: </span>
+      )}
+      {clampText(chat.lastMessage)}
+    </>
+  );
+}
+
 export default function ChatList() {
   const navigate = useNavigate();
   const { groupId, userId } = useParams();
@@ -369,7 +380,7 @@ export default function ChatList() {
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{chat.name}</span>
                           <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatTime(chat.lastTime)}</span>
                         </div>
-                        <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm">{clampText(chat.lastMessage)}</p>
+                        <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm"><ChatPreview chat={chat} /></p>
                       </div>
                     </Link>
                   );
@@ -506,11 +517,11 @@ export default function ChatList() {
                             {chat.type === 'dm' ? 'typing...' : formatTypingLabel(typingMap[chat.id]!.map((t) => t.name))}
                           </span>
                         ) : online ? (
-                          clampText(chat.lastMessage)
+                          <ChatPreview chat={chat} />
                         ) : lastSeen && shouldShowLastSeen() ? (
                           <span className="text-muted-foreground">last seen {formatLastSeen(lastSeen)}</span>
                         ) : (
-                          clampText(chat.lastMessage)
+                          <ChatPreview chat={chat} />
                         )}
                       </span>
                       <div className="flex shrink-0 items-center gap-2">

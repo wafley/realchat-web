@@ -444,6 +444,7 @@ interface RemoteConversation {
     type: string;
     createdAt: string | null;
     isDeleted?: boolean | null;
+    sender?: { username?: string | null; fullName?: string | null } | null;
   } | null;
 }
 
@@ -484,6 +485,7 @@ export function refreshConversationPreview(chatId: string, isDM: boolean): void 
           ? {
               ...c,
               lastMessage: last ? messagePreview(last) : '',
+              lastSenderName: !isDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : undefined,
               lastTime: last?.createdAt
                 ? last.createdAt instanceof Date
                   ? last.createdAt.toISOString()
@@ -547,6 +549,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
         avatarUrl: r.avatar ?? r.avatarUrl ?? undefined,
         type: isPrivate ? 'dm' : 'group',
         lastMessage: conversationPreview(r.lastMessage),
+        lastSenderName: isPrivate ? undefined : (r.lastMessage?.sender?.username ?? r.lastMessage?.sender?.fullName ?? undefined),
         lastTime: r.lastMessage?.createdAt ?? r.createdAt,
         online: r.isOnline ?? false,
         lastSeen: r.lastSeenAt ? new Date(r.lastSeenAt) : undefined,
