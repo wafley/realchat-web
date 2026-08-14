@@ -3,15 +3,38 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowLeft, Star, Users, User, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Star, AlertCircle, RefreshCw, Loader2, Users, ChevronRight, CheckCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import { getStarredMessages, getConversations, unstarMessage, type StarredMessage } from '@/services/chat';
 import { useAuthStore } from '@/store/authStore';
 import type { Message, PaginatedResponse } from '@/types';
+import { cn } from '@/lib/utils';
 
 function clockTime(d: Date): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function formatDateHeader(d: Date): string {
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - d.getTime());
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
+
+  if (diffDays < 7) {
+    return d.toLocaleDateString([], { weekday: 'long' });
+  }
+
+  return d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export default function Starred() {
@@ -37,16 +60,31 @@ export default function Starred() {
   const convMetaOf = (msg: StarredMessage) => {
     const found = conversations?.find((c) => c.id === msg.groupId);
     const isDM = (msg.conversationType ?? found?.type) === 'dm';
-    let name = msg.conversationName ?? found?.name;
-    if (msg.senderId === me) {
-      name = 'You';
-    } else if (!name && isDM && msg.senderId !== me) {
-      name = msg.sender?.fullName || msg.sender?.username || '';
+    const isOwn = msg.senderId === me;
+
+    const senderName = isOwn
+      ? 'You'
+      : (msg.sender?.fullName || msg.sender?.username || 'User');
+
+    let targetName = 'Chat';
+    if (isDM) {
+      targetName = isOwn
+        ? (found?.name || msg.conversationName || 'User')
+        : 'You';
+    } else {
+      targetName = msg.conversationName || found?.name || 'Group';
     }
+
+    const avatarUrl = isOwn
+      ? myAvatar
+      : (msg.sender?.avatarUrl || msg.conversationAvatarUrl || found?.avatarUrl);
+
     return {
-      name: name || (isDM ? 'Direct message' : 'Group'),
+      senderName,
+      targetName,
       type: isDM ? 'dm' : 'group',
-      avatarUrl: msg.senderId === me ? myAvatar : msg.conversationAvatarUrl ?? found?.avatarUrl,
+      avatarUrl,
+      navName: isDM ? (isOwn ? targetName : senderName) : targetName,
     };
   };
 
@@ -122,63 +160,97 @@ export default function Starred() {
             <p className="mt-1 text-xs opacity-80">Long-press or right-click a message and choose Star</p>
           </div>
         ) : (
-          <div role="list">
+          <div role="list" className="mx-auto max-w-4xl divide-y divide-border/30">
             {rows.map((msg) => {
               const meta = convMetaOf(msg);
               const isOwn = msg.senderId === me;
               const linkTo = meta.type === 'dm' ? `/dm/${msg.groupId}` : `/chat/${msg.groupId}`;
+              const isUnstarringThis = unstarMutation.isPending && unstarMutation.variables?.msgId === msg.id;
+
               return (
                 <div
                   key={msg.id}
                   role="listitem"
-                  className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
-                  onClick={() => navigate(linkTo, { state: { name: meta.name } })}
+                  className="group flex cursor-pointer flex-col gap-2 px-4 py-3.5 transition-colors hover:bg-accent/5 lg:px-6 lg:py-4"
+                  onClick={() => navigate(linkTo, { state: { name: meta.navName, highlightMessageId: msg.id } })}
                 >
-                  <div className="flex w-full items-start gap-2.5">
-                    <Avatar className="mt-0.5 h-6 w-6 shrink-0">
-                      {meta.avatarUrl && <AvatarImage src={meta.avatarUrl} />}
-                      <AvatarFallback className="text-[9px]">
-                        {meta.type === 'group' ? <Users size={12} /> : <User size={12} />}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex min-w-0 flex-1 flex-col items-start">
-                      <div className="flex items-center gap-2">
-                        <span className="min-w-0 truncate text-xs font-medium text-foreground lg:text-sm">
-                          {meta.name}
+                  {/* Top Header Row */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar className="h-7 w-7 shrink-0 lg:h-8 lg:w-8">
+                        {meta.avatarUrl && <AvatarImage src={meta.avatarUrl} alt={meta.senderName} />}
+                        <AvatarFallback className="text-xs font-semibold">
+                          {meta.type === 'group' && meta.senderName !== 'You' ? <Users size={14} /> : meta.senderName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="flex items-center gap-1.5 min-w-0 text-xs font-semibold text-foreground lg:text-sm">
+                        <span className="truncate">{meta.senderName}</span>
+                        <span className="text-muted-foreground/60 shrink-0">▸</span>
+                        <span className="truncate text-foreground/80">{meta.targetName}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 text-xs text-muted-foreground/80">
+                      <span>{formatDateHeader(msg.createdAt)}</span>
+                      <ChevronRight size={16} className="text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
+                    </div>
+                  </div>
+
+                  {/* Message Bubble Container */}
+                  <div className="pl-9.5 lg:pl-10.5 flex flex-col items-start">
+                    <div
+                      className={cn(
+                        'inline-flex max-w-[85%] flex-col rounded-2xl px-3.5 py-2 text-sm shadow-xs border',
+                        isOwn
+                          ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground border-white/10 rounded-tr-xs'
+                          : 'bg-chat-incoming-bg text-chat-incoming-foreground border-black/5 rounded-tl-xs'
+                      )}
+                    >
+                      {msg.replyTo && (
+                        <div className="mb-2 rounded-lg border-l-4 border-emerald-500 bg-black/20 p-2 text-xs">
+                          <p className="font-semibold text-emerald-400">~ {msg.replyTo.senderName}</p>
+                          <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-end justify-between gap-3 min-w-0">
+                        <span className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">
+                          {msg.content || (
+                            msg.type === 'image' ? '📷 Photo' : 
+                            msg.type === 'video' ? '🎬 Video' : 
+                            msg.type === 'file' ? (msg.fileName ?? '📎 Document') : ''
+                          )}
+                        </span>
+
+                        <span
+                          className={cn(
+                            'inline-flex select-none items-center gap-1 shrink-0 text-[10px] pb-0.5 ml-auto',
+                            isOwn ? 'text-white/70' : 'text-muted-foreground/80'
+                          )}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              unstarMutation.mutate({ convId: msg.groupId, msgId: msg.id });
+                            }}
+                            disabled={unstarMutation.isPending}
+                            aria-label="Unstar message"
+                            title="Unstar message"
+                            className="flex items-center gap-0.5 transition-opacity hover:opacity-70 disabled:opacity-50"
+                          >
+                            {isUnstarringThis ? (
+                              <Loader2 size={11} className="animate-spin" />
+                            ) : (
+                              <Star size={11} className="fill-current text-amber-400" />
+                            )}
+                          </button>
+                          <span>{clockTime(msg.createdAt)}</span>
+                          {isOwn && (
+                            <CheckCheck size={13} className={msg.status === 'read' ? 'text-sky-400' : 'text-white/60'} />
+                          )}
                         </span>
                       </div>
-                      <span className={`inline-flex max-w-full rounded-2xl px-2.5 py-1.5 text-sm lg:px-3 lg:py-2 lg:text-base ${
-                        isOwn
-                          ? 'bg-chat-outgoing-bg text-chat-outgoing-foreground rounded-br-md border border-white/10'
-                          : 'bg-chat-incoming-bg text-chat-incoming-foreground rounded-bl-md border border-black/5'
-                      }`}>
-                        <span className="flex min-w-0 items-end gap-1.5">
-                          <span className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5">
-                            {msg.content || (msg.type === 'image' ? '📷 Photo' : msg.type === 'video' ? '🎬 Video' : msg.type === 'file' ? (msg.fileName ?? '📎 Document') : '')}
-                          </span>
-                          <span className={`inline-flex select-none items-center gap-1 shrink-0 pb-0.5 text-[9px] lg:text-[10px] ${
-                            isOwn ? 'text-white/60' : 'text-muted-foreground/75'
-                          }`}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                unstarMutation.mutate({ convId: msg.groupId, msgId: msg.id });
-                              }}
-                              disabled={unstarMutation.isPending}
-                              aria-label="Unstar message"
-                              title="Unstar"
-                              className="transition-opacity hover:opacity-70 disabled:opacity-50"
-                            >
-                              {unstarMutation.isPending && unstarMutation.variables?.msgId === msg.id ? (
-                                <Loader2 size={10} className="animate-spin" />
-                              ) : (
-                                <Star size={10} className="fill-current" />
-                              )}
-                            </button>
-                            {clockTime(msg.createdAt)}
-                          </span>
-                        </span>
-                      </span>
                     </div>
                   </div>
                 </div>

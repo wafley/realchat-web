@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useMemo, useLayoutEffect, type ElementType
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2, Star } from 'lucide-react';
+import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, AlertCircle, RefreshCw, Trash2, Check, X, Loader2, Star, BellOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
-import { useTypingStore } from '@/store/typingStore';
+import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP, type ChatConversation } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
@@ -320,7 +320,9 @@ export default function ChatList() {
             <Link to="/profile" className="lg:hidden">
               <Avatar className="h-8 w-8">
                 {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                <AvatarFallback className="text-xs"><User size={16} /></AvatarFallback>
+                <AvatarFallback className="text-xs font-semibold">
+                  {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
             </Link>
           </div>
@@ -366,7 +368,7 @@ export default function ChatList() {
         ) : showSearchResults ? (
           <>
             {filtered.length > 0 && (
-              <div>
+              <div role="list">
                 <div className="px-4 py-2 text-xs font-medium text-muted-foreground lg:px-5 lg:py-2.5">
                   Conversations
                 </div>
@@ -383,8 +385,8 @@ export default function ChatList() {
                       <div className="relative shrink-0">
                         <Avatar className="lg:h-12 lg:w-12">
                           {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
-                          <AvatarFallback className="lg:text-base">
-                            {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
+                          <AvatarFallback className="font-semibold text-xs lg:text-base">
+                            {chat.type === 'group' ? <Users size={18} /> : (chat.name ? chat.name.charAt(0).toUpperCase() : 'U')}
                           </AvatarFallback>
                         </Avatar>
                       </div>
@@ -401,8 +403,8 @@ export default function ChatList() {
               </div>
             )}
             {messageResults.length > 0 && (
-              <div>
-                <div className="px-4 py-2 text-xs font-medium text-muted-foreground lg:px-5 lg:py-2.5">
+              <div role="list" className="border-t border-border">
+                <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
                   Messages
                 </div>
                 {messageResults.map((msg) => (
@@ -414,8 +416,8 @@ export default function ChatList() {
                   >
                     <div className="relative shrink-0">
                       <Avatar className="lg:h-12 lg:w-12">
-                        <AvatarFallback className="lg:text-base">
-                          {msg.conversationType === 'group' ? <Users size={18} /> : <User size={18} />}
+                        <AvatarFallback className="font-semibold text-xs lg:text-base">
+                          {msg.conversationType === 'group' ? <Users size={18} /> : (msg.conversationName ? msg.conversationName.charAt(0).toUpperCase() : 'U')}
                         </AvatarFallback>
                       </Avatar>
                     </div>
@@ -500,8 +502,8 @@ export default function ChatList() {
                   <div className="relative shrink-0">
                     <Avatar className="lg:h-12 lg:w-12">
                       {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
-                      <AvatarFallback className="lg:text-base">
-                        {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
+                      <AvatarFallback className="font-semibold text-xs lg:text-base">
+                        {chat.type === 'group' ? <Users size={18} /> : (chat.name ? chat.name.charAt(0).toUpperCase() : 'U')}
                       </AvatarFallback>
                     </Avatar>
                     {online && !isSelectionMode && (
@@ -518,14 +520,19 @@ export default function ChatList() {
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">
                         {chat.name}
                       </span>
+                      {chat.muted && !isSelectionMode && (
+                        <BellOff size={13} className="shrink-0 text-muted-foreground/60" aria-label="Muted" />
+                      )}
                       <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">
                         {formatTime(chat.lastTime)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="line-clamp-1 min-w-0 flex-1 text-xs text-muted-foreground lg:text-sm">
-                        {typingMap[chat.id] ? (
-                          <span className="text-accent">typing...</span>
+                        {typingMap[chat.id]?.length ? (
+                          <span className="text-accent">
+                            {chat.type === 'dm' ? 'typing...' : formatTypingLabel(typingMap[chat.id]!.map((t) => t.name))}
+                          </span>
                         ) : online ? (
                           clampText(chat.lastMessage)
                         ) : lastSeen && shouldShowLastSeen() ? (

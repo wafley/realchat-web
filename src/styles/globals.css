@@ -322,3 +322,20 @@
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.typing-dot {
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+

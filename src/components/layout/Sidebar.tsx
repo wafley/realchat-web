@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { LogOut, User, Settings } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
 import NotificationBell from '@/components/layout/NotificationBell';
@@ -54,8 +54,8 @@ export default function Sidebar() {
         <NavLink to="/profile" title="Profile">
           <Avatar className="h-8 w-8 lg:h-10 lg:w-10 cursor-pointer ring-2 ring-transparent transition-all hover:ring-accent/40">
             {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-            <AvatarFallback className="text-xs lg:text-sm">
-              <User size={16} />
+            <AvatarFallback className="text-xs font-semibold lg:text-sm">
+              {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </NavLink>

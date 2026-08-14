@@ -108,10 +108,9 @@ export function normalizeRemoteStatus(status?: string | null): MessageStatus | u
 }
 
 export function mapMessage(row: RemoteMessage): Message {
+  const t = (row.type ?? '').toLowerCase();
   const type: Message['type'] =
-    row.type === 'image' || row.type === 'file' || row.type === 'video' || row.type === 'system'
-      ? row.type
-      : 'text';
+    t === 'image' || t === 'file' || t === 'video' || t === 'system' ? t : 'text';
   return {
     id: row.id,
     groupId: row.conversationId ?? '',
@@ -131,8 +130,8 @@ export function mapMessage(row: RemoteMessage): Message {
     createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
     sender: {
       id: row.senderId,
-      username: '',
-      fullName: '',
+      username: row.sender?.username ?? '',
+      fullName: row.sender?.fullName || row.sender?.username || '',
       email: '',
       status: 'offline',
       createdAt: new Date(),
@@ -351,7 +350,7 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
   }
 }
 
-export async function markConversationAsSeen(chatId: string, lastSeenMessageId?: string): Promise<void> {
+export async function markConversationAsSeen(chatId: string, _lastSeenMessageId?: string): Promise<void> {
   try {
     if (DEV_MODE) {
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
@@ -369,11 +368,9 @@ export async function markConversationAsSeen(chatId: string, lastSeenMessageId?:
       return;
     }
 
-    // Kontrak #17: client → server message:seen { conversationId, lastSeenMessageId }.
-    // userId diambil server dari socket auth. Server throttle 500ms + idempotent.
-    if (socketClient.isConnected && lastSeenMessageId) {
-      socketClient.emitMessageSeen(chatId, lastSeenMessageId);
-    }
+    // Kontrak: client → server POST /conversations/:id/read.
+    // Reset unreadCount server untuk user ini (per-user, tidak mengirim seen ke lawan bicara).
+    await api.post(`/conversations/${chatId}/read`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to mark as seen');
   }
@@ -809,20 +806,33 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
   }
 }
 
-export async function toggleMuteConversation(chatId: string): Promise<boolean> {
+export async function muteConversation(chatId: string, until?: string): Promise<void> {
   try {
     if (DEV_MODE) {
       await delay(100);
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      if (!conv) return false;
-      conv.muted = !conv.muted;
-      return conv.muted;
+      if (conv) conv.muted = true;
+      return;
     }
 
-    const { data } = await api.post<{ muted: boolean }>(`/conversations/${chatId}/toggle-mute`);
-    return data.muted;
+    await api.put(`/conversations/${chatId}/mute`, until ? { until } : {});
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to toggle mute');
+    throw err instanceof Error ? err : new Error('Failed to mute conversation');
+  }
+}
+
+export async function unmuteConversation(chatId: string): Promise<void> {
+  try {
+    if (DEV_MODE) {
+      await delay(100);
+      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
+      if (conv) conv.muted = false;
+      return;
+    }
+
+    await api.delete(`/conversations/${chatId}/mute`);
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('Failed to unmute conversation');
   }
 }
 
@@ -878,17 +888,9 @@ export async function reportUser(userId: string): Promise<void> {
 }
 
 export async function getGroups(): Promise<ChatConversation[]> {
-  try {
-    if (DEV_MODE) {
-      await delay(100);
-      return MOCK_CONVERSATIONS.filter((c) => c.type === 'group');
-    }
-
-    const { data } = await api.get(`/groups`);
-    return Array.isArray(data) ? data : Array.isArray(data?.groups) ? data.groups : [];
-  } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to get groups');
-  }
+  // BREAKING (5.1): tidak ada GET /groups di backend. Grup milik user diambil
+  // dari GET /conversations (member-only) lalu difilter type GROUP.
+  return (await getConversations()).filter((c) => c.type === 'group');
 }
 
 export async function searchUsers(query: string): Promise<User[]> {
@@ -899,19 +901,19 @@ export async function searchUsers(query: string): Promise<User[]> {
       return MOCK_USERS.filter((u) => u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)) as User[];
     }
 
-    const { data } = await api.get(`/users/search`, { params: { q: query } });
-    return data;
+    const { data } = await api.get<{ users?: User[] }>(`/search/users`, { params: { q: query } });
+    return Array.isArray(data) ? (data as User[]) : (data?.users ?? []);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to search users');
   }
 }
 
-export async function createGroup(name: string, description: string, memberIds: string[], isPrivate = false): Promise<ChatConversation> {
+export async function createGroup(name: string, description: string, memberIds: string[], avatarFile?: File): Promise<ChatConversation> {
   try {
     if (DEV_MODE) {
       await delay(200);
       const id = String(++groupIdCounter);
-      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: false, muted: false };
+      const newConv: ChatConversation = { id, name, type: 'group', avatarUrl: avatarFile ? URL.createObjectURL(avatarFile) : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=2563eb`, lastMessage: 'Group created', lastTime: 'now', members: memberIds.length + 1, online: false, muted: false };
       MOCK_CONVERSATIONS.unshift(newConv);
       MOCK_MESSAGES[id] = [
         { id: `sys-${id}`, groupId: id, senderId: 'system', content: 'Group created', type: 'system', createdAt: new Date() },
@@ -919,8 +921,24 @@ export async function createGroup(name: string, description: string, memberIds: 
       return newConv;
     }
 
-    const { data } = await api.post<ChatConversation>(`/groups`, { name, description, memberIds, isPrivate });
-    return data;
+    // BREAKING (3.1): POST /groups multipart. participantIds = JSON string (min 2 max 49).
+    const form = new FormData();
+    form.append('name', name);
+    form.append('description', description);
+    form.append('participantIds', JSON.stringify(memberIds));
+    if (avatarFile) form.append('avatar', avatarFile);
+    const { data } = await api.post<{ id: string; type: string; name: string; avatarUrl?: string | null; description?: string | null; createdBy: string; createdAt: string }>(`/groups`, form);
+    return {
+      id: data.id,
+      name: data.name,
+      avatarUrl: data.avatarUrl ?? undefined,
+      type: 'group',
+      lastMessage: 'Group created',
+      lastTime: data.createdAt,
+      members: memberIds.length + 1,
+      online: false,
+      muted: false,
+    };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to create group');
   }
@@ -936,7 +954,7 @@ export async function leaveGroup(groupId: string): Promise<void> {
       return;
     }
 
-    await api.delete(`/groups/${groupId}/members/me`);
+    await api.delete(`/groups/${groupId}/leave`);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to leave group');
   }
@@ -968,8 +986,39 @@ export async function getGroup(groupId: string): Promise<Group> {
       };
     }
 
-    const { data } = await api.get<Group>(`/groups/${groupId}`);
-    return data;
+    // BREAKING (3.5): tidak ada GET /groups/:id. Detail grup = GET /conversations/:id (detail + members).
+    interface RemoteGroupDetail {
+      id: string;
+      type: string;
+      name: string | null;
+      description?: string | null;
+      avatarUrl?: string | null;
+      createdBy?: string | null;
+      createdAt?: string | null;
+      members?: {
+        id: string;
+        userId: string;
+        role: string;
+        joinedAt: string;
+      }[];
+    }
+    const { data } = await api.get<RemoteGroupDetail>(`/conversations/${groupId}`);
+    return {
+      id: data.id,
+      name: data.name ?? 'Group',
+      description: data.description ?? undefined,
+      avatarUrl: data.avatarUrl ?? undefined,
+      creatorId: data.createdBy ?? '',
+      isPrivate: false,
+      createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+      members: (data.members ?? []).map((m) => ({
+        id: m.id,
+        groupId,
+        userId: m.userId,
+        role: m.role === 'ADMIN' ? 'admin' : 'member',
+        joinedAt: new Date(m.joinedAt),
+      })),
+    };
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to get group');
   }
@@ -990,7 +1039,7 @@ export async function addGroupMember(groupId: string, userId: string): Promise<v
       return;
     }
 
-    await api.post(`/groups/${groupId}/members`, { userId });
+    await api.post(`/groups/${groupId}/members`, { userIds: [userId] });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to add member');
   }
@@ -1016,7 +1065,7 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
   }
 }
 
-export async function updateGroup(groupId: string, data: { name?: string; description?: string; avatarUrl?: string }): Promise<void> {
+export async function updateGroup(groupId: string, data: { name?: string; description?: string }): Promise<void> {
   try {
     if (DEV_MODE) {
       await delay(200);
@@ -1025,12 +1074,12 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
       const conv = MOCK_CONVERSATIONS.find((c) => c.id === groupId);
       if (conv) {
         if (data.name) conv.name = data.name;
-        if (data.avatarUrl) conv.avatarUrl = data.avatarUrl;
       }
       return;
     }
 
-    await api.patch(`/groups/${groupId}`, data);
+    // BREAKING (3.3): PUT (bukan PATCH), schema strict hanya name/description.
+    await api.put(`/groups/${groupId}`, data);
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to update group');
   }
@@ -1049,7 +1098,8 @@ export async function updateMemberRole(groupId: string, userId: string, role: 'a
       return;
     }
 
-    await api.patch(`/groups/${groupId}/members/${userId}/role`, { role });
+    // BREAKING (3.4): PUT + role UPPERCASE ('ADMIN'|'MEMBER').
+    await api.put(`/groups/${groupId}/members/${userId}/role`, { role: role.toUpperCase() });
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to update member role');
   }
@@ -1078,12 +1128,13 @@ export async function uploadGroupAvatar(groupId: string, file: File): Promise<st
       return URL.createObjectURL(file);
     }
 
+    // BREAKING (3.4): PUT (bukan POST). Response berisi full row conversation (bukan { url }).
     const formData = new FormData();
     formData.append('avatar', file);
-    const { data } = await api.post<{ url: string }>(`/groups/${groupId}/avatar`, formData, {
+    const { data } = await api.put<{ avatarUrl?: string | null; url?: string }>(`/groups/${groupId}/avatar`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return data.url;
+    return data.avatarUrl ?? data.url ?? '';
   } catch (err) {
     throw err instanceof Error ? err : new Error('Failed to upload group avatar');
   }
@@ -1119,6 +1170,9 @@ export async function clearChat(chatId: string): Promise<void> {
     if (DEV_MODE) {
       await delay(200);
       delete MOCK_MESSAGES[chatId];
+    } else {
+      // BREAKING (2.5): reset percakapan via PATCH /conversations/:id/clear (bukan hapus total).
+      await api.patch(`/conversations/${chatId}/clear`);
     }
 
     markChatCleared(chatId);

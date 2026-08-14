@@ -1,10 +1,8 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
-import { markConversationAsSeen, toggleMuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
+import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
-import { usePrivacyStore } from '@/store/privacyStore';
-import { useAuthStore } from '@/store/authStore';
 import type { Message, ReplyTo } from '@/types';
 
 function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
@@ -12,7 +10,7 @@ function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
   return {
     id: replyingTo.id,
     senderId: replyingTo.senderId,
-    senderName: replyingTo.sender?.fullName ?? 'Unknown',
+    senderName: replyingTo.sender?.fullName ?? replyingTo.sender?.username ?? 'Unknown',
     content: replyingTo.content,
     type: replyingTo.type as 'text' | 'image',
     fileUrl: replyingTo.fileUrl,
@@ -41,7 +39,6 @@ interface UseChatActionsProps {
   searchMatchIds: string[];
   activeMatchIndex: number;
   searchQuery: string;
-  muted: boolean;
   chatName: string;
   otherUserId: string | undefined;
   selectedImage: File | null;
@@ -126,7 +123,6 @@ export function useChatActions(props: UseChatActionsProps) {
     searchMatchIds,
     activeMatchIndex,
     searchQuery,
-    muted,
     chatName,
     otherUserId,
     selectedImage,
@@ -282,17 +278,9 @@ export function useChatActions(props: UseChatActionsProps) {
   }, [chatId]);
 
   useEffect(() => {
-    if (!chatId || !usePrivacyStore.getState().readReceipts) return;
-    const currentUserId = useAuthStore.getState().user?.id;
-    const fromOthers = messages.filter((m) => m.senderId !== currentUserId);
-    if (fromOthers.length === 0) return;
-    const last = fromOthers.reduce((a, b) =>
-      new Date(b.createdAt).getTime() > new Date(a.createdAt).getTime() ? b : a,
-    );
-    if (emittedReadIdsRef.current.has(last.id)) return;
-    emittedReadIdsRef.current.add(last.id);
-    markConversationAsSeen(chatId, last.id);
-  }, [messages, chatId]);
+    if (!chatId) return;
+    markConversationAsSeen(chatId);
+  }, [chatId]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -765,17 +753,28 @@ export function useChatActions(props: UseChatActionsProps) {
     [bulkForwardMessages, forwardMutation, setSelectedIds],
   );
 
-  const handleToggleMute = useCallback(async () => {
-    const n = !muted;
-    setMuted(n);
+    // Dialog mute (checklist 2.1): 'unmute' | 'forever' | ISO date string (durasi sampai waktu tertentu).
+  const handleMute = useCallback(async (option: 'unmute' | 'forever' | string) => {
+    if (option === 'unmute') {
+      try {
+        await unmuteConversation(chatId);
+        setMuted(false);
+        toast('Notifications unmuted');
+      } catch {
+        toast.error('Failed to unmute conversation');
+      }
+      return;
+    }
+
+    setMuted(true);
     try {
-      await toggleMuteConversation(chatId);
-      toast(n ? 'Notifications muted' : 'Notifications unmuted');
+      await muteConversation(chatId, option === 'forever' ? undefined : option);
+      toast('Notifications muted');
     } catch {
-      setMuted(!n);
+      setMuted(false);
       toast.error('Failed to update mute setting');
     }
-  }, [muted, chatId]);
+  }, [chatId, setMuted]);
 
   const handleUpdateEdit = useCallback(() => {
     const text = input.trim();
@@ -841,7 +840,7 @@ export function useChatActions(props: UseChatActionsProps) {
     toggleSelect,
     handleBulkDelete,
     handleBulkForward,
-    handleToggleMute,
+    handleMute,
     handleUpdateEdit,
     handleCancelEdit,
     handleSend,

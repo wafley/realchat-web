@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Loader2, AlertCircle, Users, ArrowLeft, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2, User } from 'lucide-react';
+import { Loader2, AlertCircle, Users, ArrowLeft, UserMinus, Crown, Shield, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Modal from '@/components/ui/modal';
@@ -31,6 +31,7 @@ export default function GroupDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', id] });
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       setEditOpen(false);
       toast.success('Group updated');
     },
@@ -41,6 +42,7 @@ export default function GroupDetail() {
     mutationFn: () => deleteGroup(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       toast.success('Group deleted');
       navigate('/');
     },
@@ -184,8 +186,9 @@ export default function GroupDetail() {
             >
               <div className="relative shrink-0">
                 <Avatar className="h-9 w-9">
+                  {memberUser?.avatarUrl && <AvatarImage src={memberUser.avatarUrl} />}
                   <AvatarFallback className="text-xs font-bold">
-                    <User size={14} />
+                    {(memberUser?.fullName || memberUser?.username || 'U').charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 {memberUser?.status === 'online' && (
@@ -195,11 +198,11 @@ export default function GroupDetail() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <p className="truncate text-sm font-medium text-foreground">
-                    {memberUser?.fullName ?? 'Unknown'}
+                    {memberUser?.fullName ?? member.userId}
                   </p>
                   {isMe && <span className="text-xs text-muted-foreground">(you)</span>}
                 </div>
-                <p className="text-xs text-muted-foreground">@{memberUser?.username}</p>
+                {memberUser?.username && <p className="text-xs text-muted-foreground">@{memberUser.username}</p>}
               </div>
               <div className="flex items-center gap-2">
                 {member.role === 'admin' && (
@@ -220,7 +223,7 @@ export default function GroupDetail() {
                       <div className="absolute right-0 top-8 z-10 w-40 rounded-xl border border-border bg-background py-1 shadow-lg">
                         {(isAdmin || isCreator) && member.userId !== currentUser?.id && (
                           <button
-                            onClick={() => handleToggleRole(member.id, member.role)}
+                            onClick={() => handleToggleRole(member.userId, member.role)}
                             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent/10"
                           >
                             <Shield size={14} />

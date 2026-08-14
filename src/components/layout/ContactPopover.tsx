@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, User, MessageSquareText, Search, Loader2, X, ArrowLeft } from 'lucide-react';
+import { UserPlus, MessageSquareText, Search, Loader2, X, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { getContacts, addContact, searchContacts } from '@/services/contacts';
@@ -245,8 +245,8 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
                           >
                             <Avatar className="h-8 w-8">
                               {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                              <AvatarFallback className="text-xs">
-                                <User size={13} />
+                              <AvatarFallback className="text-xs font-semibold">
+                                {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1 text-left">
@@ -278,8 +278,8 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
                         >
                           <Avatar className="h-8 w-8">
                             {contact.user.avatarUrl && <AvatarImage src={contact.user.avatarUrl} />}
-                            <AvatarFallback className="text-xs">
-                              <User size={13} />
+                            <AvatarFallback className="text-xs font-semibold">
+                              {(displayName || contact.user.username || 'U').charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1 text-left">

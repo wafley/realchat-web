@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users, User } from 'lucide-react';
+import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
@@ -9,7 +9,7 @@ import { useNow } from '@/hooks/useNow';
 interface ChatHeaderProps {
   chatName: string;
   chatOnline: boolean;
-  otherTyping: boolean;
+  typingLabel?: string | null;
   isDM: boolean;
   muted: boolean;
   userId?: string;
@@ -28,7 +28,7 @@ interface ChatHeaderProps {
 export default function ChatHeader({
   chatName,
   chatOnline,
-  otherTyping,
+  typingLabel,
   isDM,
   muted,
   userId,
@@ -70,8 +70,8 @@ export default function ChatHeader({
       </button>
       <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
         {avatarUrl && <AvatarImage src={avatarUrl} alt={chatName} />}
-        <AvatarFallback className="lg:text-base">
-          {isDM ? <User size={18} /> : <Users size={18} />}
+        <AvatarFallback className="font-semibold text-xs lg:text-base">
+          {isDM ? (chatName ? chatName.charAt(0).toUpperCase() : 'U') : <Users size={18} />}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1">
@@ -80,14 +80,14 @@ export default function ChatHeader({
         ) : (
           <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         )}
-        {otherTyping ? (
+        {typingLabel ? (
           <p className="flex items-center gap-1 text-xs text-accent">
             <span className="flex gap-0.5">
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:0ms]" />
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:150ms]" />
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:300ms]" />
             </span>
-            typing
+            {typingLabel}
           </p>
         ) : isDM ? (
           <p className="text-xs text-muted-foreground">

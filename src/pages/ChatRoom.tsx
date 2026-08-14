@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSearchBar from '@/components/chat/ChatSearchBar';
@@ -14,7 +14,42 @@ import { joinRoom, joinAllConversationRooms, setCurrentChat } from '@/services/s
 
 export default function ChatRoom() {
   const navigate = useNavigate();
+  const location = useLocation();
   const state = useChatState();
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const handledHighlightIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    handledHighlightIdRef.current = null;
+  }, [state.chatId]);
+
+  useEffect(() => {
+    const targetId = location.state?.highlightMessageId;
+    if (!targetId || handledHighlightIdRef.current === targetId) return;
+    handledHighlightIdRef.current = targetId;
+    setHighlightedMsgId(targetId);
+
+    let attempts = 0;
+    const retry = setInterval(() => {
+      attempts += 1;
+      const el = document.getElementById(`msg-${targetId}`);
+      if (el) {
+        clearInterval(retry);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (attempts >= 60) {
+        clearInterval(retry);
+      }
+    }, 150);
+
+    const fadeTimer = setTimeout(() => {
+      setHighlightedMsgId(null);
+    }, 3000);
+
+    return () => {
+      clearInterval(retry);
+      clearTimeout(fadeTimer);
+    };
+  }, [location.state?.highlightMessageId]);
 
   const mutations = useChatMutations({
     chatId: state.chatId,
@@ -50,7 +85,6 @@ export default function ChatRoom() {
     searchMatchIds: state.searchMatchIds,
     activeMatchIndex: state.activeMatchIndex,
     searchQuery: state.searchQuery,
-    muted: state.muted,
     chatName: state.chatName,
     otherUserId: state.otherUserId,
     selectedImage: state.selectedImage,
@@ -123,11 +157,23 @@ export default function ChatRoom() {
     };
   }, [state.chatId, state.isDM]);
 
+  // Dikeluarkan/di-remove dari grup atau grup di-dismiss → kembali ke daftar chat.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ conversationId: string }>).detail;
+      if (detail?.conversationId && detail.conversationId === state.chatId) {
+        navigate('/');
+      }
+    };
+    window.addEventListener('chat:forced-leave', handler);
+    return () => window.removeEventListener('chat:forced-leave', handler);
+  }, [state.chatId, navigate]);
+
   return (
     <div className="flex h-full flex-col">
       <ChatHeader
         chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
-        otherTyping={state.otherTyping}
+        typingLabel={state.typingLabel}
         chatOnline={state.chatOnline}
         isDM={state.isDM}
         muted={state.muted}
@@ -144,7 +190,7 @@ export default function ChatRoom() {
             state.setShowSearch(true);
           }
         }}
-        onToggleMute={actions.handleToggleMute}
+        onToggleMute={() => state.setMuteDialogOpen(true)}
         onBlockClick={() => state.setBlockConfirmOpen(true)}
         onReportClick={() => state.setReportConfirmOpen(true)}
         onGroupInfoClick={() => state.setGroupInfoOpen(true)}
@@ -218,6 +264,7 @@ export default function ChatRoom() {
       )}
 
       <MessageList
+        highlightedMsgId={highlightedMsgId}
         chatId={state.chatId}
         isDM={state.isDM}
         filteredMessages={state.filteredMessages}
@@ -230,7 +277,7 @@ export default function ChatRoom() {
         hasActiveSearch={state.hasActiveSearch}
         searchMatchIds={state.searchMatchIds}
         activeMatchIndex={state.activeMatchIndex}
-        otherTyping={state.otherTyping}
+        typingUsers={state.typers ?? []}
         currentUserId={state.currentUser?.id}
         onRetry={() => state.refetch()}
         scrollTriggerRef={
@@ -333,6 +380,10 @@ export default function ChatRoom() {
           state.setClearConfirmOpen(false);
           mutations.clearChatMutation.mutate();
         }}
+        muteDialogOpen={state.muteDialogOpen}
+        muted={state.muted}
+        onCloseMute={() => state.setMuteDialogOpen(false)}
+        onMute={actions.handleMute}
         onCloseGroupInfo={() => state.setGroupInfoOpen(false)}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
         onUpdateGroup={(data) =>

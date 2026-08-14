@@ -128,11 +128,14 @@ export interface PaginatedResponse<T> {
 
 export interface Notification {
   id: string;
-  type: 'contact_added' | 'message' | 'group';
+  type: 'contact_added' | 'message' | 'group' | 'group_invite' | 'mention';
   title: string;
   body?: string;
   read: boolean;
+  isRead?: boolean;
   conversationId?: string;
+  actorId?: string;
+  messageId?: string;
   sender?: { id: string; username: string; avatarUrl?: string };
   createdAt: Date;
 }

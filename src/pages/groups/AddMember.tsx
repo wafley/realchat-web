@@ -2,17 +2,43 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, UserPlus, Loader2, UserCheck, User, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { searchUsers, addGroupMember } from '@/services/chat';
+import { searchUsers, addGroupMember, getGroup, getConversations } from '@/services/chat';
+import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
 export default function AddMember() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ id: string; name: string; username: string }[]>([]);
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
+  const [dmIds, setDmIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    getGroup(id)
+      .then((g) => setMemberIds(new Set(g.members?.map((m) => m.userId) ?? [])))
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    getConversations()
+      .then((convs) =>
+        setDmIds(
+          new Set(
+            convs
+              .filter((c) => c.type === 'dm')
+              .map((c) => c.userId)
+              .filter((uid): uid is string => !!uid),
+          ),
+        ),
+      )
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -25,7 +51,9 @@ export default function AddMember() {
       try {
         const users = await searchUsers(query.trim());
         setResults(
-          users.map((u) => ({ id: u.id, name: u.fullName, username: u.username })),
+          users
+            .filter((u) => u.id !== currentUser?.id && !memberIds.has(u.id) && dmIds.has(u.id))
+            .map((u) => ({ id: u.id, name: u.fullName, username: u.username })),
         );
       } catch {
         toast.error('Failed to search users');
@@ -37,7 +65,7 @@ export default function AddMember() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, memberIds, dmIds, currentUser?.id]);
 
   const handleAdd = async (userId: string) => {
     if (!id) return;
@@ -82,13 +110,29 @@ export default function AddMember() {
         ) : (
           results.map((user) => {
             const isAdded = addedIds.has(user.id);
+            const isMe = user.id === currentUser?.id;
+            const isMember = memberIds.has(user.id);
+            const notContact = !dmIds.has(user.id);
+            const canAdd = !isAdded && !isMe && !isMember && !notContact;
+            const status = isAdded
+              ? { label: 'Added', icon: UserCheck, cls: 'bg-accent/20 text-accent' }
+              : isMember
+                ? { label: 'Member', icon: UserCheck, cls: 'bg-accent/10 text-muted-foreground' }
+                : isMe
+                  ? { label: 'You', icon: User, cls: 'bg-accent/10 text-muted-foreground' }
+                  : notContact
+                    ? { label: 'Not a contact', icon: UserPlus, cls: 'bg-accent/10 text-muted-foreground' }
+                    : { label: 'Add Member', icon: UserPlus, cls: 'bg-accent text-accent-foreground hover:bg-accent/80' };
+            const StatusIcon = status.icon;
             return (
               <div
                 key={user.id}
                 className="flex items-center gap-4 rounded-2xl border border-border px-4 py-3.5"
               >
                 <Avatar className="h-12 w-12 shrink-0">
-                  <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
+                  <AvatarFallback className="font-bold text-xs">
+                    {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
@@ -96,15 +140,11 @@ export default function AddMember() {
                 </div>
                 <button
                   onClick={() => handleAdd(user.id)}
-                  disabled={isAdded}
-                  className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-colors ${
-                    isAdded
-                      ? 'bg-accent/20 text-accent'
-                      : 'bg-accent text-accent-foreground hover:bg-accent/80'
-                  }`}
+                  disabled={!canAdd}
+                  className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-colors ${status.cls} ${canAdd ? '' : 'cursor-not-allowed'}`}
                 >
-                  {isAdded ? <UserCheck size={16} /> : <UserPlus size={16} />}
-                  {isAdded ? 'Added' : 'Add Member'}
+                  <StatusIcon size={16} />
+                  {status.label}
                 </button>
               </div>
             );
