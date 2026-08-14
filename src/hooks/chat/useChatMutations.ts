@@ -29,6 +29,7 @@ import {
   clearChat,
   simulateDevReceipts,
   refreshConversationPreview,
+  messageSenderName,
 } from '@/services/chat';
 
 interface UseChatMutationsProps {
@@ -79,12 +80,19 @@ export function useChatMutations({
         },
       );
       const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
-      queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+      queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; lastSenderName?: string }[]>(
         ['conversations'],
         (prev) => {
           if (!prev) return prev;
           const updated = prev.map((c) =>
-            c.id === chatId ? { ...c, lastMessage: preview, lastTime: new Date().toISOString() } : c,
+            c.id === chatId
+              ? {
+                  ...c,
+                  lastMessage: preview,
+                  lastSenderName: !isDM ? messageSenderName(newMsg) : undefined,
+                  lastTime: new Date().toISOString(),
+                }
+              : c,
           );
       const idx = updated.findIndex((c) => c.id === chatId);
       if (idx <= 0) return updated;

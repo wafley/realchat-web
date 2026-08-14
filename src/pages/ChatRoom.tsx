@@ -10,7 +10,7 @@ import ChatOverlays from '@/components/chat/ChatOverlays';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
-import { joinRoom, joinAllConversationRooms, setCurrentChat } from '@/services/socket.service';
+import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
@@ -152,6 +152,7 @@ export default function ChatRoom() {
 
     return () => {
       joinAllConversationRooms();
+      emitSeenForConversation(state.chatId, state.isDM, undefined, true);
       setCurrentChat(null, false);
       sessionStorage.removeItem(`scrollPos-${state.chatId}`);
     };

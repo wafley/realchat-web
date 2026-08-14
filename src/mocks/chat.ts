@@ -8,6 +8,7 @@ export interface ChatConversation {
   type: 'group' | 'dm';
   avatarUrl?: string;
   lastMessage?: string;
+  lastSenderName?: string;
   lastTime?: string;
   unread?: number;
   online?: boolean;

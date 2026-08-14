@@ -18,11 +18,6 @@ import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
 import type { Conversation, SearchMessageResult } from '@/types';
 
-const tabs = [
-  { id: 'messages', label: 'Messages', icon: MessageSquareText },
-  { id: 'groups', label: 'Groups', icon: Users },
-] as const;
-
 function formatTime(time?: string): string {
   if (!time) return '';
   const date = new Date(time);
@@ -35,14 +30,25 @@ function clampText(s?: string, max = 50): string {
   return s.length > max ? `${s.slice(0, max).trimEnd()}...` : s;
 }
 
+function ChatPreview({ chat }: { chat: ChatConversation }) {
+  return (
+    <>
+      {chat.type === 'group' && chat.lastSenderName && (
+        <span className="text-muted-foreground">{chat.lastSenderName}: </span>
+      )}
+      {clampText(chat.lastMessage)}
+    </>
+  );
+}
+
 export default function ChatList() {
   const navigate = useNavigate();
   const { groupId, userId } = useParams();
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<'all' | 'groups' | 'unread'>('all');
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -125,8 +131,8 @@ export default function ChatList() {
   const conversations = Array.isArray(data) ? data : [];
 
   const filtered = conversations.filter((c) => {
-    if (tab === 'messages' && c.type !== 'dm') return false;
-    if (tab === 'groups' && c.type !== 'group') return false;
+    if (category === 'groups' && c.type !== 'group') return false;
+    if (category === 'unread' && (c.unread ?? 0) <= 0) return false;
     if (!c.name.toLowerCase().includes(search.toLowerCase())) return false;
     const clearedAt = isChatCleared(c.id);
     if (clearedAt) {
@@ -282,72 +288,81 @@ export default function ChatList() {
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 border-b border-border p-4 lg:px-5 lg:py-4">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground lg:left-3.5"
-            />
-            <input
-              type="text"
-              aria-label="Search chats"
-              placeholder="Search chats..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
-            />
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between gap-2 p-4 pb-2 lg:px-5 lg:pb-3 lg:pt-5">
+            <h1 className="text-xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/starred')}
+                aria-label="Starred messages"
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
+                  location.pathname === '/starred'
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <Star size={18} />
+              </button>
+              <button
+                onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
+                aria-label="New chat"
+                className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
+              >
+                <Plus size={20} />
+              </button>
+              <Link to="/profile" className="lg:hidden">
+                <Avatar className="h-8 w-8">
+                  {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                  <AvatarFallback className="text-xs font-semibold">
+                    {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/starred')}
-              aria-label="Starred messages"
-              className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
-                location.pathname === '/starred'
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              <Star size={18} />
-            </button>
-            <button
-              onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
-              aria-label="New chat"
-              className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
-            >
-              <Plus size={20} />
-            </button>
-            <Link to="/profile" className="lg:hidden">
-              <Avatar className="h-8 w-8">
-                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                <AvatarFallback className="text-xs font-semibold">
-                  {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
+          <div className="px-4 pb-4 lg:px-5 lg:pb-4">
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground lg:left-3.5"
+              />
+              <input
+                type="text"
+                aria-label="Search chats"
+                placeholder="Search chats..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-full border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 px-4 pb-4 lg:px-5 lg:pb-4">
+            {(
+              [
+                { id: 'all', label: 'Chat' },
+                { id: 'groups', label: 'Groups' },
+                { id: 'unread', label: 'Unread' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => { setCategory(id); setSearch(''); }}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-medium transition-colors lg:text-sm',
+                  category === id
+                    ? 'bg-accent text-accent-foreground'
+                    : 'border border-border text-muted-foreground hover:bg-accent/10 hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
       <ContactPopover anchorEl={anchorEl} onClose={() => setAnchorEl(null)} />
-
-      <div className="flex items-center border-b border-border">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setTab(id); setSearch(''); }}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors lg:gap-2.5 lg:py-4 lg:text-base',
-              tab === id
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Icon size={16} className="lg:size-[18]" />
-            {label}
-          </button>
-        ))}
-      </div>
 
       <div className="flex-1 overflow-y-auto">
         {isPending ? (
@@ -380,7 +395,7 @@ export default function ChatList() {
                       key={chat.id}
                       to={linkTo}
                       state={{ name: chat.name, online, lastSeen, members: chat.members }}
-                      className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                     >
                       <div className="relative shrink-0">
                         <Avatar className="lg:h-12 lg:w-12">
@@ -395,7 +410,7 @@ export default function ChatList() {
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{chat.name}</span>
                           <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatTime(chat.lastTime)}</span>
                         </div>
-                        <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm">{clampText(chat.lastMessage)}</p>
+                        <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm"><ChatPreview chat={chat} /></p>
                       </div>
                     </Link>
                   );
@@ -412,7 +427,7 @@ export default function ChatList() {
                     key={msg.messageId}
                     to={msg.conversationType === 'dm' ? `/dm/${msg.conversationId}` : `/chat/${msg.conversationId}`}
                     state={{ name: msg.conversationName }}
-                    className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                   >
                     <div className="relative shrink-0">
                       <Avatar className="lg:h-12 lg:w-12">
@@ -445,9 +460,7 @@ export default function ChatList() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground lg:text-base">
             <MessageSquareText size={40} className="mb-2 opacity-30" />
-            <p>
-              {tab === 'messages' ? 'No messages yet' : 'No groups yet'}
-            </p>
+            <p>No chats yet</p>
           </div>
         ) : (
           <div role="list">
@@ -492,7 +505,7 @@ export default function ChatList() {
                     }
                   }}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
+                    'flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
                     isActive && !isSelectionMode
                       ? 'bg-accent/10'
                       : 'hover:bg-accent/5',
@@ -534,11 +547,11 @@ export default function ChatList() {
                             {chat.type === 'dm' ? 'typing...' : formatTypingLabel(typingMap[chat.id]!.map((t) => t.name))}
                           </span>
                         ) : online ? (
-                          clampText(chat.lastMessage)
+                          <ChatPreview chat={chat} />
                         ) : lastSeen && shouldShowLastSeen() ? (
                           <span className="text-muted-foreground">last seen {formatLastSeen(lastSeen)}</span>
                         ) : (
-                          clampText(chat.lastMessage)
+                          <ChatPreview chat={chat} />
                         )}
                       </span>
                       <div className="flex shrink-0 items-center gap-2">

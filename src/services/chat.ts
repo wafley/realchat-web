@@ -444,6 +444,8 @@ interface RemoteConversation {
     type: string;
     createdAt: string | null;
     isDeleted?: boolean | null;
+    senderId?: string | null;
+    sender?: { username?: string | null; fullName?: string | null } | null;
   } | null;
 }
 
@@ -462,6 +464,14 @@ export function messagePreview(m: Message): string {
   if (m.type === 'file') return '📎 File';
   if (m.type === 'video') return '🎬 Video';
   return m.content;
+}
+
+export function messageSenderName(m: { senderId: string; sender?: { username?: string | null; fullName?: string | null } | null }): string | undefined {
+  const me = useAuthStore.getState().user;
+  if (me && m.senderId === me.id) return 'You';
+  if (m.sender?.username) return m.sender.username;
+  if (m.sender?.fullName) return m.sender.fullName;
+  return undefined;
 }
 
 export function refreshConversationPreview(chatId: string, isDM: boolean): void {
@@ -484,6 +494,7 @@ export function refreshConversationPreview(chatId: string, isDM: boolean): void 
           ? {
               ...c,
               lastMessage: last ? messagePreview(last) : '',
+              lastSenderName: !isDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : undefined,
               lastTime: last?.createdAt
                 ? last.createdAt instanceof Date
                   ? last.createdAt.toISOString()
@@ -547,6 +558,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
         avatarUrl: r.avatar ?? r.avatarUrl ?? undefined,
         type: isPrivate ? 'dm' : 'group',
         lastMessage: conversationPreview(r.lastMessage),
+        lastSenderName: isPrivate ? undefined : messageSenderName({ senderId: r.lastMessage?.senderId ?? '', sender: r.lastMessage?.sender ?? null }),
         lastTime: r.lastMessage?.createdAt ?? r.createdAt,
         online: r.isOnline ?? false,
         lastSeen: r.lastSeenAt ? new Date(r.lastSeenAt) : undefined,

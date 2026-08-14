@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
@@ -6,14 +7,29 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 import { queryClient } from '@/lib/queryClient';
 import { router } from '@/routes';
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)').matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return isMobile;
+}
+
 export default function App() {
+  const isMobile = useIsMobile();
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <RouterProvider router={router} />
           <Toaster
-            position="top-right"
+            position={isMobile ? 'top-center' : 'top-right'}
+            mobileOffset={76}
             theme="dark"
             closeButton
             duration={3000}
