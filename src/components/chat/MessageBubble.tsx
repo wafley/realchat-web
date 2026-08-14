@@ -115,15 +115,15 @@ function MessageBubbleComp({
           {isSelected ? <CheckSquare size={18} className="text-accent" /> : <Square size={18} className="text-muted-foreground" />}
         </button>
       ) : showAvatar ? (
-        <Avatar className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10">
+        <Avatar className="mt-0.5 h-8 w-8 shrink-0 lg:h-9 lg:w-9">
           <AvatarFallback className="text-xs lg:text-sm">
             <User size={14} />
           </AvatarFallback>
         </Avatar>
       ) : showSpacer ? (
-        <div className="mt-1 h-8 w-8 shrink-0 lg:h-10 lg:w-10" aria-hidden="true" />
+        <div className="mt-0.5 h-8 w-8 shrink-0 lg:h-9 lg:w-9" aria-hidden="true" />
       ) : null}
-      <div className={`max-w-[75%] ${isOwn ? 'items-end' : ''} flex flex-col min-w-0`}>
+      <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col min-w-0`}>
         {!isOwn && name && (
           <p className="mb-1 text-xs font-medium text-muted-foreground lg:text-sm">
             {name}
