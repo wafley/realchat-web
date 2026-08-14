@@ -18,11 +18,6 @@ import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
 import type { Conversation, SearchMessageResult } from '@/types';
 
-const tabs = [
-  { id: 'messages', label: 'Messages', icon: MessageSquareText },
-  { id: 'groups', label: 'Groups', icon: Users },
-] as const;
-
 function formatTime(time?: string): string {
   if (!time) return '';
   const date = new Date(time);
@@ -41,7 +36,6 @@ export default function ChatList() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<'messages' | 'groups'>('messages');
   const [search, setSearch] = useState('');
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
@@ -125,8 +119,6 @@ export default function ChatList() {
   const conversations = Array.isArray(data) ? data : [];
 
   const filtered = conversations.filter((c) => {
-    if (tab === 'messages' && c.type !== 'dm') return false;
-    if (tab === 'groups' && c.type !== 'group') return false;
     if (!c.name.toLowerCase().includes(search.toLowerCase())) return false;
     const clearedAt = isChatCleared(c.id);
     if (clearedAt) {
@@ -331,24 +323,6 @@ export default function ChatList() {
 
       <ContactPopover anchorEl={anchorEl} onClose={() => setAnchorEl(null)} />
 
-      <div className="flex items-center border-b border-border">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setTab(id); setSearch(''); }}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors lg:gap-2.5 lg:py-4 lg:text-base',
-              tab === id
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Icon size={16} className="lg:size-[18]" />
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div className="flex-1 overflow-y-auto">
         {isPending ? (
           <ListSkeleton count={6} />
@@ -445,9 +419,7 @@ export default function ChatList() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground lg:text-base">
             <MessageSquareText size={40} className="mb-2 opacity-30" />
-            <p>
-              {tab === 'messages' ? 'No messages yet' : 'No groups yet'}
-            </p>
+            <p>No chats yet</p>
           </div>
         ) : (
           <div role="list">
