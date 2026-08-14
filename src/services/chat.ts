@@ -131,7 +131,7 @@ export function mapMessage(row: RemoteMessage): Message {
     sender: {
       id: row.senderId,
       username: row.sender?.username ?? '',
-      fullName: row.sender?.fullName ?? '',
+      fullName: row.sender?.fullName || row.sender?.username || '',
       email: '',
       status: 'offline',
       createdAt: new Date(),

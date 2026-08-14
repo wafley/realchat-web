@@ -129,7 +129,7 @@ export function useChatState() {
       if (senderId === currentUser?.id) return currentUser?.fullName || 'You';
       if (!isDM) {
         const m = senderGroup?.members?.find((mem) => mem.userId === senderId);
-        const name = m?.user?.fullName;
+        const name = m?.user?.fullName || m?.user?.username;
         if (name) return name;
       }
       if (isDM) return convFromList?.name || chatName;
@@ -177,7 +177,7 @@ export function useChatState() {
     const clearedMs = clearedAt ? new Date(clearedAt).getTime() : null;
     const raw = [...data.pages].reverse().flatMap((p) => p.data);
     for (const msg of raw) {
-      const name = msg?.sender?.fullName;
+      const name = msg?.sender?.fullName || msg?.sender?.username;
       if (name && msg?.senderId) senderNameCacheRef.current.set(msg.senderId, name);
     }
     const map = new Map<string, Message>();
@@ -193,7 +193,7 @@ export function useChatState() {
       return timeA - timeB;
     });
     return unique.map((m) => {
-      const withSender: Message = m.sender?.fullName
+      const withSender: Message = m.sender?.fullName || m.sender?.username
         ? m
         : {
             ...m,

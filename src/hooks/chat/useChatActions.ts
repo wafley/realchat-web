@@ -10,7 +10,7 @@ function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
   return {
     id: replyingTo.id,
     senderId: replyingTo.senderId,
-    senderName: replyingTo.sender?.fullName ?? 'Unknown',
+    senderName: replyingTo.sender?.fullName ?? replyingTo.sender?.username ?? 'Unknown',
     content: replyingTo.content,
     type: replyingTo.type as 'text' | 'image',
     fileUrl: replyingTo.fileUrl,
