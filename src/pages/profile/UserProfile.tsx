@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, User, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
@@ -352,8 +352,8 @@ export default function UserProfile() {
                 <div onClick={() => isSelf && navigate('/profile/edit')} className={cn(isSelf && 'cursor-pointer')}>
                   <Avatar className="h-20 w-20 md:h-24 md:w-24">
                     {effectiveUser?.avatarUrl && <AvatarImage src={effectiveUser?.avatarUrl} />}
-                    <AvatarFallback className="text-lg md:text-2xl">
-                      <User size={22} />
+                    <AvatarFallback className="text-lg font-bold md:text-2xl">
+                      {(effectiveUser?.fullName || effectiveUser?.username || 'U').charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>

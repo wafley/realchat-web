@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowLeft, Star, Users, User, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Star, AlertCircle, RefreshCw, Loader2, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import { getStarredMessages, getConversations, unstarMessage, type StarredMessage } from '@/services/chat';
@@ -137,8 +137,8 @@ export default function Starred() {
                   <div className="flex w-full items-start gap-2.5">
                     <Avatar className="mt-0.5 h-6 w-6 shrink-0">
                       {meta.avatarUrl && <AvatarImage src={meta.avatarUrl} />}
-                      <AvatarFallback className="text-[9px]">
-                        {meta.type === 'group' ? <Users size={12} /> : <User size={12} />}
+                      <AvatarFallback className="text-[10px] font-semibold">
+                        {meta.type === 'group' ? <Users size={12} /> : (meta.name ? meta.name.charAt(0).toUpperCase() : 'U')}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex min-w-0 flex-1 flex-col items-start">

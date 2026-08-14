@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Users, Bell, AtSign } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useMarkNotificationRead } from '@/hooks/useNotifications';
@@ -48,8 +47,8 @@ export default function NotificationItem({ notification }: NotificationItemProps
       <div className="relative shrink-0">
         <Avatar className="h-10 w-10">
           {avatarUrl && <AvatarImage src={avatarUrl} />}
-          <AvatarFallback className="text-xs">
-            {notification.type === 'message' ? <MessageCircle size={16} /> : notification.type === 'mention' ? <AtSign size={16} /> : notification.type === 'group' || notification.type === 'group_invite' ? <Users size={16} /> : <Bell size={16} />}
+          <AvatarFallback className="text-xs font-semibold">
+            {senderName ? senderName.charAt(0).toUpperCase() : 'N'}
           </AvatarFallback>
         </Avatar>
         {!notification.read && (

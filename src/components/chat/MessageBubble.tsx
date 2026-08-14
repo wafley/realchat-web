@@ -1,6 +1,6 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, User, Ban } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 
@@ -138,8 +138,11 @@ function MessageBubbleComp({
         </button>
       ) : showAvatar ? (
         <Avatar className="mt-0.5 h-8 w-8 shrink-0 lg:h-9 lg:w-9">
-          <AvatarFallback className="text-xs lg:text-sm">
-            <User size={14} />
+          {msg.sender?.avatarUrl && (
+            <AvatarImage src={msg.sender.avatarUrl} alt={msg.sender.fullName || name || 'User avatar'} />
+          )}
+          <AvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground lg:text-sm">
+            {(msg.sender?.fullName || msg.sender?.username || name || 'U').charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       ) : showSpacer ? (

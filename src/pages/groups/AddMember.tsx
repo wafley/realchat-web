@@ -130,7 +130,9 @@ export default function AddMember() {
                 className="flex items-center gap-4 rounded-2xl border border-border px-4 py-3.5"
               >
                 <Avatar className="h-12 w-12 shrink-0">
-                  <AvatarFallback className="font-bold"><User size={18} /></AvatarFallback>
+                  <AvatarFallback className="font-bold text-xs">
+                    {(user.name || user.username || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
