@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -17,29 +17,39 @@ export default function ChatRoom() {
   const location = useLocation();
   const state = useChatState();
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const handledHighlightIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    handledHighlightIdRef.current = null;
+  }, [state.chatId]);
 
   useEffect(() => {
     const targetId = location.state?.highlightMessageId;
-    if (targetId) {
-      setHighlightedMsgId(targetId);
+    if (!targetId || handledHighlightIdRef.current === targetId) return;
+    handledHighlightIdRef.current = targetId;
+    setHighlightedMsgId(targetId);
 
-      const timer = setTimeout(() => {
-        const el = document.getElementById(`msg-${targetId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 150);
+    let attempts = 0;
+    const retry = setInterval(() => {
+      attempts += 1;
+      const el = document.getElementById(`msg-${targetId}`);
+      if (el) {
+        clearInterval(retry);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (attempts >= 60) {
+        clearInterval(retry);
+      }
+    }, 150);
 
-      const fadeTimer = setTimeout(() => {
-        setHighlightedMsgId(null);
-      }, 3000);
+    const fadeTimer = setTimeout(() => {
+      setHighlightedMsgId(null);
+    }, 3000);
 
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(fadeTimer);
-      };
-    }
-  }, [location.state?.highlightMessageId, state.filteredMessages.length]);
+    return () => {
+      clearInterval(retry);
+      clearTimeout(fadeTimer);
+    };
+  }, [location.state?.highlightMessageId]);
 
   const mutations = useChatMutations({
     chatId: state.chatId,
