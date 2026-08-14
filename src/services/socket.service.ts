@@ -3,6 +3,7 @@ import { queryClient } from '@/lib/queryClient';
 import { useTypingStore } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { useAuthStore } from '@/store/authStore';
+import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
 import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
@@ -17,6 +18,7 @@ const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 let currentChatId: string | null = null;
 let currentTypingChatId: string | null = null;
 let unsubscribeConversations: (() => void) | null = null;
+const emittedSeenRef = new Map<string, string>();
 
 // --- Emit helpers ---
 
@@ -127,6 +129,34 @@ function onMessageNew(raw: RemoteMessage) {
   if (persisted) {
     saveLocalUnread(Object.fromEntries(persisted.map((c) => [c.id, c.unread ?? 0])));
   }
+
+  // Read receipt: kirim message:seen ketika pesan masuk di chat yang sedang dibuka.
+  if (currentChatId === chatId && msg.senderId !== currentUserId) {
+    emitSeenForConversation(chatId, isDM, msg.id);
+  }
+}
+
+// --- Read receipts (kirim message:seen ke server) ---
+
+export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessageId?: string): void {
+  if (DEV_MODE) return;
+  if (!usePrivacyStore.getState().readReceipts) return;
+  if (!socketClient.isConnected) return;
+
+  let lastId = lastMessageId;
+  if (!lastId) {
+    const data = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
+      'messages',
+      chatId,
+      isDM,
+    ]);
+    const all = data?.pages.flatMap((p) => p.data) ?? [];
+    lastId = all[all.length - 1]?.id;
+  }
+  if (!lastId) return;
+  if (emittedSeenRef.get(chatId) === lastId) return;
+  emittedSeenRef.set(chatId, lastId);
+  socketClient.emitMessageSeen(chatId, lastId);
 }
 
 function onMessageEdited(event: RemoteMessage) {

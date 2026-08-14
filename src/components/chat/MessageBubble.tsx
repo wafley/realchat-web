@@ -120,7 +120,7 @@ function MessageBubbleComp({
           (msg.status === 'pending' || msg.status === 'sending') ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
           : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
           : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
-          : msg.status === 'read' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-read'} lg:size-3.5`} />
+          : msg.status === 'read' ? <CheckCheck size={13} strokeWidth={3} className={`${isOverlay ? 'text-white' : 'text-chat-status-read'} lg:size-3.5`} />
           : null
         )}
       </span>
