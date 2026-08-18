@@ -353,27 +353,21 @@ export function useChatMutations({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast.success('Group updated');
     },
-    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const addMemberMutation = useMutation({
     mutationFn: (userId: string) => addGroupMember(chatId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      toast.success('Member added');
     },
-    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const removeMemberMutation = useMutation({
     mutationFn: (userId: string) => removeGroupMember(chatId, userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      toast.success('Member removed');
     },
-    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const leaveGroupMutation = useMutation({
@@ -381,20 +375,16 @@ export function useChatMutations({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       leaveRoom(chatId);
-      toast.success('Left the group');
       navigate('/');
     },
-    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const deleteGroupMutation = useMutation({
     mutationFn: () => deleteGroup(chatId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast.success('Group deleted');
       navigate('/');
     },
-    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const updateMemberRoleMutation = useMutation({
@@ -403,9 +393,7 @@ export function useChatMutations({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
       queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
-      toast.success('Member role updated');
     },
-    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const clearChatMutation = useMutation({
