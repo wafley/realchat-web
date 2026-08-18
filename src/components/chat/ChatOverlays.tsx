@@ -261,16 +261,19 @@ export default function ChatOverlays({
               <Reply size={15} className="text-muted-foreground" />
               Reply
             </button>
-            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.type === 'text' && (Date.now() - new Date(contextMenu.msg.createdAt).getTime()) < 15 * 60 * 1000 && (
-              <button
-                onClick={() => onContextMenuAction('edit')}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-                role="menuitem"
-              >
-                <Edit3 size={15} className="text-muted-foreground" />
-                Edit
-              </button>
-            )}
+            {contextMenu.msg.senderId === currentUserId &&
+              contextMenu.msg.type === 'text' &&
+              !contextMenu.msg.isDeleted &&
+              (Date.now() - new Date(contextMenu.msg.createdAt).getTime()) < 15 * 60 * 1000 && (
+                <button
+                  onClick={() => onContextMenuAction('edit')}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                  role="menuitem"
+                >
+                  <Edit3 size={15} className="text-muted-foreground" />
+                  Edit
+                </button>
+              )}
             <button
               onClick={() => onContextMenuAction('copy')}
               className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
@@ -287,52 +290,56 @@ export default function ChatOverlays({
               <CheckSquare size={15} className="text-muted-foreground" />
               Select
             </button>
-            <button
-              onClick={() => onContextMenuAction('forward')}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-              role="menuitem"
-            >
-              <Forward size={15} className="text-muted-foreground" />
-              Forward
-            </button>
-            {contextMenu.msg.isStarred ? (
+            {!contextMenu.msg.isDeleted && (
               <button
-                onClick={() => onContextMenuAction('unstar')}
+                onClick={() => onContextMenuAction('forward')}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
                 role="menuitem"
               >
-                <StarOff size={15} className="text-muted-foreground" />
-                Unstar
-              </button>
-            ) : (
-              <button
-                onClick={() => onContextMenuAction('star')}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-                role="menuitem"
-              >
-                <Star size={15} className="text-muted-foreground" />
-                Star
+                <Forward size={15} className="text-muted-foreground" />
+                Forward
               </button>
             )}
-            {contextMenu.msg.isPinned ? (
-              <button
-                onClick={() => onContextMenuAction('unpin')}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-                role="menuitem"
-              >
-                <PinOff size={15} className="text-muted-foreground" />
-                Unpin
-              </button>
-            ) : (
-              <button
-                onClick={() => onContextMenuAction('pin')}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
-                role="menuitem"
-              >
-                <Pin size={15} className="text-muted-foreground" />
-                Pin
-              </button>
-            )}
+            {!contextMenu.msg.isDeleted &&
+              (contextMenu.msg.isStarred ? (
+                <button
+                  onClick={() => onContextMenuAction('unstar')}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                  role="menuitem"
+                >
+                  <StarOff size={15} className="text-muted-foreground" />
+                  Unstar
+                </button>
+              ) : (
+                <button
+                  onClick={() => onContextMenuAction('star')}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                  role="menuitem"
+                >
+                  <Star size={15} className="text-muted-foreground" />
+                  Star
+                </button>
+              ))}
+            {!contextMenu.msg.isDeleted &&
+              (contextMenu.msg.isPinned ? (
+                <button
+                  onClick={() => onContextMenuAction('unpin')}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                  role="menuitem"
+                >
+                  <PinOff size={15} className="text-muted-foreground" />
+                  Unpin
+                </button>
+              ) : (
+                <button
+                  onClick={() => onContextMenuAction('pin')}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                  role="menuitem"
+                >
+                  <Pin size={15} className="text-muted-foreground" />
+                  Pin
+                </button>
+              ))}
             {contextMenu.msg.senderId === currentUserId && contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0 && (
               <button
                 onClick={() => onContextMenuAction('read-receipts')}
@@ -344,14 +351,16 @@ export default function ChatOverlays({
               </button>
             )}
             <div className="my-1 border-t border-border" />
-            <button
-              onClick={() => onContextMenuAction('delete')}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
-              role="menuitem"
-            >
-              <Trash2 size={15} />
-              Delete
-            </button>
+            {!contextMenu.msg.isDeleted && (
+              <button
+                onClick={() => onContextMenuAction('delete')}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                role="menuitem"
+              >
+                <Trash2 size={15} />
+                Delete
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -723,15 +723,18 @@ export function useChatActions(props: UseChatActionsProps) {
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach((id) => deleteMutation.mutate({ msgId: id, delForAll: false }));
+    selectedIds.forEach((id) => {
+      const target = messages.find((m) => m.id === id);
+      if (target && !target.isDeleted) deleteMutation.mutate({ msgId: id, delForAll: false });
+    });
     setSelectedIds([]);
-  }, [selectedIds, deleteMutation]);
+  }, [selectedIds, messages, deleteMutation]);
 
   const [bulkForwardMessages, setBulkForwardMessages] = useState<Message[]>([]);
 
   const handleBulkForward = useCallback(() => {
     if (selectedIds.length === 0) return;
-    const msgs = messages.filter((m) => selectedIds.includes(m.id));
+    const msgs = messages.filter((m) => selectedIds.includes(m.id) && !m.isDeleted);
     if (msgs.length === 1) {
       setForwardTarget(msgs[0]);
     } else if (msgs.length > 1) {
