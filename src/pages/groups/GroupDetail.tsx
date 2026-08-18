@@ -57,20 +57,17 @@ export default function GroupDetail() {
           onUpdateGroup={async (data) => {
             if (id) {
               await updateGroup(id, data);
-              queryClient.invalidateQueries({ queryKey: ['group', id] });
               queryClient.invalidateQueries({ queryKey: ['groups'] });
             }
           }}
           onAddMember={async (userId) => {
             if (id) {
               await addGroupMember(id, userId);
-              queryClient.invalidateQueries({ queryKey: ['group', id] });
             }
           }}
           onRemoveMember={async (userId) => {
             if (id) {
               await removeGroupMember(id, userId);
-              queryClient.invalidateQueries({ queryKey: ['group', id] });
             }
           }}
           onLeaveGroup={async () => {
@@ -91,7 +88,6 @@ export default function GroupDetail() {
           onUpdateMemberRole={async (userId, role) => {
             if (id) {
               await updateMemberRole(id, userId, role);
-              queryClient.invalidateQueries({ queryKey: ['group', id] });
             }
           }}
           searchUsers={searchUsers}

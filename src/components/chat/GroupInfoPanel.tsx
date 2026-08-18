@@ -332,11 +332,15 @@ export default function GroupInfoPanel({
 
     setUploadingAvatar(true);
     try {
-      await uploadGroupAvatar(group.id, file);
+      const avatarUrl = await uploadGroupAvatar(group.id, file);
       toast.success('Group photo updated');
-      queryClient.invalidateQueries({ queryKey: ['group', group.id] });
+      queryClient.setQueryData<Group>(['group', group.id], (prev) =>
+        prev ? { ...prev, avatarUrl } : prev,
+      );
+      queryClient.setQueryData<{ id: string; avatarUrl?: string }[]>(['conversations'], (prev) =>
+        (prev ?? []).map((c) => (c.id === group.id ? { ...c, avatarUrl } : c)),
+      );
       queryClient.invalidateQueries({ queryKey: ['groups'] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch {
       toast.error('Failed to update group photo');
     } finally {

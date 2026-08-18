@@ -350,24 +350,17 @@ export function useChatMutations({
   const updateGroupMutation = useMutation({
     mutationFn: (data: { name?: string; description?: string }) =>
       updateGroup(chatId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-    },
+    // Cache di-invalidate oleh socket event group:updated / group:avatar-updated.
   });
 
   const addMemberMutation = useMutation({
     mutationFn: (userId: string) => addGroupMember(chatId, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-    },
+    // Cache di-invalidate oleh socket event group:member-added.
   });
 
   const removeMemberMutation = useMutation({
     mutationFn: (userId: string) => removeGroupMember(chatId, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-    },
+    // Cache di-invalidate oleh socket event group:member-removed.
   });
 
   const leaveGroupMutation = useMutation({
@@ -390,10 +383,7 @@ export function useChatMutations({
   const updateMemberRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'member' }) =>
       updateMemberRole(chatId, userId, role),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
-    },
+    // Cache di-invalidate oleh socket event group:member-role-changed.
   });
 
   const clearChatMutation = useMutation({
