@@ -272,6 +272,34 @@ function onMessageStarUpdated(data: { messageId: string; isStarred: boolean }) {
   }
 }
 
+function onMessageReactionUpdated(data: { messageId?: string; reactions?: Message['reactions'] }) {
+  if (DEV_MODE) return;
+  if (!data?.messageId) return;
+  const reactions = data.reactions ?? [];
+
+  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  if (!conversations) return;
+
+  for (const conv of conversations) {
+    const isDM = conv?.type === 'dm';
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+      ['messages', conv.id, isDM],
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            data: page.data.map((m) =>
+              m.id === data.messageId ? { ...m, reactions } : m,
+            ),
+          })),
+        };
+      },
+    );
+  }
+}
+
 const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 const typingNameCache = new Map<string, string>();
 
@@ -576,13 +604,13 @@ function onMessageStatus(data: StatusEvent) {
 export function initSocket(token?: string) {
   if (DEV_MODE) return;
 
-  socketClient.connect(token);
-
   socketClient.on('connect', onSocketConnected);
   socketClient.on('message:new', onMessageNew);
 
+  socketClient.connect(token);
+
   if (socketClient.isConnected) {
-    joinAllConversationRooms();
+    onSocketConnected();
   }
 
   if (!unsubscribeConversations) {
@@ -596,6 +624,7 @@ export function initSocket(token?: string) {
   socketClient.on('message:deleted', onMessageDeleted);
   socketClient.on('message:pin:updated', onMessagePinUpdated);
   socketClient.on('message:star:updated', onMessageStarUpdated);
+  socketClient.on('message:reaction:updated', onMessageReactionUpdated);
   socketClient.on('message:status', onMessageStatus);
   socketClient.on('typing:start', onTypingStart);
   socketClient.on('typing:stop', onTypingStop);
@@ -628,6 +657,7 @@ export function destroySocket() {
   socketClient.off('message:deleted', onMessageDeleted);
   socketClient.off('message:pin:updated', onMessagePinUpdated);
   socketClient.off('message:star:updated', onMessageStarUpdated);
+  socketClient.off('message:reaction:updated', onMessageReactionUpdated);
   socketClient.off('message:status', onMessageStatus);
   socketClient.off('typing:start', onTypingStart);
   socketClient.off('typing:stop', onTypingStop);
