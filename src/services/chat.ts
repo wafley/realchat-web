@@ -139,6 +139,7 @@ export function mapMessage(row: RemoteMessage): Message {
       fullName: row.sender?.fullName || row.sender?.username || '',
       email: '',
       status: 'offline',
+      avatarUrl: row.sender?.avatarUrl ?? undefined,
       createdAt: new Date(),
     },
   };
