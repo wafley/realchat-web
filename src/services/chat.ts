@@ -33,6 +33,10 @@ export function senderName(senderId: string): string {
 let dmIdCounter = 6;
 
 export async function findOrCreateConversation(userId: string): Promise<string> {
+  const me = useAuthStore.getState().user?.id;
+  if (me && userId === me) {
+    throw new Error('You cannot start a conversation with yourself');
+  }
   if (DEV_MODE) {
     await delay(100);
     const existing = Object.entries(DM_USER_MAP).find(([, uid]) => uid === userId);
@@ -922,6 +926,16 @@ export async function searchUsers(query: string): Promise<User[]> {
 }
 
 export async function createGroup(name: string, description: string, memberIds: string[], avatarFile?: File): Promise<ChatConversation> {
+  const me = useAuthStore.getState().user?.id;
+  if (me && memberIds.includes(me)) {
+    throw new Error('You cannot add yourself as a group member');
+  }
+  if (new Set(memberIds).size !== memberIds.length) {
+    throw new Error('Duplicate members are not allowed');
+  }
+  if (memberIds.length < 2) {
+    throw new Error('Select at least 2 members to create a group');
+  }
   try {
     if (DEV_MODE) {
       await delay(200);
