@@ -1,8 +1,9 @@
-import { useCallback } from 'react';
+﻿import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/errors';
 import type { Message, PaginatedResponse, ReplyTo } from '@/types';
 import { queryClient } from '@/lib/queryClient';
 import {
@@ -147,8 +148,8 @@ export function useChatMutations({
       onMessageSent(r);
       if (vars.preview) URL.revokeObjectURL(vars.preview);
     },
-    onError() {
-      toast.error('Failed to send image. Please try again.');
+    onError: (_err) => {
+      toast.error(getApiErrorMessage(_err, 'Failed to send image. Please try again.'));
     },
   });
 
@@ -158,8 +159,8 @@ export function useChatMutations({
     onSuccess(r) {
       onMessageSent(r);
     },
-    onError() {
-      toast.error('Failed to send file. Please try again.');
+    onError: (_err) => {
+      toast.error(getApiErrorMessage(_err, 'Failed to send file. Please try again.'));
     },
   });
 
@@ -172,7 +173,7 @@ export function useChatMutations({
       setInput('');
       toast.success('Message edited');
     },
-    onError: () => toast.error('Failed to edit message. Please try again.'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const deleteMutation = useMutation({
@@ -250,7 +251,7 @@ export function useChatMutations({
       setForwardTarget(null);
       setForwardSearch('');
     },
-    onError: () => toast.error('Failed to forward message. Please try again.'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const pinMutation = useMutation({
@@ -262,7 +263,7 @@ export function useChatMutations({
         if (r.data) setPinnedMessages(r.data);
       });
     },
-    onError: () => toast.error('Failed to pin message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const unpinMutation = useMutation({
@@ -274,7 +275,7 @@ export function useChatMutations({
         if (r.data) setPinnedMessages(r.data);
       });
     },
-    onError: () => toast.error('Failed to unpin message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const updateMsgStar = useCallback(
@@ -306,7 +307,7 @@ export function useChatMutations({
       updateMsgStar(msgId, true);
       queryClient.invalidateQueries({ queryKey: ['starred'] });
     },
-    onError: () => toast.error('Failed to star message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const unstarMutation = useMutation({
@@ -315,7 +316,7 @@ export function useChatMutations({
       updateMsgStar(msgId, false);
       queryClient.invalidateQueries({ queryKey: ['starred'] });
     },
-    onError: () => toast.error('Failed to unstar message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const { data: group } = useQuery({
@@ -342,7 +343,7 @@ export function useChatMutations({
         },
       );
     },
-    onError: () => toast.error('Failed to toggle reaction'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const updateGroupMutation = useMutation({
@@ -354,7 +355,7 @@ export function useChatMutations({
       setGroupInfoOpen(false);
       toast.success('Group updated');
     },
-    onError: () => toast.error('Failed to update group'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const addMemberMutation = useMutation({
@@ -363,7 +364,7 @@ export function useChatMutations({
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
       toast.success('Member added');
     },
-    onError: () => toast.error('Failed to add member'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const removeMemberMutation = useMutation({
@@ -372,7 +373,7 @@ export function useChatMutations({
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
       toast.success('Member removed');
     },
-    onError: () => toast.error('Failed to remove member'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const leaveGroupMutation = useMutation({
@@ -382,7 +383,7 @@ export function useChatMutations({
       toast.success('Left the group');
       navigate('/');
     },
-    onError: () => toast.error('Failed to leave group'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const deleteGroupMutation = useMutation({
@@ -392,7 +393,7 @@ export function useChatMutations({
       toast.success('Group deleted');
       navigate('/');
     },
-    onError: () => toast.error('Failed to delete group'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const updateMemberRoleMutation = useMutation({
@@ -403,7 +404,7 @@ export function useChatMutations({
       queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
       toast.success('Member role updated');
     },
-    onError: () => toast.error('Failed to update member role'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const clearChatMutation = useMutation({
@@ -412,7 +413,7 @@ export function useChatMutations({
       queryClient.setQueryData(['messages', chatId, isDM], { pages: [], pageParams: [] });
       toast.success('Chat cleared');
     },
-    onError: () => toast.error('Failed to clear chat'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   return {

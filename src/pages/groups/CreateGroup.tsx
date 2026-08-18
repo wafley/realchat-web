@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import type { User } from '@/types';
 import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
+import { getApiErrorMessage } from '@/utils/errors';
 import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function CreateGroup() {
@@ -43,8 +44,7 @@ export default function CreateGroup() {
     mutationFn: (data: CreateGroupSchema) =>
       createGroup(data.name, data.description || '', selectedIds, croppedFile ?? undefined),
     onSuccess: (group) => navigate(`/chat/${group.id}`),
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : 'Failed to create group'),
+    onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
   const handleSearch = (q: string) => {

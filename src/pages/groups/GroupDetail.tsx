@@ -8,6 +8,7 @@ import Modal from '@/components/ui/modal';
 import { getGroup, leaveGroup, removeGroupMember, updateMemberRole, updateGroup, deleteGroup } from '@/services/chat';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/errors';
 
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +36,7 @@ export default function GroupDetail() {
       setEditOpen(false);
       toast.success('Group updated');
     },
-    onError: () => toast.error('Failed to update group'),
+    onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
   const deleteMutation = useMutation({
@@ -46,7 +47,7 @@ export default function GroupDetail() {
       toast.success('Group deleted');
       navigate('/');
     },
-    onError: () => toast.error('Failed to delete group'),
+    onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
   if (isPending) {
