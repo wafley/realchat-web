@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, UserPlus, UserMinus, LogOut, Shield, Crown, Camera, Users, User, BellOff, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
+import { toast } from 'sonner';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import type { Message, Group, GroupMember, User as UserType } from '@/types';
 import { senderName, uploadGroupAvatar } from '@/services/chat';
 import { formatTime } from '@/lib/chatHelpers';
@@ -629,13 +631,17 @@ export default function ChatOverlays({
                 <input
                   ref={avatarInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      setAvatarFile(file);
-                      setAvatarPreview(URL.createObjectURL(file));
+                      if (isSupportedImage(file)) {
+                        setAvatarFile(file);
+                        setAvatarPreview(URL.createObjectURL(file));
+                      } else {
+                        toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+                      }
                     }
                   }}
                 />

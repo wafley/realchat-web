@@ -9,6 +9,7 @@ import { uploadAvatar } from '@/services/user';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { editProfileSchema, type EditProfileSchema } from '@/lib/validations';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function EditProfile() {
@@ -41,6 +42,11 @@ export default function EditProfile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isSupportedImage(file)) {
+      toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+      e.target.value = '';
+      return;
+    }
     const objectUrl = URL.createObjectURL(file);
     setRawImageSrc(objectUrl);
     setCropModalOpen(true);
@@ -114,8 +120,8 @@ export default function EditProfile() {
                 </button>
                 <input
                   ref={inputRef}
-                  type="file"
-                  accept="image/*"
+              type="file"
+              accept={IMAGE_ACCEPT}
                   className="hidden"
                   onChange={handleFileChange}
                 />

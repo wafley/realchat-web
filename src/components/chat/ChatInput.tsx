@@ -4,6 +4,7 @@ import type { Message } from '@/types';
 import { useThemeStore } from '@/store/themeStore';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
 import { formatFileSize } from '@/lib/chatHelpers';
+import { IMAGE_ACCEPT } from '@/utils/imageValidation';
 
 interface ChatInputProps {
   input: string;
@@ -158,7 +159,7 @@ export default function ChatInput({
         >
           <ImagePlus size={18} className="lg:size-5" />
         </button>
-        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={onImageSelect} />
+        <input ref={imageInputRef} type="file" accept={IMAGE_ACCEPT} className="hidden" onChange={onImageSelect} />
         <button
           ref={emojiToggleRef}
           onClick={onEmojiToggle}

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL } from '@/utils/imageValidation';
 import type { Message, ReplyTo } from '@/types';
 
 function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
@@ -445,12 +446,14 @@ export function useChatActions(props: UseChatActionsProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (file.type.startsWith('image/')) {
+      if (isSupportedImage(file)) {
         if (imagePreview) URL.revokeObjectURL(imagePreview);
         setSelectedImage(file);
         setImagePreview(URL.createObjectURL(file));
       } else {
-        setSelectedFile(file);
+        toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+        setSelectedFile(null);
+        setImagePreview(null);
       }
       e.target.value = '';
     },
