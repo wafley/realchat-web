@@ -412,10 +412,11 @@ function onGroupMemberRemove(data: { conversationId?: string; groupId?: string; 
   queryClient.invalidateQueries({ queryKey: ['group', id] });
   queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
-  // User sendiri dikeluarkan/di-remove dari grup → arahkan keluar chat room.
+  // User sendiri dikeluarkan/di-remove dari grup → keluar dari room socket lalu arahkan keluar chat room.
   const currentUserId = useAuthStore.getState().user?.id;
   const selfRemoved = data.targetUserId === currentUserId || data.removedBy === currentUserId;
   if (selfRemoved) {
+    leaveRoom(id);
     window.dispatchEvent(new CustomEvent('chat:forced-leave', { detail: { conversationId: id } }));
   }
 }

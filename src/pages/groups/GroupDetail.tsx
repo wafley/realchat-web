@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import Modal from '@/components/ui/modal';
 import { getGroup, leaveGroup, removeGroupMember, updateMemberRole, updateGroup, deleteGroup } from '@/services/chat';
+import { leaveRoom } from '@/services/socket.service';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/utils/errors';
@@ -78,6 +79,7 @@ export default function GroupDetail() {
     if (!id) return;
     try {
       await leaveGroup(id);
+      leaveRoom(id);
       toast.success('Left group');
       navigate('/');
     } catch {

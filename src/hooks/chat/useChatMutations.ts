@@ -32,6 +32,7 @@ import {
   refreshConversationPreview,
   messageSenderName,
 } from '@/services/chat';
+import { leaveRoom } from '@/services/socket.service';
 
 interface UseChatMutationsProps {
   chatId: string;
@@ -380,6 +381,7 @@ export function useChatMutations({
     mutationFn: () => leaveGroup(chatId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      leaveRoom(chatId);
       toast.success('Left the group');
       navigate('/');
     },
