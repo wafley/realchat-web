@@ -1,4 +1,4 @@
-﻿import api from '@/lib/api';
+import api from '@/lib/api';
 import { socketClient } from '@/lib/socket';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
@@ -1028,6 +1028,14 @@ export async function getGroup(groupId: string): Promise<Group> {
         userId: string;
         role: string;
         joinedAt: string;
+        user?: {
+          id?: string;
+          fullName?: string;
+          name?: string;
+          username?: string;
+          avatarUrl?: string;
+          status?: 'online' | 'offline' | 'away';
+        };
       }[];
     }
     const { data } = await api.get<RemoteGroupDetail>(`/conversations/${groupId}`);
@@ -1039,13 +1047,26 @@ export async function getGroup(groupId: string): Promise<Group> {
       creatorId: data.createdBy ?? '',
       isPrivate: false,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-      members: (data.members ?? []).map((m) => ({
-        id: m.id,
-        groupId,
-        userId: m.userId,
-        role: m.role === 'ADMIN' ? 'admin' : 'member',
-        joinedAt: new Date(m.joinedAt),
-      })),
+      members: (data.members ?? []).map((m: any) => {
+        const u = m.user || m.profile;
+        const fullName = u?.fullName || u?.name || u?.username;
+        return {
+          id: m.id,
+          groupId,
+          userId: m.userId,
+          role: m.role === 'ADMIN' || m.role === 'admin' ? 'admin' : 'member',
+          joinedAt: new Date(m.joinedAt),
+          user: fullName ? {
+            id: m.userId,
+            fullName,
+            username: u?.username ?? '',
+            avatarUrl: u?.avatarUrl ?? undefined,
+            status: u?.status ?? 'offline',
+            email: u?.email ?? '',
+            createdAt: u?.createdAt ? new Date(u.createdAt) : new Date(),
+          } : undefined,
+        };
+      }),
     };
   } catch (err) {
     throw toError(err, 'Failed to get group');

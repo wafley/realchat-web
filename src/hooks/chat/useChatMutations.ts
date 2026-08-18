@@ -1,4 +1,4 @@
-﻿import { useCallback } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -44,7 +44,7 @@ interface UseChatMutationsProps {
   setEditingMsg: (msg: Message | null) => void;
   setInput: (v: string) => void;
   setPinnedMessages: (msgs: Message[]) => void;
-  setGroupInfoOpen: (v: boolean) => void;
+  setGroupInfoOpen?: (v: boolean) => void;
 }
 
 export function useChatMutations({
@@ -57,7 +57,7 @@ export function useChatMutations({
   setEditingMsg,
   setInput,
   setPinnedMessages,
-  setGroupInfoOpen,
+  setGroupInfoOpen: _setGroupInfoOpen,
 }: UseChatMutationsProps) {
   const navigate = useNavigate();
 
@@ -353,7 +353,6 @@ export function useChatMutations({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['group', chatId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      setGroupInfoOpen(false);
       toast.success('Group updated');
     },
     onError: (_err) => toast.error(getApiErrorMessage(_err)),
