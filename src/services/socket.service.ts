@@ -81,6 +81,8 @@ function onMessageNew(raw: RemoteMessage) {
     queryClient.invalidateQueries({ queryKey: ['conversations'] });
   }
 
+  const currentUserId = useAuthStore.getState().user?.id;
+
   queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
     ['messages', chatId, isDM],
     (prev) => {
@@ -89,6 +91,15 @@ function onMessageNew(raw: RemoteMessage) {
         return { ...prev, pages: [{ data: [msg], total: 1, page: 1, limit: 50, totalPages: 1 }] };
       }
       const [firstPage, ...rest] = prev.pages;
+      // Pesan sendiri: ganti temp (optimistic pending) alih-alih append, hindari duplikat.
+      if (msg.senderId === currentUserId) {
+        const tempIdx = firstPage.data.findIndex((m) => m.id.startsWith('temp-'));
+        if (tempIdx !== -1) {
+          const data = [...firstPage.data];
+          data[tempIdx] = msg;
+          return { ...prev, pages: [{ ...firstPage, data }, ...rest] };
+        }
+      }
       if (firstPage.data.some((m) => m.id === msg.id)) return prev;
       return {
         ...prev,
@@ -102,7 +113,6 @@ function onMessageNew(raw: RemoteMessage) {
 
   // Update conversation preview + reorder + unread badge
   const preview = msg.type === 'image' ? '📷 Photo' : (msg.type === 'file' ? '📎 File' : msg.type === 'video' ? '🎬 Video' : msg.content);
-  const currentUserId = useAuthStore.getState().user?.id;
   queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number; lastSenderName?: string }[]>(
     ['conversations'],
     (prev) => {

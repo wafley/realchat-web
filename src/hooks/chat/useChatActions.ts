@@ -800,7 +800,6 @@ export function useChatActions(props: UseChatActionsProps) {
     }
     const text = input.trim();
     if (!text) return;
-    if (sendMutation.isPending) return;
     const rp = buildReplyTo(replyingTo);
     setInput('');
     setReplyingTo(null);

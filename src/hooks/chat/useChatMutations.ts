@@ -33,6 +33,7 @@ import {
   messageSenderName,
 } from '@/services/chat';
 import { leaveRoom } from '@/services/socket.service';
+import { useAuthStore } from '@/store/authStore';
 
 interface UseChatMutationsProps {
   chatId: string;
@@ -61,7 +62,7 @@ export function useChatMutations({
 }: UseChatMutationsProps) {
   const navigate = useNavigate();
 
-  const onMessageSent = useCallback(
+  const appendMessageToCache = useCallback(
     (newMsg: Message) => {
       queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
         ['messages', chatId, isDM],
@@ -81,6 +82,12 @@ export function useChatMutations({
            };
         },
       );
+    },
+    [chatId, isDM],
+  );
+
+  const updateConversationPreview = useCallback(
+    (newMsg: Message) => {
       const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
       queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; lastSenderName?: string }[]>(
         ['conversations'],
@@ -101,9 +108,17 @@ export function useChatMutations({
       return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
     },
       );
-      simulateDevReceipts(chatId, newMsg.id, isDM);
     },
     [chatId, isDM],
+  );
+
+  const onMessageSent = useCallback(
+    (newMsg: Message) => {
+      appendMessageToCache(newMsg);
+      updateConversationPreview(newMsg);
+      simulateDevReceipts(chatId, newMsg.id, isDM);
+    },
+    [appendMessageToCache, updateConversationPreview, chatId, isDM],
   );
 
   const updateMsgPin = useCallback(
@@ -134,10 +149,66 @@ export function useChatMutations({
   const sendMutation = useMutation({
     mutationFn: ({ content, replyTo: rp }: { content: string; replyTo?: ReplyTo }) =>
       sendMessage(chatId, content, isDM, rp),
-    onSuccess(r) {
-      onMessageSent(r);
+    onMutate: async ({ content, replyTo: rp }) => {
+      const user = useAuthStore.getState().user;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const tempMsg: Message = {
+        id: tempId,
+        groupId: chatId,
+        senderId: user?.id ?? '',
+        content,
+        type: 'text',
+        status: 'pending',
+        replyTo: rp,
+        createdAt: new Date(),
+        sender: user
+          ? {
+              id: user.id,
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              avatarUrl: user.avatarUrl,
+              status: 'online',
+              createdAt: new Date(),
+            }
+          : undefined,
+      };
+      appendMessageToCache(tempMsg);
+      updateConversationPreview(tempMsg);
+      return { tempId };
     },
-    onError() {
+    onSuccess(r, _vars, ctx) {
+      if (ctx?.tempId) {
+        // Ganti pesan temp (pending) dengan pesan asli dari server.
+        queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+          ['messages', chatId, isDM],
+          (prev) => {
+            if (!prev) return prev;
+            const [firstPage, ...rest] = prev.pages;
+            const idx = firstPage.data.findIndex((m) => m.id === ctx.tempId);
+            if (idx === -1) return prev;
+            const data = [...firstPage.data];
+            data[idx] = r;
+            return { ...prev, pages: [{ ...firstPage, data }, ...rest] };
+          },
+        );
+      }
+      updateConversationPreview(r);
+      simulateDevReceipts(chatId, r.id, isDM);
+    },
+    onError(_err, _vars, ctx) {
+      if (ctx?.tempId) {
+        queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+          ['messages', chatId, isDM],
+          (prev) => {
+            if (!prev) return prev;
+            const [firstPage, ...rest] = prev.pages;
+            const data = firstPage.data.filter((m) => m.id !== ctx.tempId);
+            if (data.length === firstPage.data.length) return prev;
+            return { ...prev, pages: [{ ...firstPage, data, total: firstPage.total - 1 }, ...rest] };
+          },
+        );
+      }
       toast.error('Failed to send message. Please try again.');
     },
   });
