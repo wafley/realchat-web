@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Lock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
@@ -568,48 +568,129 @@ export default function UserProfile() {
                 </>
               )}
 
-              {!isSelf && <hr className="my-3 border-border" />}
+              {!isSelf && <hr className="my-4 border-border/40" />}
 
-              {!isSelf && sharedMedia.length > 0 && (
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-xs font-medium text-muted-foreground/65">Media, Links and Docs</h3>
-                    <button onClick={() => setMediaModalOpen(true)} className="mt-0.5 flex items-center gap-0.5 text-xs text-accent transition-colors hover:text-accent/80">
-                      View all ({sharedMedia.length})
-                      <ChevronRight size={12} />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8">
-                    {sharedMedia.slice(0, 8).map((media, i) => (
-                      <div key={media.id} className={i >= 5 ? 'hidden sm:block' : ''}>
-                        <MediaThumb media={media} onClickImage={(url) => setPreviewUrl(url)} />
+              {!isSelf && (
+                <div className="space-y-4 px-1">
+                  {/* 1. Media, links and docs */}
+                  <div>
+                    <div className="mb-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText size={20} className="shrink-0 text-muted-foreground" />
+                        <span className="text-sm font-semibold text-foreground">Media, links and docs</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">{sharedMedia.length}</span>
+                        {sharedMedia.length > 0 && (
+                          <button onClick={() => setMediaModalOpen(true)} className="flex items-center text-muted-foreground hover:text-foreground">
+                            <ChevronRight size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-              {!isSelf && mutualGroups.length > 0 && (
-                <div className="mt-3">
-                  <h3 className="mb-2 text-xs font-medium text-muted-foreground/65">Groups in Common ({mutualGroups.length})</h3>
-                  <div className="max-h-[290px] space-y-1.5 overflow-y-auto md:max-h-none md:overflow-visible">
-                    {mutualGroups.map((g) => (
-                      <button
-                        key={g.id}
-                        onClick={() => navigate(`/chat/${g.id}`)}
-                        className="flex w-full items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2 text-left transition-colors hover:bg-accent/5"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            <Users size={14} />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
-                          <p className="text-xs text-muted-foreground">{g.members} members</p>
-                        </div>
-                      </button>
-                    ))}
+                    {sharedMedia.length > 0 ? (
+                      <div className="flex items-center gap-2.5 overflow-x-auto py-1 no-scrollbar">
+                        {sharedMedia.map((media) => (
+                          <div key={media.id} className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                            <MediaThumb media={media} onClickImage={(url) => setPreviewUrl(url)} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-1 text-xs text-muted-foreground/60 pl-8">
+                        No shared media yet
+                      </div>
+                    )}
+                  </div>
+
+                  <hr className="border-border/30" />
+
+                  {/* 2. WhatsApp-style Chat Options List */}
+                  <div className="space-y-1">
+                    {/* Starred Messages */}
+                    <button
+                      onClick={() => dmId ? navigate(`/dm/${dmId}`) : toast.info('Open chat to view starred messages')}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                    >
+                      <Star size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Starred messages</p>
+                      </div>
+                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
+                    </button>
+
+                    {/* Notification Settings */}
+                    <button
+                      onClick={() => toast.success('Notification settings for this chat updated')}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                    >
+                      <Bell size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Notification settings</p>
+                      </div>
+                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
+                    </button>
+
+                    {/* Disappearing Messages */}
+                    <button
+                      onClick={() => toast.info('Disappearing messages feature coming soon')}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                    >
+                      <Clock size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Disappearing messages</p>
+                        <p className="text-xs text-muted-foreground">Off</p>
+                      </div>
+                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
+                    </button>
+
+                    {/* Encryption */}
+                    <div className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left">
+                      <Lock size={20} className="shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Encryption</p>
+                        <p className="text-xs text-muted-foreground">Messages are end-to-end encrypted. Click to verify.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-border/30" />
+
+                  {/* 3. Groups in Common */}
+                  <div>
+                    <div className="mb-2 flex items-center gap-3 px-2">
+                      <Users size={20} className="shrink-0 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Groups in common</span>
+                      <span className="ml-auto text-xs font-medium text-muted-foreground">{mutualGroups.length}</span>
+                    </div>
+
+                    {mutualGroups.length > 0 ? (
+                      <div className="space-y-1 pt-1">
+                        {mutualGroups.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => navigate(`/chat/${g.id}`)}
+                            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/5"
+                          >
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-muted text-foreground text-xs">
+                                <Users size={14} />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
+                              <p className="text-xs text-muted-foreground">{g.members} members</p>
+                            </div>
+                            <ChevronRight size={14} className="text-muted-foreground/40" />
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-1 text-xs text-muted-foreground/60 pl-8">
+                        No mutual groups
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
