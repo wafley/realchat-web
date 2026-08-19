@@ -1,5 +1,6 @@
 import type { AuthResponse, LoginPayload, RegisterPayload, UpdateProfilePayload, User } from '@/types';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/utils/errors';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -68,19 +69,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
 }
 
 export function parseAuthError(err: unknown): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const data = (err as { response: { data: Record<string, unknown> } }).response?.data;
-    if (typeof data?.message === 'string') return data.message;
-    if (typeof data?.error === 'string') return data.error;
-    if (Array.isArray(data?.message)) return (data.message as string[]).join(', ');
-    if (data?.errors && typeof data.errors === 'object') {
-      return Object.values(data.errors as Record<string, string[]>)
-        .flat()
-        .join(', ');
-    }
-  }
-  if (err instanceof Error) return err.message;
-  return 'Something went wrong. Please try again.';
+  return getApiErrorMessage(err, 'Something went wrong. Please try again.');
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {

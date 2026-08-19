@@ -220,7 +220,7 @@ function MessageBubbleComp({
                             e.stopPropagation();
                             setIsExpanded(!isExpanded);
                           }}
-                          className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                          className="text-white font-semibold hover:underline cursor-pointer ml-1 inline"
                         >
                           {isExpanded ? 'Read less' : 'Read more'}
                         </button>
@@ -266,7 +266,7 @@ function MessageBubbleComp({
                             e.stopPropagation();
                             setIsExpanded(!isExpanded);
                           }}
-                          className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                          className="text-white font-semibold hover:underline cursor-pointer ml-1 inline"
                         >
                           {isExpanded ? 'Read less' : 'Read more'}
                         </button>
@@ -333,7 +333,7 @@ function MessageBubbleComp({
                       e.stopPropagation();
                       setIsExpanded(!isExpanded);
                     }}
-                    className="text-primary font-semibold hover:underline cursor-pointer ml-1 inline-block"
+                    className="text-white font-semibold hover:underline cursor-pointer ml-1 inline"
                   >
                     {isExpanded ? 'Read less' : 'Read more'}
                   </button>

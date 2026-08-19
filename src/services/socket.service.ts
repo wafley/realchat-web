@@ -81,6 +81,8 @@ function onMessageNew(raw: RemoteMessage) {
     queryClient.invalidateQueries({ queryKey: ['conversations'] });
   }
 
+  const currentUserId = useAuthStore.getState().user?.id;
+
   queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
     ['messages', chatId, isDM],
     (prev) => {
@@ -89,6 +91,15 @@ function onMessageNew(raw: RemoteMessage) {
         return { ...prev, pages: [{ data: [msg], total: 1, page: 1, limit: 50, totalPages: 1 }] };
       }
       const [firstPage, ...rest] = prev.pages;
+      // Pesan sendiri: ganti temp (optimistic pending) alih-alih append, hindari duplikat.
+      if (msg.senderId === currentUserId) {
+        const tempIdx = firstPage.data.findIndex((m) => m.id.startsWith('temp-'));
+        if (tempIdx !== -1) {
+          const data = [...firstPage.data];
+          data[tempIdx] = msg;
+          return { ...prev, pages: [{ ...firstPage, data }, ...rest] };
+        }
+      }
       if (firstPage.data.some((m) => m.id === msg.id)) return prev;
       return {
         ...prev,
@@ -100,9 +111,10 @@ function onMessageNew(raw: RemoteMessage) {
     },
   );
 
+  scheduleStatusFlush(0);
+
   // Update conversation preview + reorder + unread badge
   const preview = msg.type === 'image' ? '📷 Photo' : (msg.type === 'file' ? '📎 File' : msg.type === 'video' ? '🎬 Video' : msg.content);
-  const currentUserId = useAuthStore.getState().user?.id;
   queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number; lastSenderName?: string }[]>(
     ['conversations'],
     (prev) => {
@@ -272,6 +284,34 @@ function onMessageStarUpdated(data: { messageId: string; isStarred: boolean }) {
   }
 }
 
+function onMessageReactionUpdated(data: { messageId?: string; reactions?: Message['reactions'] }) {
+  if (DEV_MODE) return;
+  if (!data?.messageId) return;
+  const reactions = data.reactions ?? [];
+
+  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  if (!conversations) return;
+
+  for (const conv of conversations) {
+    const isDM = conv?.type === 'dm';
+    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+      ['messages', conv.id, isDM],
+      (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            data: page.data.map((m) =>
+              m.id === data.messageId ? { ...m, reactions } : m,
+            ),
+          })),
+        };
+      },
+    );
+  }
+}
+
 const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 const typingNameCache = new Map<string, string>();
 
@@ -412,10 +452,11 @@ function onGroupMemberRemove(data: { conversationId?: string; groupId?: string; 
   queryClient.invalidateQueries({ queryKey: ['group', id] });
   queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
-  // User sendiri dikeluarkan/di-remove dari grup → arahkan keluar chat room.
+  // User sendiri dikeluarkan/di-remove dari grup → keluar dari room socket lalu arahkan keluar chat room.
   const currentUserId = useAuthStore.getState().user?.id;
   const selfRemoved = data.targetUserId === currentUserId || data.removedBy === currentUserId;
   if (selfRemoved) {
+    leaveRoom(id);
     window.dispatchEvent(new CustomEvent('chat:forced-leave', { detail: { conversationId: id } }));
   }
 }
@@ -559,7 +600,7 @@ function flushStatusBuffer() {
     if (!matched.has(id)) statusPending.set(id, p);
   }
   if (statusPending.size > 0) {
-    scheduleStatusFlush(800);
+    scheduleStatusFlush(150);
   }
 }
 
@@ -575,13 +616,13 @@ function onMessageStatus(data: StatusEvent) {
 export function initSocket(token?: string) {
   if (DEV_MODE) return;
 
-  socketClient.connect(token);
-
   socketClient.on('connect', onSocketConnected);
   socketClient.on('message:new', onMessageNew);
 
+  socketClient.connect(token);
+
   if (socketClient.isConnected) {
-    joinAllConversationRooms();
+    onSocketConnected();
   }
 
   if (!unsubscribeConversations) {
@@ -595,6 +636,7 @@ export function initSocket(token?: string) {
   socketClient.on('message:deleted', onMessageDeleted);
   socketClient.on('message:pin:updated', onMessagePinUpdated);
   socketClient.on('message:star:updated', onMessageStarUpdated);
+  socketClient.on('message:reaction:updated', onMessageReactionUpdated);
   socketClient.on('message:status', onMessageStatus);
   socketClient.on('typing:start', onTypingStart);
   socketClient.on('typing:stop', onTypingStop);
@@ -627,6 +669,7 @@ export function destroySocket() {
   socketClient.off('message:deleted', onMessageDeleted);
   socketClient.off('message:pin:updated', onMessagePinUpdated);
   socketClient.off('message:star:updated', onMessageStarUpdated);
+  socketClient.off('message:reaction:updated', onMessageReactionUpdated);
   socketClient.off('message:status', onMessageStatus);
   socketClient.off('typing:start', onTypingStart);
   socketClient.off('typing:stop', onTypingStop);

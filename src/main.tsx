@@ -3,9 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { Capacitor } from '@capacitor/core';
 import App from './App';
 import { registerSW } from './services/notification';
+import { setupForegroundMessageListener } from './services/push';
 import './styles/globals.css';
 
 registerSW();
+void setupForegroundMessageListener();
 
 if (Capacitor.isNativePlatform()) {
   import('@capacitor/status-bar').then(({ StatusBar, Style }) => {

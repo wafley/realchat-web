@@ -15,17 +15,18 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const markRead = useMarkNotificationRead();
 
   const sender = notification.sender || (notification as any).user || (notification as any).data?.sender || (notification as any).data?.user;
+  const actorId = notification.actorId || (notification as any).data?.actorId;
   const avatarUrl = sender?.avatarUrl || (notification as any).avatarUrl || (notification as any).data?.avatarUrl;
   const senderName = sender?.fullName || sender?.username || (notification as any).senderName || (notification as any).data?.senderName;
-  const isContactNotif = notification.type === 'contact_added';
+  const isContactNotif = notification.type === 'contact_added' || notification.type === 'new_contact';
 
   const handleClick = () => {
     if (!notification.read) {
       markRead.mutate(notification.id);
     }
 
-    if (notification.type === 'contact_added' && sender) {
-      navigate(`/profile/${sender.id}`);
+    if (isContactNotif) {
+      navigate(`/profile/${sender?.id ?? actorId}`);
     } else if (notification.type === 'message' && notification.conversationId) {
       navigate(`/dm/${notification.conversationId}`);
     } else if (

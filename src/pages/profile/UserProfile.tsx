@@ -348,17 +348,80 @@ export default function UserProfile() {
             </div>
           ) : (
             <>
-              <div className="flex flex-row items-center gap-4 md:gap-12">
-                <div onClick={() => isSelf && navigate('/profile/edit')} className={cn(isSelf && 'cursor-pointer')}>
-                  <Avatar className="h-20 w-20 md:h-24 md:w-24">
-                    {effectiveUser?.avatarUrl && <AvatarImage src={effectiveUser?.avatarUrl} />}
-                    <AvatarFallback className="text-lg font-bold md:text-2xl">
-                      {(effectiveUser?.fullName || effectiveUser?.username || 'U').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+              {/* Profile Cover Banner */}
+              <div className="relative h-36 sm:h-44 md:h-52 w-full overflow-hidden rounded-2xl border border-border/40 shadow-md group">
+                {effectiveUser?.bannerUrl ? (
+                  <img
+                    src={effectiveUser.bannerUrl}
+                    alt="Cover Banner"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div
+                    className="relative h-full w-full overflow-hidden"
+                    style={{
+                      background: 'linear-gradient(135deg, var(--accent) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                    }}
+                  >
+                    <div
+                      className="absolute -top-16 -right-16 h-64 w-64 rounded-full opacity-40 blur-3xl"
+                      style={{ backgroundColor: 'var(--accent)' }}
+                    />
+                    <div
+                      className="absolute -bottom-12 -left-12 h-56 w-56 rounded-full opacity-20 blur-2xl"
+                      style={{ backgroundColor: 'var(--accent)' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
+                  </div>
+                )}
+              </div>
+
+              {/* Avatar & Header Details */}
+              <div className="relative px-2 sm:px-4">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-16 mb-3">
+                  {/* Avatar with Overlap */}
+                  <div className="relative shrink-0">
+                    <Avatar
+                      className={cn(
+                        "h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 ring-4 ring-background shadow-2xl bg-card transition-transform hover:scale-105",
+                        effectiveUser?.avatarUrl && "cursor-pointer"
+                      )}
+                      onClick={() => effectiveUser?.avatarUrl && setPreviewUrl(effectiveUser.avatarUrl)}
+                    >
+                      {effectiveUser?.avatarUrl && <AvatarImage src={effectiveUser?.avatarUrl} className="object-cover" />}
+                      <AvatarFallback className="text-2xl sm:text-3xl font-bold bg-muted text-foreground">
+                        {(effectiveUser?.fullName || effectiveUser?.username || 'U').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+
+                  {/* Header Actions for self (Desktop) */}
+                  {isSelf && (
+                    <div className="hidden sm:flex items-center gap-2 mb-1">
+                      <button
+                        onClick={() => navigate('/profile/edit')}
+                        className="rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition-all hover:bg-accent/10 hover:border-accent/40"
+                      >
+                        Edit Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (user?.id) {
+                            navigator.clipboard.writeText(`${window.location.origin}/profile/${effectiveUser?.id}`);
+                            toast.success('Profile link copied!');
+                          }
+                        }}
+                        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition-all hover:bg-accent/10 hover:border-accent/40"
+                      >
+                        <Share2 size={14} />
+                        Share Profile
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col">
+                {/* Name, Handle & Bio */}
+                <div className="space-y-1">
                   {isContact && editingName ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -367,7 +430,7 @@ export default function UserProfile() {
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
                         onKeyDown={handleNameKeyDown}
-                        className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2 py-1 text-base font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2 py-1 text-lg font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                       <button
                         onClick={handleSaveEdit}
@@ -385,7 +448,7 @@ export default function UserProfile() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <h2 className="truncate text-base font-bold text-foreground">{displayName}</h2>
+                      <h2 className="truncate text-lg sm:text-xl font-bold text-foreground">{displayName}</h2>
                       {isContact && (
                         <button
                           onClick={handleStartEdit}
@@ -396,22 +459,20 @@ export default function UserProfile() {
                       )}
                     </div>
                   )}
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-medium text-muted-foreground">
                     @{effectiveUser?.username}
                     {contact?.customName && <span className="ml-2 text-muted-foreground/60">• {effectiveUser?.fullName}</span>}
                   </p>
 
+                  <p className="pt-2 whitespace-pre-wrap text-sm text-foreground/90">{effectiveUser?.bio || 'No bio yet'}</p>
                 </div>
-              </div>
 
-              <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">{effectiveUser?.bio || 'No bio yet'}</p>
-
-              {isSelf && (
-                <>
-                  <div className="mt-4 flex items-center gap-2">
+                {/* Mobile action buttons for isSelf */}
+                {isSelf && (
+                  <div className="mt-4 flex sm:hidden items-center gap-2">
                     <button
                       onClick={() => navigate('/profile/edit')}
-                      className="flex-1 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
+                      className="flex-1 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent/10"
                     >
                       Edit Profile
                     </button>
@@ -422,17 +483,21 @@ export default function UserProfile() {
                           toast.success('Profile link copied!');
                         }
                       }}
-                      className="flex items-center justify-center gap-2 flex-1 rounded-lg border border-border px-6 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent/10"
+                      className="flex items-center justify-center gap-1.5 flex-1 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent/10"
                     >
-                      <Share2 size={16} />
+                      <Share2 size={14} />
                       Share Profile
                     </button>
                   </div>
+                )}
+              </div>
 
-                  <hr className="my-6 border-border" />
+              {isSelf && (
+                <>
+                  <hr className="my-6 border-border/50" />
                   <div>
-                    <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
-                    <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Settings & Preferences</p>
+                    <div className="space-y-2.5">
                       <SectionItem
                         icon={Bell}
                         label="Notifications"
@@ -478,6 +543,9 @@ export default function UserProfile() {
                       >
                         <AboutContent />
                       </SectionItem>
+                    </div>
+
+                    <div className="mt-4 pt-1">
                       <button
                         onClick={() => {
                           appQueryClient.clear();
@@ -485,12 +553,14 @@ export default function UserProfile() {
                           useAuthStore.getState().logout();
                           navigate('/login', { replace: true });
                         }}
-                        className="flex w-full items-center gap-4 p-4 text-destructive transition-colors hover:bg-destructive/5"
+                        className="group flex w-full items-center gap-3.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-left text-destructive transition-all duration-200 hover:bg-destructive/10 hover:border-destructive/40 hover:shadow-sm"
                       >
-                        <LogOut size={20} />
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="text-sm font-medium">Logout</p>
-                          <p className="text-xs text-muted-foreground">Sign out of your account</p>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive transition-transform duration-200 group-hover:scale-105">
+                          <LogOut size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-destructive">Logout</p>
+                          <p className="text-xs text-destructive/70">Sign out of your account</p>
                         </div>
                       </button>
                     </div>

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL } from '@/utils/imageValidation';
 import type { Message, ReplyTo } from '@/types';
 
 function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
@@ -445,12 +446,14 @@ export function useChatActions(props: UseChatActionsProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (file.type.startsWith('image/')) {
+      if (isSupportedImage(file)) {
         if (imagePreview) URL.revokeObjectURL(imagePreview);
         setSelectedImage(file);
         setImagePreview(URL.createObjectURL(file));
       } else {
-        setSelectedFile(file);
+        toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+        setSelectedFile(null);
+        setImagePreview(null);
       }
       e.target.value = '';
     },
@@ -723,15 +726,18 @@ export function useChatActions(props: UseChatActionsProps) {
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach((id) => deleteMutation.mutate({ msgId: id, delForAll: false }));
+    selectedIds.forEach((id) => {
+      const target = messages.find((m) => m.id === id);
+      if (target && !target.isDeleted) deleteMutation.mutate({ msgId: id, delForAll: false });
+    });
     setSelectedIds([]);
-  }, [selectedIds, deleteMutation]);
+  }, [selectedIds, messages, deleteMutation]);
 
   const [bulkForwardMessages, setBulkForwardMessages] = useState<Message[]>([]);
 
   const handleBulkForward = useCallback(() => {
     if (selectedIds.length === 0) return;
-    const msgs = messages.filter((m) => selectedIds.includes(m.id));
+    const msgs = messages.filter((m) => selectedIds.includes(m.id) && !m.isDeleted);
     if (msgs.length === 1) {
       setForwardTarget(msgs[0]);
     } else if (msgs.length > 1) {
@@ -794,7 +800,6 @@ export function useChatActions(props: UseChatActionsProps) {
     }
     const text = input.trim();
     if (!text) return;
-    if (sendMutation.isPending) return;
     const rp = buildReplyTo(replyingTo);
     setInput('');
     setReplyingTo(null);

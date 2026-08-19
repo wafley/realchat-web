@@ -6,6 +6,7 @@ import { markChatCleared } from '@/lib/chatCleared';
 import { hideChats, isChatDeleted } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
+import { toError } from '@/utils/errors';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { MOCK_CONTACTS } from '@/mocks/contacts';
 import { delay } from '@/mocks/utils';
@@ -32,6 +33,10 @@ export function senderName(senderId: string): string {
 let dmIdCounter = 6;
 
 export async function findOrCreateConversation(userId: string): Promise<string> {
+  const me = useAuthStore.getState().user?.id;
+  if (me && userId === me) {
+    throw new Error('You cannot start a conversation with yourself');
+  }
   if (DEV_MODE) {
     await delay(100);
     const existing = Object.entries(DM_USER_MAP).find(([, uid]) => uid === userId);
@@ -134,6 +139,7 @@ export function mapMessage(row: RemoteMessage): Message {
       fullName: row.sender?.fullName || row.sender?.username || '',
       email: '',
       status: 'offline',
+      avatarUrl: row.sender?.avatarUrl ?? undefined,
       createdAt: new Date(),
     },
   };
@@ -175,7 +181,7 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
       nextCursor,
     };
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to fetch messages');
+    throw toError(err, 'Failed to fetch messages');
   }
 }
 
@@ -218,7 +224,7 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
     const { data } = await api.post<Message>(`${endpoint}`, form);
     return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to send image');
+    throw toError(err, 'Failed to send image');
   }
 }
 
@@ -259,7 +265,7 @@ export async function sendMessage(chatId: string, content: string, _isDM: boolea
     if (!res.data) throw new Error('Failed to send message');
     return mapMessage(res.data);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to send message');
+    throw toError(err, 'Failed to send message');
   }
 }
 
@@ -280,7 +286,7 @@ export async function editMessage(chatId: string, messageId: string, content: st
     const { data } = await api.put<RemoteMessage>(`/conversations/${chatId}/messages/${messageId}`, { content });
     return mapMessage({ ...data, isEdited: true });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to edit message');
+    throw toError(err, 'Failed to edit message');
   }
 }
 
@@ -346,7 +352,7 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
     const res = await socketClient.deleteMessageAck(chatId, messageId);
     if (res.error) throw new Error(res.error);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to delete message');
+    throw toError(err, 'Failed to delete message');
   }
 }
 
@@ -372,7 +378,7 @@ export async function markConversationAsSeen(chatId: string, _lastSeenMessageId?
     // Reset unreadCount server untuk user ini (per-user, tidak mengirim seen ke lawan bicara).
     await api.post(`/conversations/${chatId}/read`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to mark as seen');
+    throw toError(err, 'Failed to mark as seen');
   }
 }
 
@@ -460,6 +466,7 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
 }
 
 export function messagePreview(m: Message): string {
+  if (m.isDeleted) return 'Message deleted';
   if (m.type === 'image') return '📷 Photo';
   if (m.type === 'file') return '📎 File';
   if (m.type === 'video') return '🎬 Video';
@@ -474,37 +481,44 @@ export function messageSenderName(m: { senderId: string; sender?: { username?: s
   return undefined;
 }
 
-export function refreshConversationPreview(chatId: string, isDM: boolean): void {
-  const msgs = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
-    'messages',
-    chatId,
-    isDM,
-  ]);
+export function refreshConversationPreview(chatId: string, isDM?: boolean): void {
+  const msgs =
+    queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM ?? true]) ??
+    queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, !(isDM ?? true)]);
   const all = msgs?.pages.flatMap((p) => p.data) ?? [];
   const last = all
-    .filter((m) => m && !m.isDeleted)
+    .filter(Boolean)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .pop();
-  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+  queryClient.setQueryData<{ id: string; type?: string; lastMessage?: string; lastTime?: string; lastSenderName?: string }[]>(
     ['conversations'],
     (prev) => {
       if (!prev) return prev;
-      return prev.map((c) =>
-        c.id === chatId
-          ? {
-              ...c,
-              lastMessage: last ? messagePreview(last) : '',
-              lastSenderName: !isDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : undefined,
-              lastTime: last?.createdAt
-                ? last.createdAt instanceof Date
-                  ? last.createdAt.toISOString()
-                  : (last.createdAt as string)
-                : c.lastTime,
-            }
-          : c,
-      );
+      return prev.map((c) => {
+        if (c.id !== chatId) return c;
+        const effectiveIsDM = isDM ?? c.type === 'dm';
+        let nextLastMessage = c.lastMessage;
+        if (last) {
+          nextLastMessage = messagePreview(last);
+        } else {
+          if (!c.lastMessage || c.lastMessage.trim() === '') {
+            nextLastMessage = 'Message deleted';
+          }
+        }
+        return {
+          ...c,
+          lastMessage: nextLastMessage,
+          lastSenderName: !effectiveIsDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : c.lastSenderName,
+          lastTime: last?.createdAt
+            ? last.createdAt instanceof Date
+              ? last.createdAt.toISOString()
+              : (last.createdAt as string)
+            : c.lastTime,
+        };
+      });
     },
   );
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
 }
 
 const LOCAL_UNREAD_KEY = 'hw_unread_map';
@@ -569,7 +583,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
       };
     });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to fetch conversations');
+    throw toError(err, 'Failed to fetch conversations');
   }
 }
 
@@ -591,7 +605,7 @@ export async function bulkDeleteConversations(ids: string[]): Promise<void> {
       queryClient.removeQueries({ queryKey: ['messages', id] });
     });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to delete conversations');
+    throw toError(err, 'Failed to delete conversations');
   }
 }
 
@@ -628,7 +642,7 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
     );
     return mapMessage(data);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to forward message');
+    throw toError(err, 'Failed to forward message');
   }
 }
 
@@ -646,7 +660,7 @@ export async function pinMessage(chatId: string, messageId: string): Promise<voi
 
     await api.put(`/conversations/${chatId}/messages/${messageId}/pin`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to pin message');
+    throw toError(err, 'Failed to pin message');
   }
 }
 
@@ -664,7 +678,7 @@ export async function unpinMessage(chatId: string, messageId: string): Promise<v
 
     await api.delete(`/conversations/${chatId}/messages/${messageId}/pin`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to unpin message');
+    throw toError(err, 'Failed to unpin message');
   }
 }
 
@@ -695,7 +709,7 @@ export async function getPinnedMessages(chatId: string): Promise<Message[]> {
       return msg;
     });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to get pinned messages');
+    throw toError(err, 'Failed to get pinned messages');
   }
 }
 
@@ -713,7 +727,7 @@ export async function starMessage(chatId: string, messageId: string): Promise<vo
 
     await api.put(`/conversations/${chatId}/messages/${messageId}/star`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to star message');
+    throw toError(err, 'Failed to star message');
   }
 }
 
@@ -731,7 +745,7 @@ export async function unstarMessage(chatId: string, messageId: string): Promise<
 
     await api.delete(`/conversations/${chatId}/messages/${messageId}/star`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to unstar message');
+    throw toError(err, 'Failed to unstar message');
   }
 }
 
@@ -769,7 +783,7 @@ export async function getStarredMessages(cursor?: string, limit = 50): Promise<S
       return starred;
     });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to get starred messages');
+    throw toError(err, 'Failed to get starred messages');
   }
 }
 
@@ -814,7 +828,7 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
     const { data } = await api.post<Message>(`${endpoint}`, form);
     return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to send file');
+    throw toError(err, 'Failed to send file');
   }
 }
 
@@ -829,7 +843,7 @@ export async function muteConversation(chatId: string, until?: string): Promise<
 
     await api.put(`/conversations/${chatId}/mute`, until ? { until } : {});
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to mute conversation');
+    throw toError(err, 'Failed to mute conversation');
   }
 }
 
@@ -844,7 +858,7 @@ export async function unmuteConversation(chatId: string): Promise<void> {
 
     await api.delete(`/conversations/${chatId}/mute`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to unmute conversation');
+    throw toError(err, 'Failed to unmute conversation');
   }
 }
 
@@ -859,7 +873,7 @@ export async function blockUser(userId: string): Promise<void> {
 
     await api.post(`/users/${userId}/block`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to block user');
+    throw toError(err, 'Failed to block user');
   }
 }
 
@@ -882,7 +896,7 @@ export async function unblockUser(userId: string): Promise<void> {
 
     await api.delete(`/users/${userId}/block`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to unblock user');
+    throw toError(err, 'Failed to unblock user');
   }
 }
 
@@ -895,7 +909,7 @@ export async function reportUser(userId: string): Promise<void> {
 
     await api.post(`/users/${userId}/report`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to report user');
+    throw toError(err, 'Failed to report user');
   }
 }
 
@@ -916,11 +930,21 @@ export async function searchUsers(query: string): Promise<User[]> {
     const { data } = await api.get<{ users?: User[] }>(`/search/users`, { params: { q: query } });
     return Array.isArray(data) ? (data as User[]) : (data?.users ?? []);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to search users');
+    throw toError(err, 'Failed to search users');
   }
 }
 
 export async function createGroup(name: string, description: string, memberIds: string[], avatarFile?: File): Promise<ChatConversation> {
+  const me = useAuthStore.getState().user?.id;
+  if (me && memberIds.includes(me)) {
+    throw new Error('You cannot add yourself as a group member');
+  }
+  if (new Set(memberIds).size !== memberIds.length) {
+    throw new Error('Duplicate members are not allowed');
+  }
+  if (memberIds.length < 2) {
+    throw new Error('Select at least 2 members to create a group');
+  }
   try {
     if (DEV_MODE) {
       await delay(200);
@@ -952,7 +976,7 @@ export async function createGroup(name: string, description: string, memberIds: 
       muted: false,
     };
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to create group');
+    throw toError(err, 'Failed to create group');
   }
 }
 
@@ -968,7 +992,7 @@ export async function leaveGroup(groupId: string): Promise<void> {
 
     await api.delete(`/groups/${groupId}/leave`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to leave group');
+    throw toError(err, 'Failed to leave group');
   }
 }
 
@@ -1012,6 +1036,14 @@ export async function getGroup(groupId: string): Promise<Group> {
         userId: string;
         role: string;
         joinedAt: string;
+        user?: {
+          id?: string;
+          fullName?: string;
+          name?: string;
+          username?: string;
+          avatarUrl?: string;
+          status?: 'online' | 'offline' | 'away';
+        };
       }[];
     }
     const { data } = await api.get<RemoteGroupDetail>(`/conversations/${groupId}`);
@@ -1023,16 +1055,29 @@ export async function getGroup(groupId: string): Promise<Group> {
       creatorId: data.createdBy ?? '',
       isPrivate: false,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-      members: (data.members ?? []).map((m) => ({
-        id: m.id,
-        groupId,
-        userId: m.userId,
-        role: m.role === 'ADMIN' ? 'admin' : 'member',
-        joinedAt: new Date(m.joinedAt),
-      })),
+      members: (data.members ?? []).map((m: any) => {
+        const u = m.user || m.profile;
+        const fullName = u?.fullName || u?.name || u?.username;
+        return {
+          id: m.id,
+          groupId,
+          userId: m.userId,
+          role: m.role === 'ADMIN' || m.role === 'admin' ? 'admin' : 'member',
+          joinedAt: new Date(m.joinedAt),
+          user: fullName ? {
+            id: m.userId,
+            fullName,
+            username: u?.username ?? '',
+            avatarUrl: u?.avatarUrl ?? undefined,
+            status: u?.status ?? 'offline',
+            email: u?.email ?? '',
+            createdAt: u?.createdAt ? new Date(u.createdAt) : new Date(),
+          } : undefined,
+        };
+      }),
     };
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to get group');
+    throw toError(err, 'Failed to get group');
   }
 }
 
@@ -1053,7 +1098,7 @@ export async function addGroupMember(groupId: string, userId: string): Promise<v
 
     await api.post(`/groups/${groupId}/members`, { userIds: [userId] });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to add member');
+    throw toError(err, 'Failed to add member');
   }
 }
 
@@ -1073,7 +1118,7 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
 
     await api.delete(`/groups/${groupId}/members/${userId}`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to remove member');
+    throw toError(err, 'Failed to remove member');
   }
 }
 
@@ -1093,7 +1138,7 @@ export async function updateGroup(groupId: string, data: { name?: string; descri
     // BREAKING (3.3): PUT (bukan PATCH), schema strict hanya name/description.
     await api.put(`/groups/${groupId}`, data);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to update group');
+    throw toError(err, 'Failed to update group');
   }
 }
 
@@ -1113,7 +1158,7 @@ export async function updateMemberRole(groupId: string, userId: string, role: 'a
     // BREAKING (3.4): PUT + role UPPERCASE ('ADMIN'|'MEMBER').
     await api.put(`/groups/${groupId}/members/${userId}/role`, { role: role.toUpperCase() });
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to update member role');
+    throw toError(err, 'Failed to update member role');
   }
 }
 
@@ -1129,7 +1174,7 @@ export async function deleteGroup(groupId: string): Promise<void> {
 
     await api.delete(`/groups/${groupId}`);
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to delete group');
+    throw toError(err, 'Failed to delete group');
   }
 }
 
@@ -1148,7 +1193,7 @@ export async function uploadGroupAvatar(groupId: string, file: File): Promise<st
     });
     return data.avatarUrl ?? data.url ?? '';
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to upload group avatar');
+    throw toError(err, 'Failed to upload group avatar');
   }
 }
 
@@ -1173,7 +1218,7 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
 
     throw new Error('Reaksi belum tersedia di backend');
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to toggle reaction');
+    throw toError(err, 'Failed to toggle reaction');
   }
 }
 
@@ -1195,7 +1240,7 @@ export async function clearChat(chatId: string): Promise<void> {
       saveLocalUnread(unread);
     }
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to clear chat');
+    throw toError(err, 'Failed to clear chat');
   }
 }
 
@@ -1268,7 +1313,7 @@ export async function getMutualGroups(userId: string): Promise<ChatConversation[
     const { data } = await api.get(`/users/${userId}/mutual-groups`);
     return Array.isArray(data) ? data : [];
   } catch (err) {
-    throw err instanceof Error ? err : new Error('Failed to get mutual groups');
+    throw toError(err, 'Failed to get mutual groups');
   }
 }
 

@@ -9,6 +9,8 @@ import { createGroup, searchUsers } from '@/services/chat';
 import { toast } from 'sonner';
 import type { User } from '@/types';
 import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
+import { getApiErrorMessage } from '@/utils/errors';
 import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function CreateGroup() {
@@ -42,8 +44,7 @@ export default function CreateGroup() {
     mutationFn: (data: CreateGroupSchema) =>
       createGroup(data.name, data.description || '', selectedIds, croppedFile ?? undefined),
     onSuccess: (group) => navigate(`/chat/${group.id}`),
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : 'Failed to create group'),
+    onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
   const handleSearch = (q: string) => {
@@ -61,6 +62,11 @@ export default function CreateGroup() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isSupportedImage(file)) {
+      toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
     setRawImageSrc(url);
     setCropModalOpen(true);
@@ -103,7 +109,7 @@ export default function CreateGroup() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               onChange={handleAvatarChange}
               className="hidden"
             />

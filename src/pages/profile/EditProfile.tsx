@@ -5,10 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Camera, Loader2, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
-import { uploadAvatar } from '@/services/user';
+import { uploadAvatar, uploadBanner } from '@/services/user';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { editProfileSchema, type EditProfileSchema } from '@/lib/validations';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function EditProfile() {
@@ -18,10 +19,13 @@ export default function EditProfile() {
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -41,10 +45,28 @@ export default function EditProfile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isSupportedImage(file)) {
+      toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+      e.target.value = '';
+      return;
+    }
     const objectUrl = URL.createObjectURL(file);
     setRawImageSrc(objectUrl);
     setCropModalOpen(true);
-    // Reset file input value so selecting same file again re-triggers onChange
+    e.target.value = '';
+  };
+
+  const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isSupportedImage(file)) {
+      toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+      e.target.value = '';
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setBannerFile(file);
+    setBannerPreview(objectUrl);
     e.target.value = '';
   };
 
@@ -66,8 +88,13 @@ export default function EditProfile() {
         const avatarUrl = await uploadAvatar(avatarFile);
         payload.avatarUrl = avatarUrl;
       }
+      if (bannerFile) {
+        const bannerUrl = await uploadBanner(bannerFile);
+        payload.bannerUrl = bannerUrl;
+      }
       await updateProfile(payload);
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      if (bannerPreview) URL.revokeObjectURL(bannerPreview);
       toast.success('Profile updated');
       navigate('/profile');
     } catch {
@@ -93,38 +120,74 @@ export default function EditProfile() {
             </button>
             <div>
               <h2 className="text-lg font-bold text-foreground">Edit Profile</h2>
-              <p className="text-sm text-muted-foreground">Update your personal information</p>
+              <p className="text-sm text-muted-foreground">Update your profile header and personal info</p>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl bg-card">
-            <div className="flex items-center gap-4 border-b border-border/50 px-4 py-4">
-              <div className="relative">
-                <Avatar className="h-16 w-16">
-                  {(avatarPreview || user?.avatarUrl) && <AvatarImage src={avatarPreview || user?.avatarUrl} />}
-                  <AvatarFallback className="text-lg">
-                    <User size={20} />
-                  </AvatarFallback>
-                </Avatar>
-                <button
-                  onClick={() => inputRef.current?.click()}
-                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80"
+          <div className="overflow-hidden rounded-xl bg-card border border-border/50 shadow-md">
+            {/* Banner Preview Box */}
+            <div className="relative h-36 sm:h-44 w-full overflow-hidden">
+              {(bannerPreview || user?.bannerUrl) ? (
+                <img src={bannerPreview || user?.bannerUrl} alt="Cover Banner" className="h-full w-full object-cover" />
+              ) : (
+                <div
+                  className="relative flex h-full w-full items-center justify-center overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--accent) 0%, rgba(15, 23, 42, 0.95) 100%)',
+                  }}
                 >
-                  <Camera size={12} />
-                </button>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Profile Photo</p>
-                <p className="text-xs text-muted-foreground">Click to change your avatar</p>
-              </div>
+                  <div
+                    className="absolute -top-16 -right-16 h-64 w-64 rounded-full opacity-40 blur-3xl"
+                    style={{ backgroundColor: 'var(--accent)' }}
+                  />
+                  <span className="relative z-10 text-xs text-white/80 font-medium drop-shadow">Default Accent Cover Banner</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => bannerInputRef.current?.click()}
+                className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-md px-3 py-1.5 text-xs font-medium text-white shadow transition-all hover:bg-black/80 hover:scale-105"
+              >
+                <Camera size={14} />
+                <span>{bannerPreview || user?.bannerUrl ? 'Change Cover' : 'Upload Cover'}</span>
+              </button>
+
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                className="hidden"
+                onChange={handleBannerFileChange}
+              />
             </div>
+
+            {/* Avatar & Photo Section */}
+            <div className="px-4 pb-4">
+              <div className="flex items-end justify-between -mt-10 mb-3">
+                <div className="relative">
+                  <Avatar className="h-20 w-20 ring-4 ring-card shadow-lg">
+                    {(avatarPreview || user?.avatarUrl) && <AvatarImage src={avatarPreview || user?.avatarUrl} className="object-cover" />}
+                    <AvatarFallback className="text-xl font-bold">
+                      <User size={24} />
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow transition-colors hover:bg-accent/80"
+                  >
+                    <Camera size={12} />
+                  </button>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept={IMAGE_ACCEPT}
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+              </div>
 
             <div className="space-y-0">
               <div className="border-b border-border/50 px-4 py-3.5">
@@ -157,6 +220,7 @@ export default function EditProfile() {
               </div>
             </div>
           </div>
+        </div>
 
           <button
             onClick={handleSubmit(onSave)}

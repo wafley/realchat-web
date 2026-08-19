@@ -7,6 +7,7 @@ import PinnedBanner from '@/components/chat/PinnedBanner';
 import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/chat/ChatInput';
 import ChatOverlays from '@/components/chat/ChatOverlays';
+import GroupInfoPanel from '@/components/chat/GroupInfoPanel';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
@@ -169,170 +170,192 @@ export default function ChatRoom() {
     window.addEventListener('chat:forced-leave', handler);
     return () => window.removeEventListener('chat:forced-leave', handler);
   }, [state.chatId, navigate]);
-
   return (
-    <div className="flex h-full flex-col">
-      <ChatHeader
-        chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
-        typingLabel={state.typingLabel}
-        chatOnline={state.chatOnline}
-        isDM={state.isDM}
-        muted={state.muted}
-        userId={state.otherUserId}
-        lastSeen={state.chatLastSeen}
-        memberCount={mutations.group?.members?.length ?? state.memberCount}
-        avatarUrl={!state.isDM ? mutations.group?.avatarUrl : undefined}
-        onBack={() => navigate('/')}
-        onSearchToggle={() => {
-          if (state.showSearch) {
-            state.setSearchQuery('');
-            state.setShowSearch(false);
-          } else {
-            state.setShowSearch(true);
-          }
-        }}
-        onToggleMute={() => state.setMuteDialogOpen(true)}
-        onBlockClick={() => state.setBlockConfirmOpen(true)}
-        onReportClick={() => state.setReportConfirmOpen(true)}
-        onGroupInfoClick={() => state.setGroupInfoOpen(true)}
-        onClearChat={() => state.setClearConfirmOpen(true)}
-      />
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Main Chat Area */}
+      <div className="flex flex-1 flex-col h-full min-w-0">
+        <ChatHeader
+          chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
+          typingLabel={state.typingLabel}
+          chatOnline={state.chatOnline}
+          isDM={state.isDM}
+          muted={state.muted}
+          userId={state.otherUserId}
+          lastSeen={state.chatLastSeen}
+          memberCount={mutations.group?.members?.length ?? state.memberCount}
+          avatarUrl={!state.isDM ? mutations.group?.avatarUrl : undefined}
+          onBack={() => navigate('/')}
+          onSearchToggle={() => {
+            if (state.showSearch) {
+              state.setSearchQuery('');
+              state.setShowSearch(false);
+            } else {
+              state.setShowSearch(true);
+            }
+          }}
+          onToggleMute={() => state.setMuteDialogOpen(true)}
+          onBlockClick={() => state.setBlockConfirmOpen(true)}
+          onReportClick={() => state.setReportConfirmOpen(true)}
+          onGroupInfoClick={() => state.setGroupInfoOpen((prev) => !prev)}
+          onClearChat={() => state.setClearConfirmOpen(true)}
+        />
 
-      {state.showSearch && (
-        <ChatSearchBar
-          searchQuery={state.searchQuery}
-          searchMatches={state.searchMatches}
-          activeMatchIndex={state.activeMatchIndex}
-          inputRef={state.searchInputRef as React.RefObject<HTMLInputElement>}
-          onSearchChange={state.setSearchQuery}
-          onPreviousMatch={() => {
-            const next =
-              (state.activeMatchIndex - 1 + state.searchMatches.length) %
-              Math.max(state.searchMatches.length, 1);
-            state.setActiveMatchIndex(next);
-            actions.scrollToMatch(next);
-          }}
-          onNextMatch={() => {
-            const next =
-              (state.activeMatchIndex + 1) % Math.max(state.searchMatches.length, 1);
-            state.setActiveMatchIndex(next);
-            actions.scrollToMatch(next);
-          }}
-          onClear={() => {
-            state.setSearchQuery('');
-            state.setSearchMatches([]);
-            state.setActiveMatchIndex(0);
+        {state.showSearch && (
+          <ChatSearchBar
+            searchQuery={state.searchQuery}
+            searchMatches={state.searchMatches}
+            activeMatchIndex={state.activeMatchIndex}
+            inputRef={state.searchInputRef as React.RefObject<HTMLInputElement>}
+            onSearchChange={state.setSearchQuery}
+            onPreviousMatch={() => {
+              const next =
+                (state.activeMatchIndex - 1 + state.searchMatches.length) %
+                Math.max(state.searchMatches.length, 1);
+              state.setActiveMatchIndex(next);
+              actions.scrollToMatch(next);
+            }}
+            onNextMatch={() => {
+              const next =
+                (state.activeMatchIndex + 1) % Math.max(state.searchMatches.length, 1);
+              state.setActiveMatchIndex(next);
+              actions.scrollToMatch(next);
+            }}
+            onClear={() => {
+              state.setSearchQuery('');
+              state.setSearchMatches([]);
+              state.setActiveMatchIndex(0);
+            }}
+          />
+        )}
+
+        <PinnedBanner
+          pinnedMessages={state.pinnedMessages}
+          onUnpin={(id) => mutations.unpinMutation.mutate(id)}
+          onScrollTo={(id) => {
+            document
+              .getElementById(`msg-${id}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }}
         />
-      )}
 
-      <PinnedBanner
-        pinnedMessages={state.pinnedMessages}
-        onUnpin={(id) => mutations.unpinMutation.mutate(id)}
-        onScrollTo={(id) => {
-          document
-            .getElementById(`msg-${id}`)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }}
-      />
-
-      {state.selectedIds.length > 0 && (
-        <div className="flex items-center gap-3 border-b border-border bg-sidebar/80 px-4 py-2 text-xs">
-          <span className="font-medium text-foreground">
-            {state.selectedIds.length} selected
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={actions.handleBulkForward}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-accent/10"
-            >
-              Forward
-            </button>
-            <button
-              onClick={actions.handleBulkDelete}
-              className="flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-destructive transition-colors hover:bg-destructive/10"
-            >
-              Delete
-            </button>
-            <button
-              onClick={() => state.setSelectedIds([])}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-muted-foreground transition-colors hover:bg-accent/10"
-            >
-              Cancel
-            </button>
+        {state.selectedIds.length > 0 && (
+          <div className="flex items-center gap-3 border-b border-border bg-sidebar/80 px-4 py-2 text-xs">
+            <span className="font-medium text-foreground">
+              {state.selectedIds.length} selected
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={actions.handleBulkForward}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-accent/10"
+              >
+                Forward
+              </button>
+              <button
+                onClick={actions.handleBulkDelete}
+                className="flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-destructive transition-colors hover:bg-destructive/10"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => state.setSelectedIds([])}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-muted-foreground transition-colors hover:bg-accent/10"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        <MessageList
+          highlightedMsgId={highlightedMsgId}
+          chatId={state.chatId}
+          isDM={state.isDM}
+          filteredMessages={state.filteredMessages}
+          searchQuery={state.searchQuery}
+          isPending={state.isPending}
+          isError={state.isError}
+          error={state.error}
+          isFetchingNextPage={state.isFetchingNextPage}
+          hasNextPage={state.hasNextPage}
+          hasActiveSearch={state.hasActiveSearch}
+          searchMatchIds={state.searchMatchIds}
+          activeMatchIndex={state.activeMatchIndex}
+          typingUsers={state.typers ?? []}
+          currentUserId={state.currentUser?.id}
+          onRetry={() => state.refetch()}
+          scrollTriggerRef={
+            state.scrollTriggerRef as React.RefObject<HTMLDivElement>
+          }
+          messagesEndRef={
+            state.messagesEndRef as React.RefObject<HTMLDivElement>
+          }
+          onContextMenu={(msg, x, y) => state.setContextMenu({ msg, x, y })}
+          onLongPressStart={actions.handleLongPressStart}
+          onLongPressMove={actions.handleLongPressMove}
+          onLongPressEnd={actions.handleLongPressEnd}
+          onTouchStart={actions.handleTouchStart}
+          onTouchMove={actions.handleTouchMove}
+          onTouchEnd={actions.handleTouchEnd}
+          onClickImage={(url) => state.setLightboxUrl(url)}
+          onToggleReaction={actions.handleToggleReaction}
+          onReactionPickerOpen={actions.handleReactionPickerOpen}
+          selectedIds={state.selectedIds}
+          toggleSelect={actions.toggleSelect}
+        />
+
+        <ChatInput
+          input={state.input}
+          replyingTo={state.replyingTo}
+          editingMsg={state.editingMsg}
+          imagePreview={state.imagePreview}
+          selectedImage={state.selectedImage}
+          selectedFile={state.selectedFile}
+          showEmojiPicker={state.showEmojiPicker}
+          onInputChange={state.setInput}
+          onSend={actions.handleSend}
+          onSendImage={actions.handleSendImage}
+          onUpdateEdit={actions.handleUpdateEdit}
+          onCancelReply={actions.handleCancelReply}
+          onCancelEdit={actions.handleCancelEdit}
+          onCancelImage={actions.handleCancelImage}
+          onImageSelect={actions.handleImageSelect}
+          onFileSelect={actions.handleFileSelect}
+          onEmojiToggle={() => state.setShowEmojiPicker((v) => !v)}
+          onEmojiClick={actions.handleEmojiClick}
+          emojiPickerRef={
+            state.emojiPickerRef as React.RefObject<HTMLDivElement>
+          }
+          emojiToggleRef={
+            state.emojiToggleRef as React.RefObject<HTMLButtonElement>
+          }
+          fileInputRef={
+            state.fileInputRef as React.RefObject<HTMLInputElement>
+          }
+          imageInputRef={
+            state.imageInputRef as React.RefObject<HTMLInputElement>
+          }
+        />
+      </div>
+
+      {/* WhatsApp Web Style Right Group Info Side Drawer */}
+      {!state.isDM && state.groupInfoOpen && (
+        <aside className="fixed inset-0 z-40 w-full lg:relative lg:inset-auto lg:z-auto lg:w-96 shrink-0 h-full shadow-2xl lg:shadow-none animate-in slide-in-from-right-full duration-200">
+          <GroupInfoPanel
+            group={mutations.group}
+            currentUserId={state.currentUser?.id}
+            onClose={() => state.setGroupInfoOpen(false)}
+            onUpdateGroup={(data) => mutations.updateGroupMutation.mutateAsync(data)}
+            onAddMember={(userId) => mutations.addMemberMutation.mutateAsync(userId)}
+            onRemoveMember={(userId) => mutations.removeMemberMutation.mutateAsync(userId)}
+            onLeaveGroup={() => mutations.leaveGroupMutation.mutateAsync()}
+            onDeleteGroup={() => mutations.deleteGroupMutation.mutateAsync()}
+            onUpdateMemberRole={(userId, role) => mutations.updateMemberRoleMutation.mutateAsync({ userId, role })}
+            searchUsers={actions.handleSearchUsers}
+            muted={state.muted}
+            onToggleMute={() => state.setMuteDialogOpen(true)}
+          />
+        </aside>
       )}
-
-      <MessageList
-        highlightedMsgId={highlightedMsgId}
-        chatId={state.chatId}
-        isDM={state.isDM}
-        filteredMessages={state.filteredMessages}
-        searchQuery={state.searchQuery}
-        isPending={state.isPending}
-        isError={state.isError}
-        error={state.error}
-        isFetchingNextPage={state.isFetchingNextPage}
-        hasNextPage={state.hasNextPage}
-        hasActiveSearch={state.hasActiveSearch}
-        searchMatchIds={state.searchMatchIds}
-        activeMatchIndex={state.activeMatchIndex}
-        typingUsers={state.typers ?? []}
-        currentUserId={state.currentUser?.id}
-        onRetry={() => state.refetch()}
-        scrollTriggerRef={
-          state.scrollTriggerRef as React.RefObject<HTMLDivElement>
-        }
-        messagesEndRef={
-          state.messagesEndRef as React.RefObject<HTMLDivElement>
-        }
-        onContextMenu={(msg, x, y) => state.setContextMenu({ msg, x, y })}
-        onLongPressStart={actions.handleLongPressStart}
-        onLongPressMove={actions.handleLongPressMove}
-        onLongPressEnd={actions.handleLongPressEnd}
-        onTouchStart={actions.handleTouchStart}
-        onTouchMove={actions.handleTouchMove}
-        onTouchEnd={actions.handleTouchEnd}
-        onClickImage={(url) => state.setLightboxUrl(url)}
-        onToggleReaction={actions.handleToggleReaction}
-        onReactionPickerOpen={actions.handleReactionPickerOpen}
-        selectedIds={state.selectedIds}
-        toggleSelect={actions.toggleSelect}
-      />
-
-      <ChatInput
-        input={state.input}
-        replyingTo={state.replyingTo}
-        editingMsg={state.editingMsg}
-        imagePreview={state.imagePreview}
-        selectedImage={state.selectedImage}
-        selectedFile={state.selectedFile}
-        showEmojiPicker={state.showEmojiPicker}
-        onInputChange={state.setInput}
-        onSend={actions.handleSend}
-        onSendImage={actions.handleSendImage}
-        onUpdateEdit={actions.handleUpdateEdit}
-        onCancelReply={actions.handleCancelReply}
-        onCancelEdit={actions.handleCancelEdit}
-        onCancelImage={actions.handleCancelImage}
-        onImageSelect={actions.handleImageSelect}
-        onFileSelect={actions.handleFileSelect}
-        onEmojiToggle={() => state.setShowEmojiPicker((v) => !v)}
-        onEmojiClick={actions.handleEmojiClick}
-        emojiPickerRef={
-          state.emojiPickerRef as React.RefObject<HTMLDivElement>
-        }
-        emojiToggleRef={
-          state.emojiToggleRef as React.RefObject<HTMLButtonElement>
-        }
-        fileInputRef={
-          state.fileInputRef as React.RefObject<HTMLInputElement>
-        }
-        imageInputRef={
-          state.imageInputRef as React.RefObject<HTMLInputElement>
-        }
-      />
 
       {state.reactingMsgId && state.reactionPickerRect && (
         <ReactionPicker
@@ -353,11 +376,8 @@ export default function ChatRoom() {
         blockConfirmOpen={state.blockConfirmOpen}
         reportConfirmOpen={state.reportConfirmOpen}
         clearConfirmOpen={state.clearConfirmOpen}
-        groupInfoOpen={state.groupInfoOpen}
         readReceiptTarget={state.readReceiptTarget}
-        group={mutations.group}
         chatName={state.chatName}
-        chatId={state.chatId}
         currentUserId={state.currentUser?.id}
         onCloseDelete={() => {
           if (!state.deleteLoading) state.setDeleteTarget(null);
@@ -385,23 +405,7 @@ export default function ChatRoom() {
         muted={state.muted}
         onCloseMute={() => state.setMuteDialogOpen(false)}
         onMute={actions.handleMute}
-        onCloseGroupInfo={() => state.setGroupInfoOpen(false)}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
-        onUpdateGroup={(data) =>
-          mutations.updateGroupMutation.mutateAsync(data)
-        }
-        onAddMember={(userId) =>
-          mutations.addMemberMutation.mutateAsync(userId)
-        }
-        onRemoveMember={(userId) =>
-          mutations.removeMemberMutation.mutateAsync(userId)
-        }
-        onLeaveGroup={() => mutations.leaveGroupMutation.mutateAsync()}
-        onDeleteGroup={() => mutations.deleteGroupMutation.mutateAsync()}
-        onUpdateMemberRole={(userId, role) =>
-          mutations.updateMemberRoleMutation.mutateAsync({ userId, role })
-        }
-        searchUsers={actions.handleSearchUsers}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getApiErrorMessage } from '@/utils/errors';
 import type { Message, PaginatedResponse, ReplyTo } from '@/types';
 import { queryClient } from '@/lib/queryClient';
 import {
@@ -31,6 +32,8 @@ import {
   refreshConversationPreview,
   messageSenderName,
 } from '@/services/chat';
+import { leaveRoom } from '@/services/socket.service';
+import { useAuthStore } from '@/store/authStore';
 
 interface UseChatMutationsProps {
   chatId: string;
@@ -42,7 +45,7 @@ interface UseChatMutationsProps {
   setEditingMsg: (msg: Message | null) => void;
   setInput: (v: string) => void;
   setPinnedMessages: (msgs: Message[]) => void;
-  setGroupInfoOpen: (v: boolean) => void;
+  setGroupInfoOpen?: (v: boolean) => void;
 }
 
 export function useChatMutations({
@@ -55,11 +58,11 @@ export function useChatMutations({
   setEditingMsg,
   setInput,
   setPinnedMessages,
-  setGroupInfoOpen,
+  setGroupInfoOpen: _setGroupInfoOpen,
 }: UseChatMutationsProps) {
   const navigate = useNavigate();
 
-  const onMessageSent = useCallback(
+  const appendMessageToCache = useCallback(
     (newMsg: Message) => {
       queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
         ['messages', chatId, isDM],
@@ -79,6 +82,12 @@ export function useChatMutations({
            };
         },
       );
+    },
+    [chatId, isDM],
+  );
+
+  const updateConversationPreview = useCallback(
+    (newMsg: Message) => {
       const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
       queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; lastSenderName?: string }[]>(
         ['conversations'],
@@ -99,9 +108,17 @@ export function useChatMutations({
       return [updated[idx], ...updated.slice(0, idx), ...updated.slice(idx + 1)];
     },
       );
-      simulateDevReceipts(chatId, newMsg.id, isDM);
     },
     [chatId, isDM],
+  );
+
+  const onMessageSent = useCallback(
+    (newMsg: Message) => {
+      appendMessageToCache(newMsg);
+      updateConversationPreview(newMsg);
+      simulateDevReceipts(chatId, newMsg.id, isDM);
+    },
+    [appendMessageToCache, updateConversationPreview, chatId, isDM],
   );
 
   const updateMsgPin = useCallback(
@@ -132,10 +149,66 @@ export function useChatMutations({
   const sendMutation = useMutation({
     mutationFn: ({ content, replyTo: rp }: { content: string; replyTo?: ReplyTo }) =>
       sendMessage(chatId, content, isDM, rp),
-    onSuccess(r) {
-      onMessageSent(r);
+    onMutate: async ({ content, replyTo: rp }) => {
+      const user = useAuthStore.getState().user;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const tempMsg: Message = {
+        id: tempId,
+        groupId: chatId,
+        senderId: user?.id ?? '',
+        content,
+        type: 'text',
+        status: 'sent',
+        replyTo: rp,
+        createdAt: new Date(),
+        sender: user
+          ? {
+              id: user.id,
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              avatarUrl: user.avatarUrl,
+              status: 'online',
+              createdAt: new Date(),
+            }
+          : undefined,
+      };
+      appendMessageToCache(tempMsg);
+      updateConversationPreview(tempMsg);
+      return { tempId };
     },
-    onError() {
+    onSuccess(r, _vars, ctx) {
+      if (ctx?.tempId) {
+        // Ganti pesan temp (pending) dengan pesan asli dari server.
+        queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+          ['messages', chatId, isDM],
+          (prev) => {
+            if (!prev) return prev;
+            const [firstPage, ...rest] = prev.pages;
+            const idx = firstPage.data.findIndex((m) => m.id === ctx.tempId);
+            if (idx === -1) return prev;
+            const data = [...firstPage.data];
+            data[idx] = r;
+            return { ...prev, pages: [{ ...firstPage, data }, ...rest] };
+          },
+        );
+      }
+      updateConversationPreview(r);
+      simulateDevReceipts(chatId, r.id, isDM);
+    },
+    onError(_err, _vars, ctx) {
+      if (ctx?.tempId) {
+        queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+          ['messages', chatId, isDM],
+          (prev) => {
+            if (!prev) return prev;
+            const [firstPage, ...rest] = prev.pages;
+            const data = firstPage.data.filter((m) => m.id !== ctx.tempId);
+            if (data.length === firstPage.data.length) return prev;
+            return { ...prev, pages: [{ ...firstPage, data, total: firstPage.total - 1 }, ...rest] };
+          },
+        );
+      }
       toast.error('Failed to send message. Please try again.');
     },
   });
@@ -147,8 +220,8 @@ export function useChatMutations({
       onMessageSent(r);
       if (vars.preview) URL.revokeObjectURL(vars.preview);
     },
-    onError() {
-      toast.error('Failed to send image. Please try again.');
+    onError: (_err) => {
+      toast.error(getApiErrorMessage(_err, 'Failed to send image. Please try again.'));
     },
   });
 
@@ -158,8 +231,8 @@ export function useChatMutations({
     onSuccess(r) {
       onMessageSent(r);
     },
-    onError() {
-      toast.error('Failed to send file. Please try again.');
+    onError: (_err) => {
+      toast.error(getApiErrorMessage(_err, 'Failed to send file. Please try again.'));
     },
   });
 
@@ -172,7 +245,7 @@ export function useChatMutations({
       setInput('');
       toast.success('Message edited');
     },
-    onError: () => toast.error('Failed to edit message. Please try again.'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const deleteMutation = useMutation({
@@ -250,7 +323,7 @@ export function useChatMutations({
       setForwardTarget(null);
       setForwardSearch('');
     },
-    onError: () => toast.error('Failed to forward message. Please try again.'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const pinMutation = useMutation({
@@ -262,7 +335,7 @@ export function useChatMutations({
         if (r.data) setPinnedMessages(r.data);
       });
     },
-    onError: () => toast.error('Failed to pin message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const unpinMutation = useMutation({
@@ -274,7 +347,7 @@ export function useChatMutations({
         if (r.data) setPinnedMessages(r.data);
       });
     },
-    onError: () => toast.error('Failed to unpin message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const updateMsgStar = useCallback(
@@ -306,7 +379,7 @@ export function useChatMutations({
       updateMsgStar(msgId, true);
       queryClient.invalidateQueries({ queryKey: ['starred'] });
     },
-    onError: () => toast.error('Failed to star message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const unstarMutation = useMutation({
@@ -315,7 +388,7 @@ export function useChatMutations({
       updateMsgStar(msgId, false);
       queryClient.invalidateQueries({ queryKey: ['starred'] });
     },
-    onError: () => toast.error('Failed to unstar message'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const { data: group } = useQuery({
@@ -342,68 +415,46 @@ export function useChatMutations({
         },
       );
     },
-    onError: () => toast.error('Failed to toggle reaction'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   const updateGroupMutation = useMutation({
     mutationFn: (data: { name?: string; description?: string }) =>
       updateGroup(chatId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      setGroupInfoOpen(false);
-      toast.success('Group updated');
-    },
-    onError: () => toast.error('Failed to update group'),
+    // Cache di-invalidate oleh socket event group:updated / group:avatar-updated.
   });
 
   const addMemberMutation = useMutation({
     mutationFn: (userId: string) => addGroupMember(chatId, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      toast.success('Member added');
-    },
-    onError: () => toast.error('Failed to add member'),
+    // Cache di-invalidate oleh socket event group:member-added.
   });
 
   const removeMemberMutation = useMutation({
     mutationFn: (userId: string) => removeGroupMember(chatId, userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      toast.success('Member removed');
-    },
-    onError: () => toast.error('Failed to remove member'),
+    // Cache di-invalidate oleh socket event group:member-removed.
   });
 
   const leaveGroupMutation = useMutation({
     mutationFn: () => leaveGroup(chatId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast.success('Left the group');
+      leaveRoom(chatId);
       navigate('/');
     },
-    onError: () => toast.error('Failed to leave group'),
   });
 
   const deleteGroupMutation = useMutation({
     mutationFn: () => deleteGroup(chatId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast.success('Group deleted');
       navigate('/');
     },
-    onError: () => toast.error('Failed to delete group'),
   });
 
   const updateMemberRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: 'admin' | 'member' }) =>
       updateMemberRole(chatId, userId, role),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group', chatId] });
-      queryClient.invalidateQueries({ queryKey: ['messages', chatId, isDM] });
-      toast.success('Member role updated');
-    },
-    onError: () => toast.error('Failed to update member role'),
+    // Cache di-invalidate oleh socket event group:member-role-changed.
   });
 
   const clearChatMutation = useMutation({
@@ -412,7 +463,7 @@ export function useChatMutations({
       queryClient.setQueryData(['messages', chatId, isDM], { pages: [], pageParams: [] });
       toast.success('Chat cleared');
     },
-    onError: () => toast.error('Failed to clear chat'),
+    onError: (_err) => toast.error(getApiErrorMessage(_err)),
   });
 
   return {

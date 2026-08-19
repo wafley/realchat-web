@@ -4,6 +4,7 @@ export interface User {
   username: string;
   fullName: string;
   avatarUrl?: string;
+  bannerUrl?: string;
   bio?: string;
   status: 'online' | 'offline' | 'away';
   lastSeen?: Date;
@@ -128,7 +129,7 @@ export interface PaginatedResponse<T> {
 
 export interface Notification {
   id: string;
-  type: 'contact_added' | 'message' | 'group' | 'group_invite' | 'mention';
+  type: 'new_contact' | 'contact_added' | 'message' | 'group' | 'group_invite' | 'mention';
   title: string;
   body?: string;
   read: boolean;
