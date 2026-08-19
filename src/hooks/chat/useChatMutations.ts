@@ -158,7 +158,7 @@ export function useChatMutations({
         senderId: user?.id ?? '',
         content,
         type: 'text',
-        status: 'pending',
+        status: 'sent',
         replyTo: rp,
         createdAt: new Date(),
         sender: user
