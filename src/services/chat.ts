@@ -466,6 +466,7 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
 }
 
 export function messagePreview(m: Message): string {
+  if (m.isDeleted) return 'Message deleted';
   if (m.type === 'image') return '📷 Photo';
   if (m.type === 'file') return '📎 File';
   if (m.type === 'video') return '🎬 Video';
@@ -488,7 +489,7 @@ export function refreshConversationPreview(chatId: string, isDM: boolean): void 
   ]);
   const all = msgs?.pages.flatMap((p) => p.data) ?? [];
   const last = all
-    .filter((m) => m && !m.isDeleted)
+    .filter(Boolean)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .pop();
   queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
