@@ -77,7 +77,7 @@ function MemberRow({
           <Avatar className="h-9 w-9">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
             <AvatarFallback className="bg-accent/10 text-accent font-semibold text-xs">
-              {displayName.charAt(0).toUpperCase()}
+              {(displayName || '?').charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           {isOnline && (
@@ -803,11 +803,11 @@ export default function GroupInfoPanel({
                     <Avatar className="h-8 w-8">
                       {u.avatarUrl && <AvatarImage src={u.avatarUrl} alt={u.fullName} />}
                       <AvatarFallback className="bg-accent/10 text-accent font-semibold text-xs">
-                        {u.fullName.charAt(0).toUpperCase()}
+                        {(u.fullName || u.username || '?').charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground">{u.fullName}</p>
+                      <p className="text-xs font-medium text-foreground">{u.fullName || u.username}</p>
                       <p className="text-[11px] text-muted-foreground">@{u.username}</p>
                     </div>
                     {addLoadingUserId === u.id ? (
