@@ -481,37 +481,44 @@ export function messageSenderName(m: { senderId: string; sender?: { username?: s
   return undefined;
 }
 
-export function refreshConversationPreview(chatId: string, isDM: boolean): void {
-  const msgs = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>([
-    'messages',
-    chatId,
-    isDM,
-  ]);
+export function refreshConversationPreview(chatId: string, isDM?: boolean): void {
+  const msgs =
+    queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM ?? true]) ??
+    queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, !(isDM ?? true)]);
   const all = msgs?.pages.flatMap((p) => p.data) ?? [];
   const last = all
     .filter(Boolean)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .pop();
-  queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string }[]>(
+  queryClient.setQueryData<{ id: string; type?: string; lastMessage?: string; lastTime?: string; lastSenderName?: string }[]>(
     ['conversations'],
     (prev) => {
       if (!prev) return prev;
-      return prev.map((c) =>
-        c.id === chatId
-          ? {
-              ...c,
-              lastMessage: last ? messagePreview(last) : '',
-              lastSenderName: !isDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : undefined,
-              lastTime: last?.createdAt
-                ? last.createdAt instanceof Date
-                  ? last.createdAt.toISOString()
-                  : (last.createdAt as string)
-                : c.lastTime,
-            }
-          : c,
-      );
+      return prev.map((c) => {
+        if (c.id !== chatId) return c;
+        const effectiveIsDM = isDM ?? c.type === 'dm';
+        let nextLastMessage = c.lastMessage;
+        if (last) {
+          nextLastMessage = messagePreview(last);
+        } else {
+          if (!c.lastMessage || c.lastMessage.trim() === '') {
+            nextLastMessage = 'Message deleted';
+          }
+        }
+        return {
+          ...c,
+          lastMessage: nextLastMessage,
+          lastSenderName: !effectiveIsDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : c.lastSenderName,
+          lastTime: last?.createdAt
+            ? last.createdAt instanceof Date
+              ? last.createdAt.toISOString()
+              : (last.createdAt as string)
+            : c.lastTime,
+        };
+      });
     },
   );
+  queryClient.invalidateQueries({ queryKey: ['conversations'] });
 }
 
 const LOCAL_UNREAD_KEY = 'hw_unread_map';
