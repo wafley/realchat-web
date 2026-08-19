@@ -494,10 +494,10 @@ export default function UserProfile() {
 
               {isSelf && (
                 <>
-                  <hr className="my-6 border-border" />
+                  <hr className="my-6 border-border/50" />
                   <div>
-                    <p className="mb-2 text-xs font-medium text-muted-foreground/65">Settings</p>
-                    <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Settings & Preferences</p>
+                    <div className="space-y-2.5">
                       <SectionItem
                         icon={Bell}
                         label="Notifications"
@@ -543,6 +543,9 @@ export default function UserProfile() {
                       >
                         <AboutContent />
                       </SectionItem>
+                    </div>
+
+                    <div className="mt-4 pt-1">
                       <button
                         onClick={() => {
                           appQueryClient.clear();
@@ -550,12 +553,14 @@ export default function UserProfile() {
                           useAuthStore.getState().logout();
                           navigate('/login', { replace: true });
                         }}
-                        className="flex w-full items-center gap-4 p-4 text-destructive transition-colors hover:bg-destructive/5"
+                        className="group flex w-full items-center gap-3.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-left text-destructive transition-all duration-200 hover:bg-destructive/10 hover:border-destructive/40 hover:shadow-sm"
                       >
-                        <LogOut size={20} />
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="text-sm font-medium">Logout</p>
-                          <p className="text-xs text-muted-foreground">Sign out of your account</p>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive transition-transform duration-200 group-hover:scale-105">
+                          <LogOut size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-destructive">Logout</p>
+                          <p className="text-xs text-destructive/70">Sign out of your account</p>
                         </div>
                       </button>
                     </div>
