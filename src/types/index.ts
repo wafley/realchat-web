@@ -4,6 +4,7 @@ export interface User {
   username: string;
   fullName: string;
   avatarUrl?: string;
+  bannerUrl?: string;
   bio?: string;
   status: 'online' | 'offline' | 'away';
   lastSeen?: Date;

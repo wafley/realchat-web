@@ -28,3 +28,17 @@ export async function uploadAvatar(file: File): Promise<string> {
   });
   return data.url;
 }
+
+export async function uploadBanner(file: File): Promise<string> {
+  if (DEV_MODE) {
+    await delay(300);
+    return URL.createObjectURL(file);
+  }
+  const formData = new FormData();
+  formData.append('banner', file);
+  const { data } = await api.post<{ url: string }>('/users/me/banner', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.url;
+}
+
