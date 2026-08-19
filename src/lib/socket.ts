@@ -48,6 +48,12 @@ class SocketClient {
       }
     });
 
+    for (const [event, callbacks] of this.listeners) {
+      for (const cb of callbacks) {
+        this.socket.on(event, cb);
+      }
+    }
+
     return this.socket;
   }
 
