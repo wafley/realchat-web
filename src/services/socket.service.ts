@@ -111,6 +111,8 @@ function onMessageNew(raw: RemoteMessage) {
     },
   );
 
+  scheduleStatusFlush(0);
+
   // Update conversation preview + reorder + unread badge
   const preview = msg.type === 'image' ? '📷 Photo' : (msg.type === 'file' ? '📎 File' : msg.type === 'video' ? '🎬 Video' : msg.content);
   queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number; lastSenderName?: string }[]>(
@@ -598,7 +600,7 @@ function flushStatusBuffer() {
     if (!matched.has(id)) statusPending.set(id, p);
   }
   if (statusPending.size > 0) {
-    scheduleStatusFlush(800);
+    scheduleStatusFlush(150);
   }
 }
 
