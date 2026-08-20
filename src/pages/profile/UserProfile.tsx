@@ -11,6 +11,7 @@ import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
+import { usePresenceStore } from '@/store/presenceStore';
 import { destroySocket } from '@/services/socket.service';
 import { queryClient as appQueryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
@@ -171,6 +172,7 @@ export default function UserProfile() {
     mutationFn: () => blockUserService(userId!),
     onSuccess: () => {
       toast.success('User blocked');
+      usePresenceStore.getState().clearPresence(userId!);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
     },
@@ -189,6 +191,7 @@ export default function UserProfile() {
     mutationFn: () => unblockUserService(userId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       toast.success('User unblocked');
     },
     onError: () => toast.error('Failed to unblock user'),

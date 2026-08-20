@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/queryClient';
 import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL } from '@/utils/imageValidation';
+import { usePresenceStore } from '@/store/presenceStore';
 import type { Message, ReplyTo } from '@/types';
 
 function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
@@ -671,6 +672,7 @@ export function useChatActions(props: UseChatActionsProps) {
     try {
       const target = otherUserId ?? chatId;
       await blockUser(target);
+      usePresenceStore.getState().clearPresence(target);
       setBlockConfirmOpen(false);
       toast.success(`${chatName} has been blocked`);
       queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
