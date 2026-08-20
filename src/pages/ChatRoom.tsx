@@ -13,6 +13,7 @@ import GroupInfoPanel from '@/components/chat/GroupInfoPanel';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
+import { usePageVisibility } from '@/hooks/chat/usePageVisibility';
 import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
 import { getBlockedUsers, unblockUser } from '@/services/chat';
 
@@ -47,6 +48,8 @@ export default function ChatRoom() {
   useEffect(() => {
     handledHighlightIdRef.current = null;
   }, [state.chatId]);
+
+  usePageVisibility(state.chatId);
 
   useEffect(() => {
     const targetId = location.state?.highlightMessageId;
@@ -201,7 +204,6 @@ export default function ChatRoom() {
         <ChatHeader
           chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
           typingLabel={state.typingLabel}
-          chatOnline={state.chatOnline}
           isDM={state.isDM}
           muted={state.muted}
           userId={state.otherUserId}

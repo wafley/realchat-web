@@ -65,6 +65,14 @@ export function emitTypingStop(conversationId: string) {
   socketClient.emitTypingStop(conversationId);
 }
 
+export function emitUserAway(conversationId: string) {
+  socketClient.emitUserAway(conversationId);
+}
+
+export function emitUserBack(conversationId: string) {
+  socketClient.emitUserBack(conversationId);
+}
+
 // --- Listener registration ---
 
 function onMessageNew(raw: RemoteMessage) {

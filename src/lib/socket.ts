@@ -172,6 +172,16 @@ class SocketClient {
     this.socket?.emit('message:seen', { conversationId, lastSeenMessageId });
   }
 
+  // --- Page visibility (user away/back in room) ---
+
+  emitUserAway(conversationId: string): void {
+    this.socket?.emit('user-away', { conversationId });
+  }
+
+  emitUserBack(conversationId: string): void {
+    this.socket?.emit('user-back', { conversationId });
+  }
+
 }
 
 export const socketClient = new SocketClient();
