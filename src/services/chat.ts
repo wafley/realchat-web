@@ -508,7 +508,7 @@ export function refreshConversationPreview(chatId: string, isDM?: boolean): void
         return {
           ...c,
           lastMessage: nextLastMessage,
-          lastSenderName: !effectiveIsDM && last ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : c.lastSenderName,
+          lastSenderName: !effectiveIsDM && last && last.type !== 'system' ? (last.sender?.username ?? last.sender?.fullName ?? undefined) : c.lastSenderName,
           lastTime: last?.createdAt
             ? last.createdAt instanceof Date
               ? last.createdAt.toISOString()
@@ -572,7 +572,9 @@ export async function getConversations(): Promise<ChatConversation[]> {
         avatarUrl: r.avatar ?? r.avatarUrl ?? undefined,
         type: isPrivate ? 'dm' : 'group',
         lastMessage: conversationPreview(r.lastMessage),
-        lastSenderName: isPrivate ? undefined : messageSenderName({ senderId: r.lastMessage?.senderId ?? '', sender: r.lastMessage?.sender ?? null }),
+        lastSenderName: isPrivate || String(r.lastMessage?.type ?? '').toLowerCase() === 'system'
+          ? undefined
+          : messageSenderName({ senderId: r.lastMessage?.senderId ?? '', sender: r.lastMessage?.sender ?? null }),
         lastTime: r.lastMessage?.createdAt ?? r.createdAt,
         online: r.isOnline ?? false,
         lastSeen: r.lastSeenAt ? new Date(r.lastSeenAt) : undefined,
