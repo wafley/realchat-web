@@ -204,6 +204,7 @@ export default function ChatRoom() {
         <ChatHeader
           chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
           typingLabel={state.typingLabel}
+          chatOnline={state.chatOnline}
           isDM={state.isDM}
           muted={state.muted}
           userId={state.otherUserId}
