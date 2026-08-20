@@ -20,6 +20,8 @@ interface ChatHeaderProps {
   onSearchToggle: () => void;
   onToggleMute: () => void;
   onBlockClick: () => void;
+  onUnblockClick?: () => void;
+  isBlocked?: boolean;
   onReportClick: () => void;
   onGroupInfoClick: () => void;
   onClearChat: () => void;
@@ -39,6 +41,8 @@ export default function ChatHeader({
   onSearchToggle,
   onToggleMute,
   onBlockClick,
+  onUnblockClick,
+  isBlocked = false,
   onReportClick,
   onGroupInfoClick,
   onClearChat,
@@ -121,9 +125,9 @@ export default function ChatHeader({
                     {muted ? <BellOff size={15} className="text-muted-foreground" /> : <Bell size={15} className="text-muted-foreground" />}
                     {muted ? 'Unmute' : 'Mute'}
                   </button>
-                  <button onClick={() => { setMoreOpen(false); onBlockClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
-                    <Ban size={15} className="text-muted-foreground" />
-                    Block
+                  <button onClick={() => { setMoreOpen(false); if (isBlocked) onUnblockClick?.(); else onBlockClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                    <Ban size={15} className={isBlocked ? 'text-destructive' : 'text-muted-foreground'} />
+                    {isBlocked ? 'Unblock' : 'Block'}
                   </button>
                   <button onClick={() => { setMoreOpen(false); onReportClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
                     <Flag size={15} className="text-muted-foreground" />
