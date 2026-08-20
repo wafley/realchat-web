@@ -14,6 +14,7 @@ interface ChatInputProps {
   selectedImage: File | null;
   selectedFile: File | null;
   showEmojiPicker: boolean;
+  disabled?: boolean;
   onInputChange: (value: string) => void;
   onSend: () => void;
   onSendImage: () => void;
@@ -39,6 +40,7 @@ export default function ChatInput({
   selectedImage,
   selectedFile,
   showEmojiPicker,
+  disabled = false,
   onInputChange,
   onSend,
   onSendImage,
@@ -146,7 +148,8 @@ export default function ChatInput({
       <div className="mx-4 mb-3 mt-3 flex items-center gap-2 rounded-xl border border-input bg-input px-3 py-1.5 lg:px-4 lg:py-2.5">
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-10 lg:w-10"
+          disabled={disabled}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
           type="button"
         >
           <FileText size={18} className="lg:size-5" />
@@ -154,7 +157,8 @@ export default function ChatInput({
         <input ref={fileInputRef} type="file" className="hidden" onChange={onFileSelect} />
         <button
           onClick={() => imageInputRef.current?.click()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 lg:h-10 lg:w-10"
+          disabled={disabled}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
           type="button"
         >
           <ImagePlus size={18} className="lg:size-5" />
@@ -163,7 +167,8 @@ export default function ChatInput({
         <button
           ref={emojiToggleRef}
           onClick={onEmojiToggle}
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors lg:h-10 lg:w-10 ${showEmojiPicker ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}`}
+          disabled={disabled}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-40 lg:h-10 lg:w-10 ${showEmojiPicker ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}`}
           type="button"
         >
           <Smile size={18} className="lg:size-5" />
@@ -171,7 +176,8 @@ export default function ChatInput({
         <textarea
           ref={textareaRef}
           rows={1}
-          placeholder={imagePreview ? 'Add a caption...' : 'Type a message...'}
+          disabled={disabled}
+          placeholder={disabled ? 'You blocked this contact' : imagePreview ? 'Add a caption...' : 'Type a message...'}
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => {
@@ -182,7 +188,7 @@ export default function ChatInput({
               else onSend();
             }
           }}
-          className="max-h-40 flex-1 resize-none bg-transparent py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:text-base"
+          className="max-h-40 flex-1 resize-none bg-transparent py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed lg:text-base"
         />
         <button
           onClick={() => {
@@ -190,7 +196,7 @@ export default function ChatInput({
             else if (imagePreview) onSendImage();
             else onSend();
           }}
-          disabled={!input.trim() && !imagePreview && !selectedFile}
+          disabled={disabled || (!input.trim() && !imagePreview && !selectedFile)}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-accent/10 disabled:opacity-40 lg:h-10 lg:w-10"
         >
           {editingMsg ? <Check size={18} className="lg:size-5" /> : <Send size={18} className="lg:size-5" />}
