@@ -151,17 +151,26 @@ function onMessageNew(raw: RemoteMessage) {
   }
 
   // Read receipt: kirim message:seen ketika pesan masuk di chat yang sedang dibuka.
-  if (currentChatId === chatId && msg.senderId !== currentUserId) {
+  // Hanya saat halaman aktif (visible + focus); kalau tab hidden/blur, jangan
+  // auto-read — biarkan user-away/BE yang mengatur status.
+  if (currentChatId === chatId && msg.senderId !== currentUserId && isDocumentActive()) {
     emitSeenForConversation(chatId, isDM, msg.id);
   }
 }
 
 // --- Read receipts (kirim message:seen ke server) ---
 
+// Halaman dianggap aktif hanya jika visible DAN punya focus window.
+// Membantu mencegah auto-read saat tab hidden / window blur.
+function isDocumentActive(): boolean {
+  return document.visibilityState === 'visible' && document.hasFocus();
+}
+
 export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessageId?: string, force = false): void {
   if (DEV_MODE) return;
   if (!usePrivacyStore.getState().readReceipts) return;
   if (!socketClient.isConnected) return;
+  if (!force && !isDocumentActive()) return;
 
   let lastId = lastMessageId;
   if (!lastId) {
