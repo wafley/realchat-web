@@ -884,7 +884,7 @@ export async function getBlockedUsers(): Promise<User[]> {
       await delay(200);
       return Array.from(MOCK_BLOCKED_USERS.values());
     }
-  const { data } = await api.get<User[]>('/users/blocked');
+  const { data } = await api.get<User[]>('/users/me/blocked');
   return Array.isArray(data) ? data : [];
 }
 
