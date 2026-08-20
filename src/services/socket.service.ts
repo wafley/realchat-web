@@ -126,7 +126,7 @@ function onMessageNew(raw: RemoteMessage) {
           ? {
               ...c,
               lastMessage: preview,
-              lastSenderName: isDM ? undefined : messageSenderName(msg),
+              lastSenderName: isDM || msg.type === 'system' ? undefined : messageSenderName(msg),
               lastTime: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : (msg.createdAt as string | undefined) ?? 'now',
               unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
             }
