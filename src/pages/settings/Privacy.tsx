@@ -21,7 +21,7 @@ export default function SettingsPrivacy() {
   const { lastSeen, addToGroups, readReceipts, setLastSeen, setAddToGroups, setReadReceipts } = usePrivacyStore();
 
   const { data: blockedUsers = [] } = useQuery({
-    queryKey: ['blockedUsers'],
+    queryKey: ['blocked-users'],
     queryFn: getBlockedUsers,
   });
 

@@ -673,7 +673,7 @@ export function useChatActions(props: UseChatActionsProps) {
       await blockUser(target);
       setBlockConfirmOpen(false);
       toast.success(`${chatName} has been blocked`);
-      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch {
       toast.error('Failed to block user');

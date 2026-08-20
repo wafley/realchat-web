@@ -10,7 +10,7 @@ export default function BlockedUsers() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: users = [], isPending } = useQuery({
-    queryKey: ['blockedUsers'],
+    queryKey: ['blocked-users'],
     queryFn: getBlockedUsers,
   });
 
@@ -19,7 +19,7 @@ export default function BlockedUsers() {
   const unblockMutation = useMutation({
     mutationFn: (userId: string) => unblockUser(userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
       setUnblockTarget(null);
       toast.success('User unblocked');
     },

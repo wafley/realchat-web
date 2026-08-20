@@ -8,7 +8,7 @@ import { usePrivacyStore } from '@/store/privacyStore';
 export default function PrivacyContent() {
   const navigate = useNavigate();
   const { lastSeen, addToGroups, readReceipts, setLastSeen, setAddToGroups, setReadReceipts } = usePrivacyStore();
-  const { data: blockedUsers = [] } = useQuery({ queryKey: ['blockedUsers'], queryFn: getBlockedUsers });
+  const { data: blockedUsers = [] } = useQuery({ queryKey: ['blocked-users'], queryFn: getBlockedUsers });
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
