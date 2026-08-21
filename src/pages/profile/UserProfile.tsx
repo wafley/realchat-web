@@ -136,14 +136,9 @@ export default function UserProfile() {
   const contact = userId ? contacts.find((c) => c.userId === userId) : undefined;
   const isContact = !!contact;
 
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const toggleSection = (id: string) => {
-    setExpandedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setExpandedSection((prev) => (prev === id ? null : id));
   };
   const displayName = contact?.customName || effectiveUser?.fullName || '';
 
@@ -505,7 +500,7 @@ export default function UserProfile() {
                         icon={Bell}
                         label="Notifications"
                         desc="Message, group, and sound preferences"
-                        expanded={expandedSections.has('notifications')}
+                        expanded={expandedSection === 'notifications'}
                         onToggle={() => toggleSection('notifications')}
                       >
                         <NotificationsContent />
@@ -514,7 +509,7 @@ export default function UserProfile() {
                         icon={Shield}
                         label="Privacy"
                         desc="Last seen, read receipts, blocked users"
-                        expanded={expandedSections.has('privacy')}
+                        expanded={expandedSection === 'privacy'}
                         onToggle={() => toggleSection('privacy')}
                       >
                         <PrivacyContent />
@@ -523,7 +518,7 @@ export default function UserProfile() {
                         icon={Sun}
                         label="Appearance"
                         desc="Theme preferences"
-                        expanded={expandedSections.has('appearance')}
+                        expanded={expandedSection === 'appearance'}
                         onToggle={() => toggleSection('appearance')}
                       >
                         <AppearanceContent />
@@ -532,7 +527,7 @@ export default function UserProfile() {
                         icon={AlertTriangle}
                         label="Account"
                         desc="Password and account management"
-                        expanded={expandedSections.has('account')}
+                        expanded={expandedSection === 'account'}
                         onToggle={() => toggleSection('account')}
                       >
                         <AccountContent />
@@ -541,7 +536,7 @@ export default function UserProfile() {
                         icon={Info}
                         label="About"
                         desc="App info and credits"
-                        expanded={expandedSections.has('about')}
+                        expanded={expandedSection === 'about'}
                         onToggle={() => toggleSection('about')}
                       >
                         <AboutContent />
@@ -556,14 +551,14 @@ export default function UserProfile() {
                           useAuthStore.getState().logout();
                           navigate('/login', { replace: true });
                         }}
-                        className="group flex w-full items-center gap-3.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-left text-destructive transition-all duration-200 hover:bg-destructive/10 hover:border-destructive/40 hover:shadow-sm"
+                        className="group flex w-full items-center gap-3.5 rounded-xl border border-border/50 bg-card/60 p-3.5 text-left transition-all duration-200 hover:border-destructive/40 hover:bg-destructive/10 shadow-sm"
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive transition-transform duration-200 group-hover:scale-105">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-all duration-200 group-hover:scale-105 group-hover:bg-destructive/15 group-hover:text-destructive">
                           <LogOut size={18} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-destructive">Logout</p>
-                          <p className="text-xs text-destructive/70">Sign out of your account</p>
+                          <p className="text-sm font-semibold text-foreground group-hover:text-destructive transition-colors">Logout</p>
+                          <p className="text-xs text-muted-foreground">Sign out of your account</p>
                         </div>
                       </button>
                     </div>
