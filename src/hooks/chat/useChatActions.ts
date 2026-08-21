@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
+import { isChatViewable } from '@/lib/chatViewport';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL } from '@/utils/imageValidation';
 import { usePresenceStore } from '@/store/presenceStore';
 import type { Message, ReplyTo } from '@/types';
@@ -281,7 +282,13 @@ export function useChatActions(props: UseChatActionsProps) {
 
   useEffect(() => {
     if (!chatId) return;
-    markConversationAsSeen(chatId);
+    // POST /read di server menandai SEMUA pesan masuk sebagai SEEN dan
+    // memberi tahu lawan bicara. Hanya boleh dipanggil saat pesan benar-benar
+    // terlihat (tab aktif + viewport di bottom); jika tidak, ditangguhkan ke
+    // alur pill (handleNewMessagesSeen).
+    if (isChatViewable(chatId)) {
+      markConversationAsSeen(chatId);
+    }
   }, [chatId]);
 
   useEffect(() => {

@@ -9,7 +9,7 @@ import { loadPrefs, showLocalNotification } from '@/services/notification';
 import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
-import { isChatViewportAtBottom } from '@/lib/chatViewport';
+import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, User } from '@/types';
 import type { Conversation } from '@/types';
@@ -175,12 +175,6 @@ function onMessageNew(raw: RemoteMessage) {
 }
 
 // --- Read receipts (kirim message:seen ke server) ---
-
-// Halaman dianggap aktif hanya jika visible DAN punya focus window.
-// Membantu mencegah auto-read saat tab hidden / window blur.
-function isDocumentActive(): boolean {
-  return document.visibilityState === 'visible' && document.hasFocus();
-}
 
 export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessageId?: string, force = false): void {
   if (DEV_MODE) return;

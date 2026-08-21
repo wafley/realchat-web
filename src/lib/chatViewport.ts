@@ -23,3 +23,19 @@ export function subscribeViewport(listener: () => void): () => void {
     listeners.delete(listener);
   };
 }
+
+// Halaman dianggap aktif hanya jika visible DAN punya focus window.
+export function isDocumentActive(): boolean {
+  return document.visibilityState === 'visible' && document.hasFocus();
+}
+
+// Penerima benar-benar "melihat" chat: dokumen aktif DAN viewport di bottom.
+export function isChatViewable(chatId: string): boolean {
+  return isDocumentActive() && isChatViewportAtBottom(chatId);
+}
+
+// Hapus state viewport saat keluar chat agar tidak ada sisa entry basi.
+// Sengaja tanpa notifikasi listener: hanya dipanggil saat unmount.
+export function clearChatViewport(chatId: string): void {
+  viewportState.delete(chatId);
+}

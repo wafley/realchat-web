@@ -15,7 +15,8 @@ import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
 import { usePageVisibility } from '@/hooks/chat/usePageVisibility';
 import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
-import { getBlockedUsers, unblockUser } from '@/services/chat';
+import { getBlockedUsers, unblockUser, markConversationAsSeen } from '@/services/chat';
+import { clearChatViewport } from '@/lib/chatViewport';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
@@ -54,6 +55,8 @@ export default function ChatRoom() {
   const handleNewMessagesSeen = () => {
     state.clearNewMessagesAnchor();
     emitSeenForConversation(state.chatId, state.isDM);
+    // Reset unreadCount di server tepat saat pesan benar-benar terlihat.
+    markConversationAsSeen(state.chatId).catch(() => {});
   };
 
   useEffect(() => {
@@ -185,8 +188,8 @@ export default function ChatRoom() {
 
     return () => {
       joinAllConversationRooms();
-      emitSeenForConversation(state.chatId, state.isDM, undefined, true);
       setCurrentChat(null, false);
+      clearChatViewport(state.chatId);
       sessionStorage.removeItem(`scrollPos-${state.chatId}`);
     };
   }, [state.chatId, state.isDM]);
