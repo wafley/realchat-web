@@ -80,22 +80,21 @@ export default function EditProfile() {
   const onSave = async (data: EditProfileSchema) => {
     setSaving(true);
     try {
-      const payload: Record<string, string> = {
-        fullName: data.fullName,
-        bio: data.bio || '',
-      };
       if (avatarFile) {
-        const avatarUrl = await uploadAvatar(avatarFile);
-        payload.avatarUrl = avatarUrl;
+        await uploadAvatar(avatarFile);
       }
+      let bannerSkipped = false;
       if (bannerFile) {
-        const bannerUrl = await uploadBanner(bannerFile);
-        payload.bannerUrl = bannerUrl;
+        try {
+          await uploadBanner(bannerFile);
+        } catch {
+          bannerSkipped = true;
+        }
       }
-      await updateProfile(payload);
+      await updateProfile({ fullName: data.fullName, bio: data.bio || '' });
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
       if (bannerPreview) URL.revokeObjectURL(bannerPreview);
-      toast.success('Profile updated');
+      toast.success(bannerSkipped ? 'Profile updated (cover belum didukung server)' : 'Profile updated');
       navigate('/profile');
     } catch {
       toast.error('Failed to update profile');
