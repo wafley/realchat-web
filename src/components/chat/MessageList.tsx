@@ -247,7 +247,7 @@ export default function MessageList({
                 )}
                 {msg.id === newMessageAnchorId && (
                   <div className="flex justify-center py-1">
-                    <span className="rounded-full bg-accent px-3 py-1 text-[11px] font-medium text-accent-foreground shadow-sm lg:text-xs">
+                    <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
                       New messages
                     </span>
                   </div>
