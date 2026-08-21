@@ -53,6 +53,15 @@ async function onSocketConnected() {
   }
 }
 
+function handleWindowResync() {
+  if (DEV_MODE) return;
+  if (document.visibilityState !== 'visible') return;
+  if (!socketClient.isConnected) {
+    socketClient.getSocket()?.connect();
+  }
+  queryClient.refetchQueries({ queryKey: ['messages'], type: 'active' }).catch(() => {});
+}
+
 export function emitTypingStart(conversationId: string) {
   currentTypingChatId = conversationId;
   socketClient.emitTypingStart(conversationId);
@@ -674,6 +683,8 @@ export function initSocket(token?: string) {
   socketClient.on('contact:new', onContactChanged);
   socketClient.on('contact:remove', onContactChanged);
   socketClient.on('notification:new', onNotification);
+  document.addEventListener('visibilitychange', handleWindowResync);
+  window.addEventListener('focus', handleWindowResync);
 }
 
 export function destroySocket() {
@@ -707,6 +718,8 @@ export function destroySocket() {
   socketClient.off('contact:new', onContactChanged);
   socketClient.off('contact:remove', onContactChanged);
   socketClient.off('notification:new', onNotification);
+  document.removeEventListener('visibilitychange', handleWindowResync);
+  window.removeEventListener('focus', handleWindowResync);
   socketClient.disconnect();
 }
 
