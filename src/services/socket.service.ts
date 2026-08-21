@@ -10,7 +10,7 @@ import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normal
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, PaginatedResponse } from '@/types';
+import type { Message, PaginatedResponse, User } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -637,6 +637,37 @@ function onMessageStatus(data: StatusEvent) {
   scheduleStatusFlush(120);
 }
 
+function onUserUpdated(data: {
+  userId?: string;
+  id?: string;
+  username?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
+}) {
+  const uid = data.userId ?? data.id;
+  if (!uid) return;
+  const name = data.fullName || data.username || undefined;
+  queryClient.setQueryData<ChatConversation[]>(['conversations'], (prev) =>
+    (prev ?? []).map((c) =>
+      c.type === 'dm' && c.userId === uid
+        ? { ...c, name: name ?? c.name, avatarUrl: data.avatarUrl ?? c.avatarUrl }
+        : c,
+    ),
+  );
+  queryClient.setQueryData<User>(['user', uid], (prev) =>
+    prev
+      ? {
+          ...prev,
+          username: data.username ?? prev.username,
+          fullName: data.fullName ?? prev.fullName,
+          avatarUrl: data.avatarUrl ?? prev.avatarUrl,
+          bio: data.bio ?? prev.bio,
+        }
+      : prev,
+  );
+}
+
 // --- Init / Destroy ---
 
 export function initSocket(token?: string) {
@@ -682,6 +713,7 @@ export function initSocket(token?: string) {
   socketClient.on('group:dismissed', onGroupDismissed);
   socketClient.on('contact:new', onContactChanged);
   socketClient.on('contact:remove', onContactChanged);
+  socketClient.on('user:updated', onUserUpdated);
   socketClient.on('notification:new', onNotification);
   document.addEventListener('visibilitychange', handleWindowResync);
   window.addEventListener('focus', handleWindowResync);
@@ -717,6 +749,7 @@ export function destroySocket() {
   socketClient.off('group:dismissed', onGroupDismissed);
   socketClient.off('contact:new', onContactChanged);
   socketClient.off('contact:remove', onContactChanged);
+  socketClient.off('user:updated', onUserUpdated);
   socketClient.off('notification:new', onNotification);
   document.removeEventListener('visibilitychange', handleWindowResync);
   window.removeEventListener('focus', handleWindowResync);

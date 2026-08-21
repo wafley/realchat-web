@@ -120,6 +120,7 @@ export function useChatState() {
   }, [chatId]);
 
   const chatName = convFromList?.name || location.state?.name || 'Chat';
+  const chatAvatarUrl = convFromList?.avatarUrl;
   const otherUserId = isDM && userId ? (convFromList?.userId || DM_USER_MAP[userId]) : undefined;
 
   const senderNameCacheRef = useRef<Map<string, string>>(new Map());
@@ -243,6 +244,7 @@ export function useChatState() {
     chatId,
     isDM,
     chatName,
+    chatAvatarUrl,
     chatOnline,
     chatLastSeen,
     memberCount,
