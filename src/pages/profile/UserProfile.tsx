@@ -553,9 +553,7 @@ export default function UserProfile() {
                         }}
                         className="group flex w-full items-center gap-3.5 rounded-xl border border-border/50 bg-card/60 p-3.5 text-left transition-all duration-200 hover:border-destructive/40 hover:bg-destructive/10 shadow-sm"
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-all duration-200 group-hover:scale-105 group-hover:bg-destructive/15 group-hover:text-destructive">
-                          <LogOut size={18} />
-                        </div>
+                        <LogOut size={20} className="shrink-0 text-muted-foreground transition-colors group-hover:text-destructive" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-foreground group-hover:text-destructive transition-colors">Logout</p>
                           <p className="text-xs text-muted-foreground">Sign out of your account</p>
