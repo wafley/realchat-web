@@ -42,6 +42,7 @@ export function useChatState() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchMatches, setSearchMatches] = useState<string[]>([]);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const [newMessagesAnchorId, setNewMessagesAnchorId] = useState<string | null>(null);
 
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,9 +115,20 @@ export function useChatState() {
     setSelectedIds([]);
     setSearchMatches([]);
     setActiveMatchIndex(0);
+    setNewMessagesAnchorId(null);
     return () => {
       useTypingStore.getState().clearTyping(chatId);
     };
+  }, [chatId]);
+
+  useEffect(() => {
+    const onNewMessages = (e: Event) => {
+      const detail = (e as CustomEvent<{ chatId: string; messageId: string }>).detail;
+      if (detail?.chatId !== chatId || !detail.messageId) return;
+      setNewMessagesAnchorId((prev) => prev ?? detail.messageId);
+    };
+    window.addEventListener('chat:new-messages', onNewMessages);
+    return () => window.removeEventListener('chat:new-messages', onNewMessages);
   }, [chatId]);
 
   const chatName = convFromList?.name || location.state?.name || 'Chat';
@@ -224,6 +236,16 @@ export function useChatState() {
     });
   }, [data, resolveSenderName]);
 
+  // Mengirim pesan sendiri berarti semua pesan sudah dilihat → pill hilang.
+  useEffect(() => {
+    if (!newMessagesAnchorId || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    const isOwnLast = last.senderId === currentUser?.id || last.sender?.id === currentUser?.id;
+    if (isOwnLast) setNewMessagesAnchorId(null);
+  }, [messages, newMessagesAnchorId, currentUser]);
+
+  const clearNewMessagesAnchor = useCallback(() => setNewMessagesAnchorId(null), []);
+
   const filteredMessages = useMemo(() => {
     if (!showSearch || !searchQuery.trim()) return messages;
     const q = searchQuery.toLowerCase();
@@ -246,6 +268,8 @@ export function useChatState() {
     chatName,
     chatAvatarUrl,
     chatOnline,
+    newMessagesAnchorId,
+    clearNewMessagesAnchor,
     chatLastSeen,
     memberCount,
     otherUserId,

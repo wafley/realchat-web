@@ -9,6 +9,7 @@ import { loadPrefs, showLocalNotification } from '@/services/notification';
 import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
+import { isChatViewportAtBottom } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { Message, PaginatedResponse, User } from '@/types';
 import type { Conversation } from '@/types';
@@ -159,11 +160,17 @@ function onMessageNew(raw: RemoteMessage) {
     saveLocalUnread(Object.fromEntries(persisted.map((c) => [c.id, c.unread ?? 0])));
   }
 
-  // Read receipt: kirim message:seen ketika pesan masuk di chat yang sedang dibuka.
-  // Hanya saat halaman aktif (visible + focus); kalau tab hidden/blur, jangan
-  // auto-read — biarkan user-away/BE yang mengatur status.
-  if (currentChatId === chatId && msg.senderId !== currentUserId && isDocumentActive()) {
-    emitSeenForConversation(chatId, isDM, msg.id);
+  // Read receipt ala WhatsApp: kirim message:seen hanya jika halaman aktif
+  // DAN viewport di dekat bottom (pesan benar-benar terlihat). Selain itu,
+  // tandai sebagai "new messages" untuk pill di sisi penerima.
+  if (currentChatId === chatId && msg.senderId !== currentUserId) {
+    if (isDocumentActive() && isChatViewportAtBottom(chatId)) {
+      emitSeenForConversation(chatId, isDM, msg.id);
+    } else {
+      window.dispatchEvent(
+        new CustomEvent('chat:new-messages', { detail: { chatId, messageId: msg.id } }),
+      );
+    }
   }
 }
 

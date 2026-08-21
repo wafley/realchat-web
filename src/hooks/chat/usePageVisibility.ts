@@ -1,59 +1,57 @@
 import { useEffect, useRef } from 'react';
 import { socketClient } from '@/lib/socket';
+import { isChatViewportAtBottom, subscribeViewport } from '@/lib/chatViewport';
 import { emitUserAway, emitUserBack } from '@/services/socket.service';
 
 // Kontrak dengan BE (user-away / user-back, payload { conversationId }):
-// - Room pertama kali terlihat / mount        -> user-back
-// - Ganti room / unmount                       -> user-away
-// - Tab hidden / window blur                   -> user-away
-// - Tab visible / focus                        -> user-back
-// - Guard `registered` -> emit idempotent, tanpa double-emit
-// - Retry user-back setelah socket connect (jika masih registered & visible)
+// "Sedang melihat" = dokumen visible+focus DAN viewport di dekat bottom.
+// - viewing true  -> user-back (terdaftar active viewer; pesan baru = SEEN)
+// - viewing false -> user-away (tab hidden/blur ATAU sedang scroll ke atas)
+// - Retry user-back setelah socket connect (jika masih registered & aktif)
 // - Fire-and-forget (tanpa ack), tidak menyentuh presence/isOnline
+function isDocumentActive(): boolean {
+  return document.visibilityState === 'visible' && document.hasFocus();
+}
+
 export function usePageVisibility(conversationId: string | null) {
   const registeredRef = useRef(false);
 
   useEffect(() => {
     if (!conversationId) return;
 
-    const comeBack = () => {
-      if (registeredRef.current) return;
-      registeredRef.current = true;
-      emitUserBack(conversationId);
+    const sync = () => {
+      const viewing = isDocumentActive() && isChatViewportAtBottom(conversationId);
+      if (viewing && !registeredRef.current) {
+        registeredRef.current = true;
+        emitUserBack(conversationId);
+      } else if (!viewing && registeredRef.current) {
+        registeredRef.current = false;
+        emitUserAway(conversationId);
+      }
     };
-
-    const goAway = () => {
-      if (!registeredRef.current) return;
-      registeredRef.current = false;
-      emitUserAway(conversationId);
-    };
-
-    const onVisibilityChange = () => {
-      if (document.hidden) goAway();
-      else comeBack();
-    };
-
-    const onBlur = () => goAway();
-    const onFocus = () => comeBack();
 
     const onConnect = () => {
-      if (registeredRef.current && document.visibilityState === 'visible') {
+      if (registeredRef.current && isDocumentActive()) {
         emitUserBack(conversationId);
       }
     };
 
-    if (document.visibilityState === 'visible') comeBack();
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    window.addEventListener('blur', onBlur);
-    window.addEventListener('focus', onFocus);
+    sync();
+    const unsubscribeViewport = subscribeViewport(sync);
+    document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+    window.addEventListener('blur', sync);
     socketClient.on('connect', onConnect);
 
     return () => {
-      goAway();
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('focus', onFocus);
+      if (registeredRef.current) {
+        registeredRef.current = false;
+        emitUserAway(conversationId);
+      }
+      unsubscribeViewport();
+      document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('blur', sync);
       socketClient.off('connect', onConnect);
     };
   }, [conversationId]);

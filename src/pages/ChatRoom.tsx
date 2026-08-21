@@ -51,6 +51,11 @@ export default function ChatRoom() {
 
   usePageVisibility(state.chatId);
 
+  const handleNewMessagesSeen = () => {
+    state.clearNewMessagesAnchor();
+    emitSeenForConversation(state.chatId, state.isDM);
+  };
+
   useEffect(() => {
     const targetId = location.state?.highlightMessageId;
     if (!targetId || handledHighlightIdRef.current === targetId) return;
@@ -347,6 +352,8 @@ export default function ChatRoom() {
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}
           toggleSelect={actions.toggleSelect}
+          newMessageAnchorId={state.newMessagesAnchorId}
+          onNewMessagesSeen={handleNewMessagesSeen}
         />
 
         <ChatInput
