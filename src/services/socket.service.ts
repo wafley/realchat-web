@@ -11,7 +11,7 @@ import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, PaginatedResponse, User } from '@/types';
+import type { Message, PaginatedResponse, User, Contact } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -666,6 +666,22 @@ function onUserUpdated(data: {
           bio: data.bio ?? prev.bio,
         }
       : prev,
+  );
+  queryClient.setQueryData<Contact[]>(['contacts'], (prev) =>
+    (prev ?? []).map((c) =>
+      c.userId === uid
+        ? {
+            ...c,
+            user: {
+              ...c.user,
+              username: data.username ?? c.user.username,
+              fullName: data.fullName ?? c.user.fullName,
+              avatarUrl: data.avatarUrl ?? c.user.avatarUrl,
+              bio: data.bio ?? c.user.bio,
+            },
+          }
+        : c,
+    ),
   );
 }
 

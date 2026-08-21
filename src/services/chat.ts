@@ -1045,6 +1045,7 @@ export async function getGroup(groupId: string): Promise<Group> {
           username?: string;
           avatarUrl?: string;
           status?: 'online' | 'offline' | 'away';
+          isOnline?: boolean;
         };
       }[];
     }
@@ -1071,7 +1072,7 @@ export async function getGroup(groupId: string): Promise<Group> {
             fullName,
             username: u?.username ?? '',
             avatarUrl: u?.avatarUrl ?? undefined,
-            status: u?.status ?? 'offline',
+            status: u?.status ?? (u?.isOnline ? 'online' : 'offline'),
             email: u?.email ?? '',
             createdAt: u?.createdAt ? new Date(u.createdAt) : new Date(),
           } : undefined,

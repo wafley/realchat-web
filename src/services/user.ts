@@ -1,6 +1,7 @@
 import type { User } from '@/types';
 import api from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
+import { mapUser, type AuthUserRaw } from '@/services/auth';
 import { MOCK_USERS } from '@/mocks/users';
 import { delay } from '@/mocks/utils';
 
@@ -13,11 +14,11 @@ export async function getUser(userId: string): Promise<User> {
     if (!user) throw new Error('User not found');
     return user;
   }
-  const { data } = await api.get<User>(`/users/${userId}`);
+  const { data } = await api.get<AuthUserRaw>(`/users/${userId}`);
+  const mapped = mapUser(data);
   const cached = queryClient.getQueryData<User>(['user', userId]);
-  const merged = { ...cached, ...data };
-  if (cached && data.bio === undefined) merged.bio = cached.bio;
-  return merged;
+  if (cached && mapped.bio === undefined) mapped.bio = cached.bio;
+  return mapped;
 }
 
 export async function uploadAvatar(file: File): Promise<string> {
