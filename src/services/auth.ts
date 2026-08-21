@@ -107,7 +107,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
     if (newPassword.length < 6) throw new Error('New password must be at least 6 characters');
     return;
   }
-  await api.post('/auth/change-password', { currentPassword, newPassword });
+  await api.put('/users/me/password', { oldPassword: currentPassword, newPassword });
 }
 
 export async function deleteAccount(password: string): Promise<void> {
