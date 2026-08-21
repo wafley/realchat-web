@@ -21,12 +21,7 @@ export default function SectionItem({ icon: Icon, label, desc, expanded, onToggl
         onClick={onToggle}
         className="flex w-full items-center gap-3.5 p-3.5 text-left transition-all duration-200"
       >
-        <div className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground transition-all duration-200 group-hover:scale-105 group-hover:bg-muted group-hover:text-foreground",
-          expanded && "bg-muted text-foreground shadow-sm"
-        )}>
-          <Icon size={18} />
-        </div>
+        <Icon size={20} className={cn("shrink-0 text-muted-foreground transition-colors group-hover:text-foreground", expanded && "text-foreground")} />
 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground transition-colors">{label}</p>
