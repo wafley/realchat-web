@@ -1,5 +1,6 @@
 import type { User } from '@/types';
 import api from '@/lib/api';
+import { queryClient } from '@/lib/queryClient';
 import { MOCK_USERS } from '@/mocks/users';
 import { delay } from '@/mocks/utils';
 
@@ -13,7 +14,10 @@ export async function getUser(userId: string): Promise<User> {
     return user;
   }
   const { data } = await api.get<User>(`/users/${userId}`);
-  return data;
+  const cached = queryClient.getQueryData<User>(['user', userId]);
+  const merged = { ...cached, ...data };
+  if (cached && data.bio === undefined) merged.bio = cached.bio;
+  return merged;
 }
 
 export async function uploadAvatar(file: File): Promise<string> {
