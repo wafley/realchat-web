@@ -1,10 +1,13 @@
 import { create } from 'zustand';
-import type { PrivacySettings } from '@/types/settings';
+import { toast } from 'sonner';
+import type { GroupAddOption, LastSeenOption, PrivacySettings } from '@/types/settings';
+import { getPrivacy, updatePrivacy } from '@/services/user';
 
 interface PrivacyState extends PrivacySettings {
-  setLastSeen: (v: PrivacySettings['lastSeen']) => void;
-  setAddToGroups: (v: PrivacySettings['addToGroups']) => void;
+  setLastSeen: (v: LastSeenOption) => void;
+  setAddToGroups: (v: GroupAddOption) => void;
   setReadReceipts: (v: boolean) => void;
+  syncFromServer: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'hallo-wok-privacy';
@@ -23,21 +26,48 @@ function save(settings: PrivacySettings) {
 
 const initial = load();
 
-export const usePrivacyStore = create<PrivacyState>((set) => ({
+function apply(partial: Partial<PrivacySettings>) {
+  const s = usePrivacyStore.getState();
+  const next: PrivacySettings = {
+    lastSeen: partial.lastSeen ?? s.lastSeen,
+    addToGroups: partial.addToGroups ?? s.addToGroups,
+    readReceipts: partial.readReceipts ?? s.readReceipts,
+  };
+  usePrivacyStore.setState(next);
+  save(next);
+}
+
+export const usePrivacyStore = create<PrivacyState>((_, get) => ({
   ...initial,
-  setLastSeen: (lastSeen) => set((s) => {
-    const next = { ...s, lastSeen };
-    save(next);
-    return { lastSeen };
-  }),
-  setAddToGroups: (addToGroups) => set((s) => {
-    const next = { ...s, addToGroups };
-    save(next);
-    return { addToGroups };
-  }),
-  setReadReceipts: (readReceipts) => set((s) => {
-    const next = { ...s, readReceipts };
-    save(next);
-    return { readReceipts };
-  }),
+  setLastSeen: (lastSeen) => {
+    const prev = get().lastSeen;
+    apply({ lastSeen });
+    updatePrivacy({ lastSeenVisibility: lastSeen.toUpperCase() }).catch(() => {
+      apply({ lastSeen: prev });
+      toast.error('Failed to update last seen visibility');
+    });
+  },
+  setAddToGroups: (addToGroups) => {
+    const prev = get().addToGroups;
+    apply({ addToGroups });
+    updatePrivacy({ groupInvitePolicy: addToGroups.toUpperCase() }).catch(() => {
+      apply({ addToGroups: prev });
+      toast.error('Failed to update group invite policy');
+    });
+  },
+  setReadReceipts: (readReceipts) => {
+    apply({ readReceipts });
+  },
+  syncFromServer: async () => {
+    try {
+      const p = await getPrivacy();
+      const lastSeen = p.lastSeenVisibility.toLowerCase() as LastSeenOption;
+      const addToGroups = p.groupInvitePolicy.toLowerCase() as GroupAddOption;
+      if (!['everyone', 'contacts', 'nobody'].includes(lastSeen)) return;
+      if (!['everyone', 'contacts', 'nobody'].includes(addToGroups)) return;
+      apply({ lastSeen, addToGroups });
+    } catch {
+      // Offline / server down: keep cached local values.
+    }
+  },
 }));

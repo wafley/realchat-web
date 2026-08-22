@@ -14,6 +14,7 @@ const LAST_SEEN_OPTIONS = [
 const GROUP_ADD_OPTIONS = [
   { value: 'everyone' as const, label: 'Everyone' },
   { value: 'contacts' as const, label: 'My Contacts' },
+  { value: 'nobody' as const, label: 'Nobody' },
 ];
 
 export default function SettingsPrivacy() {

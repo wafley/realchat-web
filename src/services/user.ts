@@ -47,3 +47,26 @@ export async function uploadBanner(file: File): Promise<string> {
   return data.bannerUrl ?? '';
 }
 
+export interface PrivacyApi {
+  lastSeenVisibility: string;
+  groupInvitePolicy: string;
+}
+
+export async function getPrivacy(): Promise<PrivacyApi> {
+  if (DEV_MODE) {
+    await delay(150);
+    return { lastSeenVisibility: 'EVERYONE', groupInvitePolicy: 'EVERYONE' };
+  }
+  const { data } = await api.get<PrivacyApi>('/users/me/privacy');
+  return data;
+}
+
+export async function updatePrivacy(payload: Partial<PrivacyApi>): Promise<PrivacyApi> {
+  if (DEV_MODE) {
+    await delay(200);
+    return { lastSeenVisibility: 'EVERYONE', groupInvitePolicy: 'EVERYONE', ...payload };
+  }
+  const { data } = await api.put<PrivacyApi>('/users/me/privacy', payload);
+  return data;
+}
+
