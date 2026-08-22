@@ -41,9 +41,9 @@ export async function uploadBanner(file: File): Promise<string> {
   }
   const formData = new FormData();
   formData.append('banner', file);
-  const { data } = await api.post<{ url: string }>('/users/me/banner', formData, {
+  const { data } = await api.put<{ bannerUrl?: string | null }>('/users/me/banner', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data.url;
+  return data.bannerUrl ?? '';
 }
 

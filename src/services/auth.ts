@@ -11,6 +11,7 @@ export interface AuthUserRaw {
   fullName?: string;
   bio?: string | null;
   avatarUrl?: string | null;
+  bannerUrl?: string | null;
   statusText?: string | null;
   isOnline?: boolean;
   lastSeenAt?: string | null;
@@ -26,6 +27,7 @@ export function mapUser(raw: AuthUserRaw): User {
     fullName: raw.fullName ?? '',
     bio: raw.bio ?? undefined,
     avatarUrl: raw.avatarUrl ?? undefined,
+    bannerUrl: raw.bannerUrl ?? undefined,
     status: raw.isOnline ? 'online' : 'offline',
     lastSeen: raw.lastSeenAt ? new Date(raw.lastSeenAt) : undefined,
     createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),

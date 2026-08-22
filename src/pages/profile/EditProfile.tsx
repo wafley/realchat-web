@@ -23,6 +23,7 @@ export default function EditProfile() {
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
   const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'banner'>('avatar');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +53,7 @@ export default function EditProfile() {
     }
     const objectUrl = URL.createObjectURL(file);
     setRawImageSrc(objectUrl);
+    setCropTarget('avatar');
     setCropModalOpen(true);
     e.target.value = '';
   };
@@ -65,14 +67,20 @@ export default function EditProfile() {
       return;
     }
     const objectUrl = URL.createObjectURL(file);
-    setBannerFile(file);
-    setBannerPreview(objectUrl);
+    setRawImageSrc(objectUrl);
+    setCropTarget('banner');
+    setCropModalOpen(true);
     e.target.value = '';
   };
 
   const handleCropComplete = (croppedFile: File, croppedPreviewUrl: string) => {
-    setAvatarFile(croppedFile);
-    setAvatarPreview(croppedPreviewUrl);
+    if (cropTarget === 'banner') {
+      setBannerFile(croppedFile);
+      setBannerPreview(croppedPreviewUrl);
+    } else {
+      setAvatarFile(croppedFile);
+      setAvatarPreview(croppedPreviewUrl);
+    }
     if (rawImageSrc) URL.revokeObjectURL(rawImageSrc);
     setRawImageSrc(null);
   };
@@ -83,18 +91,13 @@ export default function EditProfile() {
       if (avatarFile) {
         await uploadAvatar(avatarFile);
       }
-      let bannerSkipped = false;
       if (bannerFile) {
-        try {
-          await uploadBanner(bannerFile);
-        } catch {
-          bannerSkipped = true;
-        }
+        await uploadBanner(bannerFile);
       }
       await updateProfile({ fullName: data.fullName, bio: data.bio || '' });
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
       if (bannerPreview) URL.revokeObjectURL(bannerPreview);
-      toast.success(bannerSkipped ? 'Profile updated (cover belum didukung server)' : 'Profile updated');
+      toast.success('Profile updated');
       navigate('/profile');
     } catch {
       toast.error('Failed to update profile');
@@ -237,6 +240,11 @@ export default function EditProfile() {
         imageSrc={rawImageSrc}
         onClose={() => setCropModalOpen(false)}
         onCropComplete={handleCropComplete}
+        aspectRatio={cropTarget === 'banner' ? 3 : 1}
+        outputWidth={cropTarget === 'banner' ? 1200 : 512}
+        outputHeight={cropTarget === 'banner' ? 400 : 512}
+        title={cropTarget === 'banner' ? 'Crop Cover Banner' : 'Crop Profile Photo'}
+        fileName={cropTarget === 'banner' ? 'cropped-banner.jpg' : 'cropped-avatar.jpg'}
       />
     </div>
   );

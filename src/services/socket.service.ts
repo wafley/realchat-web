@@ -644,6 +644,7 @@ function onUserUpdated(data: {
   username?: string | null;
   fullName?: string | null;
   avatarUrl?: string | null;
+  bannerUrl?: string | null;
   bio?: string | null;
 }) {
   const uid = data.userId ?? data.id;
@@ -663,6 +664,7 @@ function onUserUpdated(data: {
           username: data.username ?? prev.username,
           fullName: data.fullName ?? prev.fullName,
           avatarUrl: data.avatarUrl ?? prev.avatarUrl,
+          bannerUrl: data.bannerUrl ?? prev.bannerUrl,
           bio: data.bio ?? prev.bio,
         }
       : prev,
@@ -677,6 +679,7 @@ function onUserUpdated(data: {
               username: data.username ?? c.user.username,
               fullName: data.fullName ?? c.user.fullName,
               avatarUrl: data.avatarUrl ?? c.user.avatarUrl,
+              bannerUrl: data.bannerUrl ?? c.user.bannerUrl,
               bio: data.bio ?? c.user.bio,
             },
           }
