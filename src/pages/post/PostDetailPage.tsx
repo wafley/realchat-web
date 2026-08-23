@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getPost } from '@/services/posts';
 import type { Post } from '@/types';
+import { resolveFileUrl } from '@/lib/url';
 
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -60,7 +61,7 @@ export default function PostDetailPage() {
         </button>
 
         <img
-          src={resolved.imageUrl}
+          src={resolveFileUrl(resolved.imageUrl)}
           alt={resolved.caption || 'Post image'}
           className="w-full object-cover"
           loading="lazy"

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFeed } from '@/services/posts';
 import type { Post } from '@/types';
 import PostDetailModal from '@/components/post/PostDetailModal';
+import { resolveFileUrl } from '@/lib/url';
 
 export default function FeedPage() {
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ export default function FeedPage() {
                   className="w-full"
                 >
                   <img
-                    src={post.imageUrl}
+                    src={resolveFileUrl(post.imageUrl)}
                     alt={post.caption || 'Post image'}
                     className="aspect-square w-full object-cover"
                     loading="lazy"

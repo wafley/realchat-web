@@ -5,7 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Hallo Wok',
   webDir: 'dist',
   server: {
-    androidScheme: 'https',
+    // The development backend serves files over HTTP on the LAN. Using the
+    // same scheme prevents Android WebView from blocking those images as mixed content.
+    androidScheme: 'http',
   },
   android: {
     backgroundColor: '#09090b',

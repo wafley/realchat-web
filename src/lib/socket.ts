@@ -1,7 +1,8 @@
 import { io, type Socket } from 'socket.io-client';
 import { useSocketStore } from '@/store/socketStore';
+import { getSocketUrl } from '@/lib/url';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = getSocketUrl();
 
 type EventCallback = (...args: any[]) => void;
 

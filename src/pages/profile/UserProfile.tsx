@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
 import { cn } from '@/lib/utils';
+import { resolveFileUrl } from '@/lib/url';
 import { formatTime } from '@/lib/chatHelpers';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations } from '@/services/chat';
@@ -51,7 +52,7 @@ function MediaThumb({ media, onClickImage }: { media: { id: string; type: string
     <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
       {media.type === 'image' ? (
         <img
-          src={media.fileUrl}
+          src={resolveFileUrl(media.fileUrl)}
           alt={media.fileName || 'Shared image'}
           loading="lazy"
           decoding="async"
@@ -70,7 +71,7 @@ function MediaThumb({ media, onClickImage }: { media: { id: string; type: string
           onClick={() => toast.info('Video playback coming soon')}
         >
           {media.fileUrl && media.fileUrl !== '#' ? (
-            <img src={media.fileUrl} alt={media.fileName || 'Shared video'} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-70" />
+            <img src={resolveFileUrl(media.fileUrl)} alt={media.fileName || 'Shared video'} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-70" />
           ) : (
             <div className="flex flex-col items-center gap-1">
               <Play size={24} className="text-muted-foreground" fill="currentColor" />
@@ -350,7 +351,7 @@ export default function UserProfile() {
               <div className="relative h-36 sm:h-44 md:h-52 w-full overflow-hidden rounded-2xl border border-border/40 shadow-md group">
                 {effectiveUser?.bannerUrl ? (
                   <img
-                    src={effectiveUser.bannerUrl}
+                    src={resolveFileUrl(effectiveUser.bannerUrl)}
                     alt="Cover Banner"
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
@@ -805,7 +806,7 @@ export default function UserProfile() {
             <X size={22} />
           </button>
           <img
-            src={previewUrl}
+            src={resolveFileUrl(previewUrl)}
             alt="Full size"
             className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}

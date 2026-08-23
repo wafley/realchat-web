@@ -1,6 +1,7 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
 import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { resolveFileUrl } from '@/lib/url';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 
@@ -201,11 +202,11 @@ function MessageBubbleComp({
                 <>
                   <div className="overflow-hidden">
                     <img
-                      src={msg.fileUrl}
+                      src={resolveFileUrl(msg.fileUrl)}
                       alt={msg.content || 'Image'}
                       className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                       style={{ maxHeight: '300px' }}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!); }}
                       loading="lazy"
                       decoding="async"
                     />
@@ -234,11 +235,11 @@ function MessageBubbleComp({
               ) : (
                 <div className="relative overflow-hidden">
                   <img
-                    src={msg.fileUrl}
+                    src={resolveFileUrl(msg.fileUrl)}
                     alt="Image"
                     className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                     style={{ maxHeight: '300px' }}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(msg.fileUrl!); }}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!); }}
                     loading="lazy"
                     decoding="async"
                   />

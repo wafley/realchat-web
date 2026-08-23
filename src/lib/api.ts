@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { socketClient } from '@/lib/socket';
+import { getApiUrl } from '@/lib/url';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: getApiUrl(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
@@ -69,7 +70,7 @@ api.interceptors.response.use(
 
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/refresh`,
+        `${getApiUrl()}/auth/refresh`,
         { refreshToken },
         { headers: { 'Content-Type': 'application/json' } },
       );

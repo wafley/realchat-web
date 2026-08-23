@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { uploadAvatar, uploadBanner } from '@/services/user';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { resolveFileUrl } from '@/lib/url';
 import { editProfileSchema, type EditProfileSchema } from '@/lib/validations';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import ImageCropModal from '@/components/common/ImageCropModal';
@@ -130,7 +131,7 @@ export default function EditProfile() {
             {/* Banner Preview Box */}
             <div className="relative h-36 sm:h-44 w-full overflow-hidden">
               {(bannerPreview || user?.bannerUrl) ? (
-                <img src={bannerPreview || user?.bannerUrl} alt="Cover Banner" className="h-full w-full object-cover" />
+                <img src={resolveFileUrl(bannerPreview || user?.bannerUrl)} alt="Cover Banner" className="h-full w-full object-cover" />
               ) : (
                 <div
                   className="relative flex h-full w-full items-center justify-center overflow-hidden"

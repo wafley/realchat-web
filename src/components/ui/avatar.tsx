@@ -1,5 +1,6 @@
 import { forwardRef, useState, createContext, useContext, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
+import { resolveFileUrl } from '@/lib/url';
 
 interface AvatarContextValue {
   loaded: boolean;
@@ -28,11 +29,12 @@ function Avatar({ className, children, ...props }: HTMLAttributes<HTMLDivElement
 const AvatarImage = forwardRef<
   HTMLImageElement,
   React.ImgHTMLAttributes<HTMLImageElement>
->(({ className, onLoad, ...props }, ref) => {
+>(({ className, onLoad, src, ...props }, ref) => {
   const { setLoaded } = useContext(AvatarContext);
   return (
     <img
       ref={ref}
+      src={resolveFileUrl(src)}
       className={cn('aspect-square h-full w-full', className)}
       onLoad={(e) => {
         setLoaded(true);
