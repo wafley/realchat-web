@@ -8,7 +8,6 @@ const features = [
   { name: 'File Sharing', status: 'active' as const },
   { name: 'Voice & Video Calls', status: 'coming' as const },
   { name: 'Dark Mode', status: 'active' as const },
-  { name: 'Online Status', status: 'active' as const },
   { name: 'Notification Preferences', status: 'active' as const },
   { name: 'End-to-End Encryption', status: 'coming' as const },
   { name: 'Message Reactions', status: 'active' as const },

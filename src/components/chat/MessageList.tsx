@@ -5,6 +5,7 @@ import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
 import { type TypingUser } from '@/store/typingStore';
 import { queryClient } from '@/lib/queryClient';
+import { setChatViewport } from '@/lib/chatViewport';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface MessageListProps {
@@ -38,6 +39,8 @@ interface MessageListProps {
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
   toggleSelect: (msgId: string) => void;
+  newMessageAnchorId?: string | null;
+  onNewMessagesSeen: () => void;
 }
 
 export default function MessageList({
@@ -71,9 +74,29 @@ export default function MessageList({
   onReactionPickerOpen,
   selectedIds,
   toggleSelect,
+  newMessageAnchorId,
+  onNewMessagesSeen,
 }: MessageListProps) {
   const [showScrollDown, setShowScrollDown] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Ref agar handler/effect tidak perlu re-register saat anchor/callback berubah.
+  const anchorRef = useRef(newMessageAnchorId);
+  anchorRef.current = newMessageAnchorId;
+  const onSeenRef = useRef(onNewMessagesSeen);
+  onSeenRef.current = onNewMessagesSeen;
+
+  const isNearBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= 200;
+  }, []);
+
+  const maybeClearNewMessages = useCallback(() => {
+    if (!anchorRef.current) return;
+    if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
+    if (isNearBottom()) onSeenRef.current();
+  }, [isNearBottom]);
 
   const typingAvatars = useMemo(() => {
     const map = new Map<string, string>();
@@ -91,9 +114,12 @@ export default function MessageList({
     const el = scrollContainerRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setShowScrollDown(distanceFromBottom > 200);
+    const nearBottom = distanceFromBottom <= 200;
+    setShowScrollDown(!nearBottom);
+    setChatViewport(chatId, nearBottom);
+    if (nearBottom) maybeClearNewMessages();
     sessionStorage.setItem(`scrollPos-${chatId}`, String(el.scrollTop));
-  }, [chatId]);
+  }, [chatId, maybeClearNewMessages]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -120,6 +146,7 @@ export default function MessageList({
         const pos = parseInt(saved, 10);
         if (pos > 0 && pos < el.scrollHeight) {
           el.scrollTop = pos;
+          setChatViewport(chatId, el.scrollHeight - el.scrollTop - el.clientHeight <= 200);
         }
         sessionStorage.setItem(`scrollRestored-${chatId}`, '1');
         sessionStorage.removeItem(`scrollPos-${chatId}`);
@@ -140,7 +167,23 @@ export default function MessageList({
 
     prevFirstIdRef.current = firstId;
     prevScrollHeightRef.current = el.scrollHeight;
-  }, [filteredMessages, chatId]);
+    setChatViewport(chatId, isNearBottom());
+  }, [filteredMessages, chatId, isNearBottom]);
+
+  // Kembali aktif ke tab saat posisi sudah di bottom → pill dianggap terlihat.
+  useEffect(() => {
+    const onActive = () => {
+      if (document.visibilityState === 'visible' && document.hasFocus()) {
+        maybeClearNewMessages();
+      }
+    };
+    document.addEventListener('visibilitychange', onActive);
+    window.addEventListener('focus', onActive);
+    return () => {
+      document.removeEventListener('visibilitychange', onActive);
+      window.removeEventListener('focus', onActive);
+    };
+  }, [maybeClearNewMessages]);
 
   return (
     <div className="relative flex-1 overflow-hidden">
@@ -199,6 +242,13 @@ export default function MessageList({
                   <div className="flex justify-center py-1">
                     <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
                       {formatDateSeparator(msg.createdAt)}
+                    </span>
+                  </div>
+                )}
+                {msg.id === newMessageAnchorId && (
+                  <div className="flex justify-center py-1">
+                    <span className="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border lg:text-xs">
+                      New messages
                     </span>
                   </div>
                 )}

@@ -9,8 +9,9 @@ import { loadPrefs, showLocalNotification } from '@/services/notification';
 import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
+import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, PaginatedResponse } from '@/types';
+import type { Message, PaginatedResponse, User, Contact } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -53,6 +54,15 @@ async function onSocketConnected() {
   }
 }
 
+function handleWindowResync() {
+  if (DEV_MODE) return;
+  if (document.visibilityState !== 'visible') return;
+  if (!socketClient.isConnected) {
+    socketClient.getSocket()?.connect();
+  }
+  queryClient.refetchQueries({ queryKey: ['messages'], type: 'active' }).catch(() => {});
+}
+
 export function emitTypingStart(conversationId: string) {
   currentTypingChatId = conversationId;
   socketClient.emitTypingStart(conversationId);
@@ -63,6 +73,14 @@ export function emitTypingStop(conversationId: string) {
     currentTypingChatId = null;
   }
   socketClient.emitTypingStop(conversationId);
+}
+
+export function emitUserAway(conversationId: string) {
+  socketClient.emitUserAway(conversationId);
+}
+
+export function emitUserBack(conversationId: string) {
+  socketClient.emitUserBack(conversationId);
 }
 
 // --- Listener registration ---
@@ -126,7 +144,7 @@ function onMessageNew(raw: RemoteMessage) {
           ? {
               ...c,
               lastMessage: preview,
-              lastSenderName: isDM ? undefined : messageSenderName(msg),
+              lastSenderName: isDM || msg.type === 'system' ? undefined : messageSenderName(msg),
               lastTime: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : (msg.createdAt as string | undefined) ?? 'now',
               unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
             }
@@ -142,9 +160,17 @@ function onMessageNew(raw: RemoteMessage) {
     saveLocalUnread(Object.fromEntries(persisted.map((c) => [c.id, c.unread ?? 0])));
   }
 
-  // Read receipt: kirim message:seen ketika pesan masuk di chat yang sedang dibuka.
+  // Read receipt ala WhatsApp: kirim message:seen hanya jika halaman aktif
+  // DAN viewport di dekat bottom (pesan benar-benar terlihat). Selain itu,
+  // tandai sebagai "new messages" untuk pill di sisi penerima.
   if (currentChatId === chatId && msg.senderId !== currentUserId) {
-    emitSeenForConversation(chatId, isDM, msg.id);
+    if (isDocumentActive() && isChatViewportAtBottom(chatId)) {
+      emitSeenForConversation(chatId, isDM, msg.id);
+    } else {
+      window.dispatchEvent(
+        new CustomEvent('chat:new-messages', { detail: { chatId, messageId: msg.id } }),
+      );
+    }
   }
 }
 
@@ -154,6 +180,7 @@ export function emitSeenForConversation(chatId: string, isDM: boolean, lastMessa
   if (DEV_MODE) return;
   if (!usePrivacyStore.getState().readReceipts) return;
   if (!socketClient.isConnected) return;
+  if (!force && !isDocumentActive()) return;
 
   let lastId = lastMessageId;
   if (!lastId) {
@@ -611,6 +638,56 @@ function onMessageStatus(data: StatusEvent) {
   scheduleStatusFlush(120);
 }
 
+function onUserUpdated(data: {
+  userId?: string;
+  id?: string;
+  username?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  bio?: string | null;
+}) {
+  const uid = data.userId ?? data.id;
+  if (!uid) return;
+  const name = data.fullName || data.username || undefined;
+  queryClient.setQueryData<ChatConversation[]>(['conversations'], (prev) =>
+    (prev ?? []).map((c) =>
+      c.type === 'dm' && c.userId === uid
+        ? { ...c, name: name ?? c.name, avatarUrl: data.avatarUrl ?? c.avatarUrl }
+        : c,
+    ),
+  );
+  queryClient.setQueryData<User>(['user', uid], (prev) =>
+    prev
+      ? {
+          ...prev,
+          username: data.username ?? prev.username,
+          fullName: data.fullName ?? prev.fullName,
+          avatarUrl: data.avatarUrl ?? prev.avatarUrl,
+          bannerUrl: data.bannerUrl ?? prev.bannerUrl,
+          bio: data.bio ?? prev.bio,
+        }
+      : prev,
+  );
+  queryClient.setQueryData<Contact[]>(['contacts'], (prev) =>
+    (prev ?? []).map((c) =>
+      c.userId === uid
+        ? {
+            ...c,
+            user: {
+              ...c.user,
+              username: data.username ?? c.user.username,
+              fullName: data.fullName ?? c.user.fullName,
+              avatarUrl: data.avatarUrl ?? c.user.avatarUrl,
+              bannerUrl: data.bannerUrl ?? c.user.bannerUrl,
+              bio: data.bio ?? c.user.bio,
+            },
+          }
+        : c,
+    ),
+  );
+}
+
 // --- Init / Destroy ---
 
 export function initSocket(token?: string) {
@@ -656,7 +733,10 @@ export function initSocket(token?: string) {
   socketClient.on('group:dismissed', onGroupDismissed);
   socketClient.on('contact:new', onContactChanged);
   socketClient.on('contact:remove', onContactChanged);
+  socketClient.on('user:updated', onUserUpdated);
   socketClient.on('notification:new', onNotification);
+  document.addEventListener('visibilitychange', handleWindowResync);
+  window.addEventListener('focus', handleWindowResync);
 }
 
 export function destroySocket() {
@@ -689,7 +769,10 @@ export function destroySocket() {
   socketClient.off('group:dismissed', onGroupDismissed);
   socketClient.off('contact:new', onContactChanged);
   socketClient.off('contact:remove', onContactChanged);
+  socketClient.off('user:updated', onUserUpdated);
   socketClient.off('notification:new', onNotification);
+  document.removeEventListener('visibilitychange', handleWindowResync);
+  window.removeEventListener('focus', handleWindowResync);
   socketClient.disconnect();
 }
 

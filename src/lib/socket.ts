@@ -19,7 +19,7 @@ class SocketClient {
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
+      reconnectionDelayMax: 2000,
       transports: ['websocket', 'polling'],
     });
 
@@ -145,7 +145,16 @@ class SocketClient {
         resolve({ error: 'Realtime connection unavailable' });
         return;
       }
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve({ error: 'Request timeout' });
+      }, 8000);
       this.socket.emit('message:send', { conversationId, content, replyToId }, (res?: { data?: any; error?: string }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         resolve(res ?? { error: 'No response from server' });
       });
     });
@@ -170,6 +179,16 @@ class SocketClient {
 
   emitMessageSeen(conversationId: string, lastSeenMessageId: string): void {
     this.socket?.emit('message:seen', { conversationId, lastSeenMessageId });
+  }
+
+  // --- Page visibility (user away/back in room) ---
+
+  emitUserAway(conversationId: string): void {
+    this.socket?.emit('user-away', { conversationId });
+  }
+
+  emitUserBack(conversationId: string): void {
+    this.socket?.emit('user-back', { conversationId });
   }
 
 }

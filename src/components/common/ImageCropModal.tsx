@@ -10,6 +10,8 @@ interface ImageCropModalProps {
   aspectRatio?: number; // default 1 (square)
   outputWidth?: number; // default 512
   outputHeight?: number; // default 512
+  title?: string;
+  fileName?: string;
 }
 
 export default function ImageCropModal({
@@ -17,8 +19,11 @@ export default function ImageCropModal({
   imageSrc,
   onClose,
   onCropComplete,
+  aspectRatio = 1,
   outputWidth = 512,
   outputHeight = 512,
+  title = 'Crop Profile Photo',
+  fileName = 'cropped-avatar.jpg',
 }: ImageCropModalProps) {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -29,7 +34,9 @@ export default function ImageCropModal({
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
 
-  const viewportSize = 256; // 256x256 px crop box in UI
+  // Square keeps the original 256px circle; wider ratios get a rectangular box.
+  const boxWidth = aspectRatio === 1 ? 256 : 320;
+  const boxHeight = Math.round(boxWidth / aspectRatio);
 
   // Reset offset and zoom when new image opens
   useEffect(() => {
@@ -106,22 +113,22 @@ export default function ImageCropModal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Calculate base scale to fit container viewportSize
-    const baseScale = Math.max(viewportSize / img.naturalWidth, viewportSize / img.naturalHeight);
+    // Calculate base scale to fit container viewport
+    const baseScale = Math.max(boxWidth / img.naturalWidth, boxHeight / img.naturalHeight);
     const displayedW = img.naturalWidth * baseScale * zoom;
     const displayedH = img.naturalHeight * baseScale * zoom;
 
     // Calculate crop rectangle on displayed image
-    // Center of viewport is (viewportSize / 2, viewportSize / 2)
-    // Image top-left in viewport coords is (viewportSize/2 - displayedW/2 + offset.x, viewportSize/2 - displayedH/2 + offset.y)
-    const imgLeft = viewportSize / 2 - displayedW / 2 + offset.x;
-    const imgTop = viewportSize / 2 - displayedH / 2 + offset.y;
+    // Center of viewport is (boxWidth / 2, boxHeight / 2)
+    // Image top-left in viewport coords is (boxWidth/2 - displayedW/2 + offset.x, boxHeight/2 - displayedH/2 + offset.y)
+    const imgLeft = boxWidth / 2 - displayedW / 2 + offset.x;
+    const imgTop = boxHeight / 2 - displayedH / 2 + offset.y;
 
-    // Map viewport crop box (0..viewportSize) to original image pixels
+    // Map viewport crop box to original image pixels
     const srcX = Math.max(0, (0 - imgLeft) / (baseScale * zoom));
     const srcY = Math.max(0, (0 - imgTop) / (baseScale * zoom));
-    const srcW = viewportSize / (baseScale * zoom);
-    const srcH = viewportSize / (baseScale * zoom);
+    const srcW = boxWidth / (baseScale * zoom);
+    const srcH = boxHeight / (baseScale * zoom);
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, outputWidth, outputHeight);
@@ -130,7 +137,7 @@ export default function ImageCropModal({
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        const croppedFile = new File([blob], 'cropped-avatar.jpg', { type: 'image/jpeg' });
+        const croppedFile = new File([blob], fileName, { type: 'image/jpeg' });
         const croppedPreviewUrl = URL.createObjectURL(blob);
         onCropComplete(croppedFile, croppedPreviewUrl);
         onClose();
@@ -138,25 +145,28 @@ export default function ImageCropModal({
       'image/jpeg',
       0.92,
     );
-  }, [imgLoaded, zoom, offset, viewportSize, outputWidth, outputHeight, onCropComplete, onClose]);
+  }, [imgLoaded, zoom, offset, boxWidth, boxHeight, outputWidth, outputHeight, onCropComplete, onClose]);
 
   if (!open || !imageSrc) return null;
 
   // Base scale calculation for display
   const baseScale = imgSize.width && imgSize.height
-    ? Math.max(viewportSize / imgSize.width, viewportSize / imgSize.height)
+    ? Math.max(boxWidth / imgSize.width, boxHeight / imgSize.height)
     : 1;
   const currentWidth = imgSize.width * baseScale * zoom;
   const currentHeight = imgSize.height * baseScale * zoom;
 
   return (
-    <Modal open={open} onClose={onClose} title="Crop Profile Photo">
+    <Modal open={open} onClose={onClose} title={title}>
       <div className="flex flex-col items-center gap-4">
         <p className="text-xs text-muted-foreground">Drag photo to adjust position and use slider to zoom</p>
 
         {/* Viewport Box */}
         <div
-          className="relative flex h-64 w-64 select-none items-center justify-center overflow-hidden rounded-full border-2 border-accent bg-black/40 shadow-inner cursor-grab active:cursor-grabbing"
+          className={`relative flex select-none items-center justify-center overflow-hidden border-2 border-accent bg-black/40 shadow-inner cursor-grab active:cursor-grabbing ${
+            aspectRatio === 1 ? 'rounded-full' : 'rounded-xl'
+          }`}
+          style={{ width: `${boxWidth}px`, height: `${boxHeight}px`, maxWidth: '100%' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -180,8 +190,12 @@ export default function ImageCropModal({
             />
           )}
 
-          {/* Circle Overlay Grid */}
-          <div className="pointer-events-none absolute inset-0 rounded-full border border-white/20 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]" />
+          {/* Overlay Grid */}
+          <div
+            className={`pointer-events-none absolute inset-0 border border-white/20 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] ${
+              aspectRatio === 1 ? 'rounded-full' : 'rounded-xl'
+            }`}
+          />
         </div>
 
         {/* Zoom Controls */}

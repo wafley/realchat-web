@@ -267,7 +267,7 @@ export default function ChatList() {
   return (
     <div className="flex h-full flex-col">
       {isSelectionMode ? (
-        <div className="flex items-center gap-3 border-b border-border px-3 py-2 lg:px-4 lg:py-3">
+        <div className="flex items-center gap-3 border-b border-border px-3 py-2 lg:px-4 lg:py-3 pt-safe-top">
           <button
             onClick={exitSelectionMode}
             aria-label="Cancel selection"
@@ -288,7 +288,7 @@ export default function ChatList() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col">
+        <div className="flex flex-col pt-safe-top">
           <div className="flex items-center justify-between gap-2 p-4 pb-2 lg:px-5 lg:pb-3 lg:pt-5">
             <h1 className="text-xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
             <div className="flex items-center gap-2">

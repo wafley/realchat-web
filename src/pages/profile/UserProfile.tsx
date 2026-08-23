@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Lock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
@@ -11,6 +11,7 @@ import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
+import { usePresenceStore } from '@/store/presenceStore';
 import { destroySocket } from '@/services/socket.service';
 import { queryClient as appQueryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
@@ -135,14 +136,9 @@ export default function UserProfile() {
   const contact = userId ? contacts.find((c) => c.userId === userId) : undefined;
   const isContact = !!contact;
 
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const toggleSection = (id: string) => {
-    setExpandedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setExpandedSection((prev) => (prev === id ? null : id));
   };
   const displayName = contact?.customName || effectiveUser?.fullName || '';
 
@@ -171,6 +167,7 @@ export default function UserProfile() {
     mutationFn: () => blockUserService(userId!),
     onSuccess: () => {
       toast.success('User blocked');
+      usePresenceStore.getState().clearPresence(userId!);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
     },
@@ -189,6 +186,7 @@ export default function UserProfile() {
     mutationFn: () => unblockUserService(userId!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       toast.success('User unblocked');
     },
     onError: () => toast.error('Failed to unblock user'),
@@ -328,7 +326,7 @@ export default function UserProfile() {
   return (
     <div className="flex h-full flex-col">
       <div className={cn('flex-1 overflow-y-auto md:pb-0', !isSelf && 'pb-24')}>
-        <div className="mx-auto max-w-4xl px-6 py-4">
+        <div className="mx-auto max-w-4xl px-6 py-4 pt-safe-top">
           <div className="relative mb-4 flex items-center">
             <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="text-muted-foreground transition-colors hover:text-accent">
               <ArrowLeft size={20} />
@@ -502,7 +500,7 @@ export default function UserProfile() {
                         icon={Bell}
                         label="Notifications"
                         desc="Message, group, and sound preferences"
-                        expanded={expandedSections.has('notifications')}
+                        expanded={expandedSection === 'notifications'}
                         onToggle={() => toggleSection('notifications')}
                       >
                         <NotificationsContent />
@@ -511,7 +509,7 @@ export default function UserProfile() {
                         icon={Shield}
                         label="Privacy"
                         desc="Last seen, read receipts, blocked users"
-                        expanded={expandedSections.has('privacy')}
+                        expanded={expandedSection === 'privacy'}
                         onToggle={() => toggleSection('privacy')}
                       >
                         <PrivacyContent />
@@ -520,7 +518,7 @@ export default function UserProfile() {
                         icon={Sun}
                         label="Appearance"
                         desc="Theme preferences"
-                        expanded={expandedSections.has('appearance')}
+                        expanded={expandedSection === 'appearance'}
                         onToggle={() => toggleSection('appearance')}
                       >
                         <AppearanceContent />
@@ -529,7 +527,7 @@ export default function UserProfile() {
                         icon={AlertTriangle}
                         label="Account"
                         desc="Password and account management"
-                        expanded={expandedSections.has('account')}
+                        expanded={expandedSection === 'account'}
                         onToggle={() => toggleSection('account')}
                       >
                         <AccountContent />
@@ -538,7 +536,7 @@ export default function UserProfile() {
                         icon={Info}
                         label="About"
                         desc="App info and credits"
-                        expanded={expandedSections.has('about')}
+                        expanded={expandedSection === 'about'}
                         onToggle={() => toggleSection('about')}
                       >
                         <AboutContent />
@@ -553,14 +551,12 @@ export default function UserProfile() {
                           useAuthStore.getState().logout();
                           navigate('/login', { replace: true });
                         }}
-                        className="group flex w-full items-center gap-3.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-left text-destructive transition-all duration-200 hover:bg-destructive/10 hover:border-destructive/40 hover:shadow-sm"
+                        className="group flex w-full items-center gap-3.5 rounded-xl border border-border/50 bg-card/60 p-3.5 text-left transition-all duration-200 hover:border-destructive/40 hover:bg-destructive/10 shadow-sm"
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive transition-transform duration-200 group-hover:scale-105">
-                          <LogOut size={18} />
-                        </div>
+                        <LogOut size={20} className="shrink-0 text-muted-foreground transition-colors group-hover:text-destructive" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-destructive">Logout</p>
-                          <p className="text-xs text-destructive/70">Sign out of your account</p>
+                          <p className="text-sm font-semibold text-foreground group-hover:text-destructive transition-colors">Logout</p>
+                          <p className="text-xs text-muted-foreground">Sign out of your account</p>
                         </div>
                       </button>
                     </div>
@@ -568,48 +564,129 @@ export default function UserProfile() {
                 </>
               )}
 
-              {!isSelf && <hr className="my-3 border-border" />}
+              {!isSelf && <hr className="my-4 border-border/40" />}
 
-              {!isSelf && sharedMedia.length > 0 && (
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-xs font-medium text-muted-foreground/65">Media, Links and Docs</h3>
-                    <button onClick={() => setMediaModalOpen(true)} className="mt-0.5 flex items-center gap-0.5 text-xs text-accent transition-colors hover:text-accent/80">
-                      View all ({sharedMedia.length})
-                      <ChevronRight size={12} />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 md:grid-cols-8">
-                    {sharedMedia.slice(0, 8).map((media, i) => (
-                      <div key={media.id} className={i >= 5 ? 'hidden sm:block' : ''}>
-                        <MediaThumb media={media} onClickImage={(url) => setPreviewUrl(url)} />
+              {!isSelf && (
+                <div className="space-y-4 px-1">
+                  {/* 1. Media, links and docs */}
+                  <div>
+                    <div className="mb-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText size={20} className="shrink-0 text-muted-foreground" />
+                        <span className="text-sm font-semibold text-foreground">Media, links and docs</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">{sharedMedia.length}</span>
+                        {sharedMedia.length > 0 && (
+                          <button onClick={() => setMediaModalOpen(true)} className="flex items-center text-muted-foreground hover:text-foreground">
+                            <ChevronRight size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-              {!isSelf && mutualGroups.length > 0 && (
-                <div className="mt-3">
-                  <h3 className="mb-2 text-xs font-medium text-muted-foreground/65">Groups in Common ({mutualGroups.length})</h3>
-                  <div className="max-h-[290px] space-y-1.5 overflow-y-auto md:max-h-none md:overflow-visible">
-                    {mutualGroups.map((g) => (
-                      <button
-                        key={g.id}
-                        onClick={() => navigate(`/chat/${g.id}`)}
-                        className="flex w-full items-center gap-2.5 rounded-lg border border-border/50 px-3 py-2 text-left transition-colors hover:bg-accent/5"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            <Users size={14} />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
-                          <p className="text-xs text-muted-foreground">{g.members} members</p>
-                        </div>
-                      </button>
-                    ))}
+                    {sharedMedia.length > 0 ? (
+                      <div className="flex items-center gap-2.5 overflow-x-auto py-1 no-scrollbar">
+                        {sharedMedia.map((media) => (
+                          <div key={media.id} className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                            <MediaThumb media={media} onClickImage={(url) => setPreviewUrl(url)} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-1 text-xs text-muted-foreground/60 pl-8">
+                        No shared media yet
+                      </div>
+                    )}
+                  </div>
+
+                  <hr className="border-border/30" />
+
+                  {/* 2. WhatsApp-style Chat Options List */}
+                  <div className="space-y-1">
+                    {/* Starred Messages */}
+                    <button
+                      onClick={() => dmId ? navigate(`/dm/${dmId}`) : toast.info('Open chat to view starred messages')}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                    >
+                      <Star size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Starred messages</p>
+                      </div>
+                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
+                    </button>
+
+                    {/* Notification Settings */}
+                    <button
+                      onClick={() => toast.success('Notification settings for this chat updated')}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                    >
+                      <Bell size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Notification settings</p>
+                      </div>
+                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
+                    </button>
+
+                    {/* Disappearing Messages */}
+                    <button
+                      onClick={() => toast.info('Disappearing messages feature coming soon')}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                    >
+                      <Clock size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Disappearing messages</p>
+                        <p className="text-xs text-muted-foreground">Off</p>
+                      </div>
+                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
+                    </button>
+
+                    {/* Encryption */}
+                    <div className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left">
+                      <Lock size={20} className="shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground">Encryption</p>
+                        <p className="text-xs text-muted-foreground">Messages are end-to-end encrypted. Click to verify.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className="border-border/30" />
+
+                  {/* 3. Groups in Common */}
+                  <div>
+                    <div className="mb-2 flex items-center gap-3 px-2">
+                      <Users size={20} className="shrink-0 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">Groups in common</span>
+                      <span className="ml-auto text-xs font-medium text-muted-foreground">{mutualGroups.length}</span>
+                    </div>
+
+                    {mutualGroups.length > 0 ? (
+                      <div className="space-y-1 pt-1">
+                        {mutualGroups.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => navigate(`/chat/${g.id}`)}
+                            className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/5"
+                          >
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-muted text-foreground text-xs">
+                                <Users size={14} />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-foreground">{g.name}</p>
+                              <p className="text-xs text-muted-foreground">{g.members} members</p>
+                            </div>
+                            <ChevronRight size={14} className="text-muted-foreground/40" />
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-1 text-xs text-muted-foreground/60 pl-8">
+                        No mutual groups
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

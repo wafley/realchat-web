@@ -13,6 +13,7 @@ import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/i
 import type { Group, GroupMember, User as UserType } from '@/types';
 import { uploadGroupAvatar } from '@/services/chat';
 import { getUser } from '@/services/user';
+import { usePresenceStore } from '@/store/presenceStore';
 
 function formatDate(date?: Date | string) {
   if (!date) return '';
@@ -59,12 +60,13 @@ function MemberRow({
   });
 
   const displayUser = fetchedUser || member.user;
+  const presence = usePresenceStore((s) => s.presenceMap[member.userId]);
+  const isOnline = presence ? presence.isOnline : displayUser?.status === 'online';
   const displayName = isMe
     ? 'You'
     : (displayUser?.fullName || displayUser?.username || member.userId);
   const username = displayUser?.username;
   const avatarUrl = displayUser?.avatarUrl;
-  const isOnline = displayUser?.status === 'online';
 
   return (
     <div className="group relative flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-accent/10">
@@ -485,7 +487,7 @@ export default function GroupInfoPanel({
   return (
     <div className="flex h-full flex-col bg-sidebar text-foreground overflow-y-auto custom-scrollbar border-l border-border">
       {/* 1. Header (WhatsApp Style) */}
-      <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-sidebar/95 px-4 py-3.5 backdrop-blur">
+      <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-sidebar/95 px-4 py-3.5 backdrop-blur pt-safe-top">
         <button
           onClick={onClose}
           className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"

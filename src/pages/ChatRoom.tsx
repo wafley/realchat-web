@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import ReactionPicker from '@/components/chat/ReactionPicker';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatSearchBar from '@/components/chat/ChatSearchBar';
@@ -11,7 +13,10 @@ import GroupInfoPanel from '@/components/chat/GroupInfoPanel';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
+import { usePageVisibility } from '@/hooks/chat/usePageVisibility';
 import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
+import { getBlockedUsers, unblockUser, markConversationAsSeen } from '@/services/chat';
+import { clearChatViewport } from '@/lib/chatViewport';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
@@ -20,9 +25,39 @@ export default function ChatRoom() {
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const handledHighlightIdRef = useRef<string | null>(null);
 
+  const queryClient = useQueryClient();
+  const { data: blockedUsers = [] } = useQuery({
+    queryKey: ['blocked-users'],
+    queryFn: getBlockedUsers,
+    enabled: state.isDM && !!state.otherUserId,
+  });
+  const isPeerBlocked =
+    !!state.isDM && !!state.otherUserId && blockedUsers.some((b) => b.id === state.otherUserId);
+
+  const unblockMutation = useMutation({
+    mutationFn: () => unblockUser(state.otherUserId!),
+    onSuccess: () => {
+      toast.success('Contact unblocked');
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: () => {
+      toast.error('Failed to unblock user');
+    },
+  });
+
   useEffect(() => {
     handledHighlightIdRef.current = null;
   }, [state.chatId]);
+
+  usePageVisibility(state.chatId);
+
+  const handleNewMessagesSeen = () => {
+    state.clearNewMessagesAnchor();
+    emitSeenForConversation(state.chatId, state.isDM);
+    // Reset unreadCount di server tepat saat pesan benar-benar terlihat.
+    markConversationAsSeen(state.chatId).catch(() => {});
+  };
 
   useEffect(() => {
     const targetId = location.state?.highlightMessageId;
@@ -153,8 +188,8 @@ export default function ChatRoom() {
 
     return () => {
       joinAllConversationRooms();
-      emitSeenForConversation(state.chatId, state.isDM, undefined, true);
       setCurrentChat(null, false);
+      clearChatViewport(state.chatId);
       sessionStorage.removeItem(`scrollPos-${state.chatId}`);
     };
   }, [state.chatId, state.isDM]);
@@ -183,7 +218,7 @@ export default function ChatRoom() {
           userId={state.otherUserId}
           lastSeen={state.chatLastSeen}
           memberCount={mutations.group?.members?.length ?? state.memberCount}
-          avatarUrl={!state.isDM ? mutations.group?.avatarUrl : undefined}
+          avatarUrl={state.isDM ? state.chatAvatarUrl : mutations.group?.avatarUrl}
           onBack={() => navigate('/')}
           onSearchToggle={() => {
             if (state.showSearch) {
@@ -195,6 +230,10 @@ export default function ChatRoom() {
           }}
           onToggleMute={() => state.setMuteDialogOpen(true)}
           onBlockClick={() => state.setBlockConfirmOpen(true)}
+          onUnblockClick={() => {
+            if (state.otherUserId) unblockMutation.mutate();
+          }}
+          isBlocked={isPeerBlocked}
           onReportClick={() => state.setReportConfirmOpen(true)}
           onGroupInfoClick={() => state.setGroupInfoOpen((prev) => !prev)}
           onClearChat={() => state.setClearConfirmOpen(true)}
@@ -237,6 +276,21 @@ export default function ChatRoom() {
               ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }}
         />
+
+        {isPeerBlocked && (
+          <div className="flex items-center gap-3 border-b border-border bg-sidebar/80 px-4 py-2.5">
+            <p className="flex-1 text-sm text-foreground">
+              You blocked this contact. They can no longer message you.
+            </p>
+            <button
+              onClick={() => unblockMutation.mutate()}
+              disabled={unblockMutation.isPending}
+              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {unblockMutation.isPending ? 'Unblocking...' : 'Unblock'}
+            </button>
+          </div>
+        )}
 
         {state.selectedIds.length > 0 && (
           <div className="flex items-center gap-3 border-b border-border bg-sidebar/80 px-4 py-2 text-xs">
@@ -301,6 +355,8 @@ export default function ChatRoom() {
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}
           toggleSelect={actions.toggleSelect}
+          newMessageAnchorId={state.newMessagesAnchorId}
+          onNewMessagesSeen={handleNewMessagesSeen}
         />
 
         <ChatInput
@@ -311,6 +367,7 @@ export default function ChatRoom() {
           selectedImage={state.selectedImage}
           selectedFile={state.selectedFile}
           showEmojiPicker={state.showEmojiPicker}
+          disabled={isPeerBlocked}
           onInputChange={state.setInput}
           onSend={actions.handleSend}
           onSendImage={actions.handleSendImage}

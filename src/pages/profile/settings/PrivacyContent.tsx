@@ -8,7 +8,7 @@ import { usePrivacyStore } from '@/store/privacyStore';
 export default function PrivacyContent() {
   const navigate = useNavigate();
   const { lastSeen, addToGroups, readReceipts, setLastSeen, setAddToGroups, setReadReceipts } = usePrivacyStore();
-  const { data: blockedUsers = [] } = useQuery({ queryKey: ['blockedUsers'], queryFn: getBlockedUsers });
+  const { data: blockedUsers = [] } = useQuery({ queryKey: ['blocked-users'], queryFn: getBlockedUsers });
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -24,6 +24,7 @@ export default function PrivacyContent() {
         <select value={addToGroups} onChange={(e) => setAddToGroups(e.target.value as any)} className="rounded-lg border border-input bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
           <option value="everyone">Everyone</option>
           <option value="contacts">My Contacts</option>
+          <option value="nobody">Nobody</option>
         </select>
       </div>
       <label className="flex items-center justify-between">

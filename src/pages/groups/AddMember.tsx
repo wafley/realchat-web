@@ -79,7 +79,7 @@ export default function AddMember() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
+    <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5 pt-safe-top">
       <button
         onClick={() => navigate(-1)}
         className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

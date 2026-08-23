@@ -11,6 +11,7 @@ export interface AuthUserRaw {
   fullName?: string;
   bio?: string | null;
   avatarUrl?: string | null;
+  bannerUrl?: string | null;
   statusText?: string | null;
   isOnline?: boolean;
   lastSeenAt?: string | null;
@@ -26,6 +27,7 @@ export function mapUser(raw: AuthUserRaw): User {
     fullName: raw.fullName ?? '',
     bio: raw.bio ?? undefined,
     avatarUrl: raw.avatarUrl ?? undefined,
+    bannerUrl: raw.bannerUrl ?? undefined,
     status: raw.isOnline ? 'online' : 'offline',
     lastSeen: raw.lastSeenAt ? new Date(raw.lastSeenAt) : undefined,
     createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
@@ -107,7 +109,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
     if (newPassword.length < 6) throw new Error('New password must be at least 6 characters');
     return;
   }
-  await api.post('/auth/change-password', { currentPassword, newPassword });
+  await api.put('/users/me/password', { oldPassword: currentPassword, newPassword });
 }
 
 export async function deleteAccount(password: string): Promise<void> {

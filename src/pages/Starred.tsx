@@ -122,7 +122,7 @@ export default function Starred() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-border bg-sidebar px-3 py-2 lg:px-4 lg:py-3">
+      <div className="flex items-center gap-3 border-b border-border bg-sidebar px-3 py-2 lg:px-4 lg:py-3 pt-safe-top">
         <button
           onClick={() => navigate('/')}
           aria-label="Back"
