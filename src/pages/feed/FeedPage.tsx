@@ -18,7 +18,7 @@ export default function FeedPage() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-4">
+      <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-4 pt-safe-top">
         {isPending ? (
           <div className="flex justify-center py-20">
             <Loader2 size={24} className="animate-spin text-muted-foreground" />

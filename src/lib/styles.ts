@@ -75,7 +75,7 @@ export const settingsBackButton = cva([
 ]);
 
 export const settingsMobileHeader = cva([
-  'flex items-center gap-3 border-b border-border px-4 py-4 md:hidden',
+  'flex items-center gap-3 border-b border-border bg-sidebar px-4 py-4 md:hidden pt-safe-top',
 ]);
 
 export const settingsDesktopHeader = cva([

@@ -47,7 +47,7 @@ export default function CreatePostPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto py-6">
+    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto py-6 pt-safe-top">
       <div className="flex items-center justify-between px-6 pb-4">
         <button onClick={() => navigate(-1)} className="text-sm text-foreground">
           Cancel

@@ -36,7 +36,7 @@ export default function GroupsLayout() {
         </nav>
       </aside>
       <section className="flex flex-1 flex-col">
-        <div className="flex border-b border-border bg-background lg:hidden">
+        <div className="flex border-b border-border bg-sidebar lg:hidden pt-safe-top">
           {menuItems.map(({ to, icon: Icon, label, end }) => (
             <NavLink
               key={to}

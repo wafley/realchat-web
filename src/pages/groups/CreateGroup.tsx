@@ -82,7 +82,7 @@ export default function CreateGroup() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-border bg-background px-4 py-3 md:px-6">
+      <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 md:px-6 pt-safe-top">
         <button
           onClick={() => navigate('/')}
           className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/10 hover:text-foreground lg:hidden"

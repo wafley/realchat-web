@@ -154,12 +154,18 @@
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
-  html, body, #root {
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
+}
+
+/* Safe area spacing utilities for mobile view & native status bar */
+.pt-safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 2.75rem);
+}
+@media (min-width: 1024px) {
+  .pt-safe-top {
+    padding-top: 0;
   }
 }
+
 
 /* Sonner toast glassmorphism overrides */
 [data-sonner-toaster] {

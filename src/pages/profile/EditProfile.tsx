@@ -108,7 +108,7 @@ export default function EditProfile() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-4 md:hidden">
+      <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-4 md:hidden pt-safe-top">
         <button onClick={() => navigate(-1)} className="text-foreground transition-colors hover:text-accent">
           <ArrowLeft size={20} />
         </button>

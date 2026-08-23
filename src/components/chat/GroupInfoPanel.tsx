@@ -487,7 +487,7 @@ export default function GroupInfoPanel({
   return (
     <div className="flex h-full flex-col bg-sidebar text-foreground overflow-y-auto custom-scrollbar border-l border-border">
       {/* 1. Header (WhatsApp Style) */}
-      <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-sidebar/95 px-4 py-3.5 backdrop-blur">
+      <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-sidebar/95 px-4 py-3.5 backdrop-blur pt-safe-top">
         <button
           onClick={onClose}
           className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"

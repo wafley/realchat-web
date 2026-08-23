@@ -116,7 +116,7 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       <div className="fixed inset-0 z-[100]" onClick={onClose} />
       <div
         ref={drawerRef}
-        className="fixed left-0 top-0 z-[101] flex h-full w-full flex-col rounded-r-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 lg:left-20 lg:w-[30rem] pt-[env(safe-area-inset-top,0px)] lg:pt-0"
+        className="fixed left-0 top-0 z-[101] flex h-full w-full flex-col rounded-r-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 lg:left-20 lg:w-[30rem] pt-safe-top"
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           {showNewContactForm ? (

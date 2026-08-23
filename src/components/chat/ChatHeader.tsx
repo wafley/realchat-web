@@ -64,7 +64,7 @@ export default function ChatHeader({
   useNow(30000);
 
   return (
-    <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
+    <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 pt-safe-top">
       <button
         onClick={onBack}
         aria-label="Back to chats"

@@ -5,7 +5,7 @@ import path from 'path';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const beOrigin = env.VITE_SOCKET_URL || 'http://192.168.88.74:3000';
+  const beOrigin = env.VITE_SOCKET_URL || 'http://localhost:3000';
 
   return {
     plugins: [react(), tailwindcss()],
