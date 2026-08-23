@@ -1,4 +1,9 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 
 import {
   Send,
@@ -13,7 +18,9 @@ import type { Message } from '@/types';
 
 import { useThemeStore } from '@/store/themeStore';
 
-import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
+import EmojiPicker, {
+  Theme as EmojiTheme,
+} from 'emoji-picker-react';
 
 import { formatFileSize } from '@/lib/chatHelpers';
 
@@ -36,8 +43,15 @@ interface ChatInputProps {
   onCancelReply: () => void;
   onCancelEdit: () => void;
   onCancelImage: () => void;
-  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+
+  onFileSelect: (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => void;
+
+  onImageSelect: (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => void;
+
   onEmojiClick: (emoji: string) => void;
   onEmojiToggle: () => void;
 
@@ -74,18 +88,65 @@ export default function ChatInput({
 }: ChatInputProps) {
   const theme = useThemeStore((s) => s.theme);
 
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef =
+    useRef<HTMLTextAreaElement | null>(null);
+
+  const animationFrameRef = useRef<number | null>(
+    null
+  );
+
+  const [isMultiline, setIsMultiline] =
+    useState(false);
 
   useEffect(() => {
     const el = textareaRef.current;
 
     if (!el) return;
 
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(
+        animationFrameRef.current
+      );
+    }
+
+    const previousHeight = el.offsetHeight;
+
+    // Hilangkan height sementara supaya browser
+    // bisa menghitung tinggi konten sebenarnya
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+
+    const nextHeight = Math.min(
+      el.scrollHeight,
+      160
+    );
+
+    // Kembalikan ke tinggi sebelumnya dulu
+    // supaya transition bisa berjalan
+    el.style.height = `${previousHeight}px`;
+
+    // Force reflow agar browser membaca
+    // perubahan sebelum animasi dimulai
+    void el.offsetHeight;
+
+    animationFrameRef.current =
+      requestAnimationFrame(() => {
+        el.style.height = `${nextHeight}px`;
+      });
+
+    setIsMultiline(nextHeight > 44);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(
+          animationFrameRef.current
+        );
+      }
+    };
   }, [input]);
 
   const handleSend = () => {
+    if (disabled) return;
+
     if (editingMsg) {
       onUpdateEdit();
       return;
@@ -105,10 +166,10 @@ export default function ChatInput({
     selectedFile !== null;
 
   return (
-    <div className="relative border-t border-border">
+    <div className="relative">
       {/* Editing message */}
       {editingMsg ? (
-        <div className="mx-4 mb-2 mt-3 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-2 pr-1 shadow-sm">
+        <div className="mx-3 mb-2 mt-3 flex items-start gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-2 pr-1 shadow-sm lg:mx-4">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <div className="mt-0.5 h-full w-1 shrink-0 self-stretch rounded-full bg-accent/60" />
 
@@ -133,14 +194,15 @@ export default function ChatInput({
         </div>
       ) : (
         replyingTo && (
-          <div className="mx-4 mb-2 mt-3 flex items-start gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm">
+          <div className="mx-3 mb-2 mt-3 flex items-start gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm lg:mx-4">
             <div className="flex min-w-0 flex-1 items-start gap-2">
               <div className="mt-0.5 h-full w-1 shrink-0 self-stretch rounded-full bg-accent/60" />
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-semibold text-foreground/90 lg:text-sm">
                   Replying to{' '}
-                  {replyingTo.sender?.fullName ?? 'Unknown'}
+                  {replyingTo.sender?.fullName ??
+                    'Unknown'}
                 </p>
 
                 <p className="truncate text-xs text-foreground/70 lg:text-sm">
@@ -164,7 +226,7 @@ export default function ChatInput({
 
       {/* Image preview */}
       {imagePreview && (
-        <div className="mx-4 mb-2 mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm">
+        <div className="mx-3 mb-2 mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm lg:mx-4">
           <div className="relative shrink-0">
             <img
               src={imagePreview}
@@ -197,9 +259,12 @@ export default function ChatInput({
 
       {/* File preview */}
       {selectedFile && !imagePreview && (
-        <div className="mx-4 mb-2 mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm">
+        <div className="mx-3 mb-2 mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm lg:mx-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent/10 ring-1 ring-border lg:h-16 lg:w-16">
-            <FileText size={24} className="text-accent" />
+            <FileText
+              size={24}
+              className="text-accent"
+            />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -228,14 +293,18 @@ export default function ChatInput({
           ref={emojiPickerRef}
           className="absolute bottom-full left-0 right-0 z-50 mx-3 mb-2 lg:mx-4"
         >
-          <div className="overflow-hidden rounded-2xl shadow-xl [&_.EmojiPickerReact]:border-0 [&_.EmojiPickerReact]:h-[320px] [&_.EmojiPickerReact]:w-full">
+          <div className="overflow-hidden rounded-2xl shadow-xl [&_.EmojiPickerReact]:!border-0 [&_.EmojiPickerReact]:h-[320px] [&_.EmojiPickerReact]:w-full">
             <EmojiPicker
-              onEmojiClick={(data) => onEmojiClick(data.emoji)}
+              onEmojiClick={(data) =>
+                onEmojiClick(data.emoji)
+              }
               theme={
                 theme === 'dark'
                   ? EmojiTheme.DARK
                   : EmojiTheme.LIGHT
               }
+              width="100%"
+              height={320}
             />
           </div>
         </div>
@@ -243,14 +312,22 @@ export default function ChatInput({
 
       {/* Chat input */}
       <div className="mx-3 mb-3 mt-3 flex items-end gap-2 lg:mx-4">
-        {/* Main rounded input */}
-        <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full border border-input bg-input px-2 py-[3px] shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-accent/20">
+        {/* Main input */}
+        <div
+          className={`flex min-w-0 flex-1 items-end gap-1 border border-input bg-input px-2 py-[3px] shadow-sm transition-[border-radius,height] duration-200 ease-out focus-within:ring-2 focus-within:ring-accent/20 ${
+            isMultiline
+              ? 'rounded-2xl'
+              : 'rounded-full'
+          }`}
+        >
           {/* File */}
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() =>
+              fileInputRef.current?.click()
+            }
             disabled={disabled}
             type="button"
-            className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="mb-[1px] flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <FileText size={18} />
           </button>
@@ -264,10 +341,12 @@ export default function ChatInput({
 
           {/* Image */}
           <button
-            onClick={() => imageInputRef.current?.click()}
+            onClick={() =>
+              imageInputRef.current?.click()
+            }
             disabled={disabled}
             type="button"
-            className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="mb-[1px] flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ImagePlus size={18} />
           </button>
@@ -293,7 +372,9 @@ export default function ChatInput({
                   : 'Type a message...'
             }
             value={input}
-            onChange={(e) => onInputChange(e.target.value)}
+            onChange={(e) =>
+              onInputChange(e.target.value)
+            }
             onKeyDown={(e) => {
               if (
                 e.key === 'Enter' &&
@@ -301,10 +382,13 @@ export default function ChatInput({
                 !e.nativeEvent.isComposing
               ) {
                 e.preventDefault();
-                handleSend();
+
+                if (canSend) {
+                  handleSend();
+                }
               }
             }}
-            className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent py-[7px] text-[16px] leading-[22px] text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed"
+            className="block min-h-9 max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-[7px] text-[16px] leading-[22px] text-foreground placeholder:text-muted-foreground transition-[height] duration-200 ease-out focus:outline-none disabled:cursor-not-allowed"
           />
 
           {/* Emoji */}
@@ -313,7 +397,7 @@ export default function ChatInput({
             onClick={onEmojiToggle}
             disabled={disabled}
             type="button"
-            className={`flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+            className={`mb-[1px] flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               showEmojiPicker
                 ? 'bg-accent/15 text-accent'
                 : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'
@@ -323,12 +407,12 @@ export default function ChatInput({
           </button>
         </div>
 
-        {/* Separate circular send button */}
+        {/* Send button */}
         <button
           onClick={handleSend}
           disabled={disabled || !canSend}
           type="button"
-          className={`flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
             canSend && !disabled
               ? 'bg-accent text-accent-foreground shadow-md hover:scale-105 hover:shadow-lg active:scale-95'
               : 'bg-muted text-muted-foreground opacity-50'

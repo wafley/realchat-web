@@ -10,10 +10,20 @@
   --breakpoint-2xl: 1536px;
 }
 
+html {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+
 @media (max-width: 1023px) {
   html {
-    font-size: 17px;
+    font-size: calc(17px * var(--font-scale, 1));
   }
+}
+
+:root {
+  --fs-bubble: calc(16px * var(--font-scale, 1));
+  --fs-bubble-md: calc(14px * var(--font-scale, 1));
+  --fs-bubble-sm: calc(12px * var(--font-scale, 1));
 }
 
 :root {

@@ -1,6 +1,6 @@
 import { Moon, Sun, Monitor, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useThemeStore, ACCENT_COLORS, type AccentColor } from '@/store/themeStore';
+import { useThemeStore, ACCENT_COLORS, FONT_SIZES, type AccentColor } from '@/store/themeStore';
 
 export default function AppearanceContent() {
   const { mode, setMode, fontSize, setFontSize, accentColor, setAccentColor } = useThemeStore();
@@ -22,6 +22,10 @@ export default function AppearanceContent() {
           {[{ id: 'small' as const, label: 'Small' }, { id: 'default' as const, label: 'Default' }, { id: 'large' as const, label: 'Large' }].map(({ id, label }) => (
             <button key={id} onClick={() => setFontSize(id)} className={cn('flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors', fontSize === id ? 'bg-accent text-accent-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>{label}</button>
           ))}
+        </div>
+        <div className="mt-2 rounded-lg border border-border/50 bg-card/60 p-3">
+          <p style={{ fontSize: `${Math.round(15 * FONT_SIZES[fontSize])}px` }} className="font-medium text-foreground">Hallo Wok</p>
+          <p style={{ fontSize: `${Math.round(13 * FONT_SIZES[fontSize])}px` }} className="mt-0.5 text-muted-foreground">This is how text will appear across the app.</p>
         </div>
       </div>
       <div>
