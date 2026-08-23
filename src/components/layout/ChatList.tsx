@@ -332,7 +332,7 @@ export default function ChatList() {
                 placeholder="Search chats..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-full border border-input bg-background py-3 pl-11 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:pr-3 lg:text-sm"
+                className="w-full rounded-full border border-muted bg-muted py-3 pl-11 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:pr-3 lg:text-sm"
               />
             </div>
           </div>

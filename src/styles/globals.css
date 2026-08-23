@@ -2,6 +2,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+@media (max-width: 1023px) {
+  html {
+    font-size: 17px;
+  }
+}
+
 :root {
   --background: #09090b;
   --foreground: #fafafa;
