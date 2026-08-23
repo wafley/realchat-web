@@ -1291,8 +1291,22 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
       return false;
     });
   }
-  const { data } = await api.get(`/conversations/${conversationId}/media`);
-  return Array.isArray(data) ? data : [];
+  try {
+    const media: Message[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const res = await getMessages(conversationId, true, cursor, 50);
+      for (const m of res.data) {
+        if (m.type === 'image' || m.type === 'video' || m.type === 'file') media.push(m);
+        else if (m.type === 'text' && /https?:\/\/[^\s]+/.test(m.content)) media.push(m);
+      }
+      cursor = res.nextCursor ?? undefined;
+      if (!cursor) break;
+    }
+    return media;
+  } catch (err) {
+    throw toError(err, 'Failed to get shared media');
+  }
 }
 
 export async function getMutualGroups(userId: string): Promise<ChatConversation[]> {
@@ -1308,13 +1322,23 @@ export async function getMutualGroups(userId: string): Promise<ChatConversation[
             mutual.push(g);
           }
         } catch {
-          // skip if group detail fails
+          continue;
         }
       }
       return mutual;
     }
-    const { data } = await api.get(`/users/${userId}/mutual-groups`);
-    return Array.isArray(data) ? data : [];
+    const groups = await getGroups();
+    if (groups.length === 0) return [];
+    const details = await Promise.all(
+      groups.map(async (g) => {
+        try {
+          return { g, detail: await getGroup(g.id) };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    return details.flatMap((d) => (d && d.detail.members.some((m) => m.userId === userId) ? [d.g] : []));
   } catch (err) {
     throw toError(err, 'Failed to get mutual groups');
   }

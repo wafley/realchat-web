@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Lock } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
 import { formatTime } from '@/lib/chatHelpers';
 import { getUser } from '@/services/user';
-import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations } from '@/services/chat';
+import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations, muteConversation, unmuteConversation } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
 import { useAuthStore } from '@/store/authStore';
 import { usePresenceStore } from '@/store/presenceStore';
@@ -248,12 +248,31 @@ export default function UserProfile() {
     queryKey: ['shared-media', dmId],
     queryFn: () => getSharedMedia(dmId!),
     enabled: !!dmId,
+    staleTime: 60_000,
   });
 
   const { data: mutualGroups = [] } = useQuery({
     queryKey: ['mutual-groups', userId],
     queryFn: () => getMutualGroups(userId!),
     enabled: !!userId && !isSelf,
+    staleTime: 300_000,
+  });
+
+  const dmConversation = useMemo(
+    () => conversations.find((c) => c.id === dmId) ?? null,
+    [conversations, dmId],
+  );
+
+  const muteMutation = useMutation({
+    mutationFn: async () => {
+      if (!dmId) throw new Error('Conversation not found');
+      return dmConversation?.muted ? unmuteConversation(dmId) : muteConversation(dmId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast.success(dmConversation?.muted ? 'Notifications unmuted' : 'Notifications muted');
+    },
+    onError: () => toast.error('Failed to update notification settings'),
   });
 
   const actionsBar = !isSelf ? (
@@ -607,7 +626,7 @@ export default function UserProfile() {
                   <div className="space-y-1">
                     {/* Starred Messages */}
                     <button
-                      onClick={() => dmId ? navigate(`/dm/${dmId}`) : toast.info('Open chat to view starred messages')}
+                      onClick={() => navigate('/starred')}
                       className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
                     >
                       <Star size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -617,14 +636,23 @@ export default function UserProfile() {
                       <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
                     </button>
 
-                    {/* Notification Settings */}
+                    {/* Mute Notifications */}
                     <button
-                      onClick={() => toast.success('Notification settings for this chat updated')}
-                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
+                      onClick={() => {
+                        if (!dmId) toast.info('Start a chat with this person first');
+                        else muteMutation.mutate();
+                      }}
+                      disabled={muteMutation.isPending}
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group disabled:opacity-50"
                     >
-                      <Bell size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      {muteMutation.isPending ? (
+                        <Loader2 size={20} className="shrink-0 text-muted-foreground animate-spin" />
+                      ) : (
+                        <Bell size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground">Notification settings</p>
+                        <p className="text-sm font-semibold text-foreground">Mute notifications</p>
+                        <p className="text-xs text-muted-foreground">{dmConversation?.muted ? 'Muted' : 'On'}</p>
                       </div>
                       <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
                     </button>
@@ -641,15 +669,6 @@ export default function UserProfile() {
                       </div>
                       <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
                     </button>
-
-                    {/* Encryption */}
-                    <div className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left">
-                      <Lock size={20} className="shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground">Encryption</p>
-                        <p className="text-xs text-muted-foreground">Messages are end-to-end encrypted. Click to verify.</p>
-                      </div>
-                    </div>
                   </div>
 
                   <hr className="border-border/30" />
@@ -671,6 +690,7 @@ export default function UserProfile() {
                             className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/5"
                           >
                             <Avatar className="h-8 w-8">
+                              {g.avatarUrl && <AvatarImage src={g.avatarUrl} alt={g.name} />}
                               <AvatarFallback className="bg-muted text-foreground text-xs">
                                 <Users size={14} />
                               </AvatarFallback>
