@@ -335,6 +335,7 @@ export default function ChatRoom() {
           highlightedMsgId={highlightedMsgId}
           chatId={state.chatId}
           isDM={state.isDM}
+          peerAvatarUrl={state.chatAvatarUrl}
           filteredMessages={state.filteredMessages}
           searchQuery={state.searchQuery}
           isPending={state.isPending}

@@ -1,10 +1,12 @@
 import { type RefObject, type PointerEvent, type TouchEvent, useState, useRef, useCallback, useLayoutEffect, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, AlertCircle, RefreshCw, MessageSquareText, ChevronDown } from 'lucide-react';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
+import { getGroup } from '@/services/chat';
+import { resolveFileUrl } from '@/lib/url';
 import { type TypingUser } from '@/store/typingStore';
-import { queryClient } from '@/lib/queryClient';
 import { setChatViewport } from '@/lib/chatViewport';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
@@ -24,6 +26,7 @@ interface MessageListProps {
   isFetchingNextPage: boolean;
   typingUsers: TypingUser[];
   currentUserId: string | undefined;
+  peerAvatarUrl?: string | null;
   scrollTriggerRef: RefObject<HTMLDivElement | null>;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   onRetry: () => void;
@@ -59,6 +62,7 @@ export default function MessageList({
   isFetchingNextPage,
   typingUsers,
   currentUserId,
+  peerAvatarUrl,
   scrollTriggerRef,
   messagesEndRef,
   onRetry,
@@ -98,17 +102,24 @@ export default function MessageList({
     if (isNearBottom()) onSeenRef.current();
   }, [isNearBottom]);
 
+  const { data: groupDetail } = useQuery({
+    queryKey: ['group', chatId],
+    queryFn: () => getGroup(chatId),
+    enabled: !isDM,
+    staleTime: 60_000,
+  });
+
   const typingAvatars = useMemo(() => {
     const map = new Map<string, string>();
-    if (isDM) return map;
-    const group = queryClient.getQueryData<{
-      members?: { userId: string; user?: { avatarUrl?: string | null } | null }[];
-    }>(['group', chatId]);
-    for (const m of group?.members ?? []) {
-      if (m?.user?.avatarUrl) map.set(m.userId, m.user.avatarUrl);
+    for (const m of groupDetail?.members ?? []) {
+      if (!m?.userId) continue;
+      const avatarUrl = m.user?.avatarUrl;
+      if (typeof avatarUrl !== 'string' || !avatarUrl) continue;
+      const resolved = resolveFileUrl(avatarUrl);
+      if (resolved) map.set(m.userId, resolved);
     }
     return map;
-  }, [chatId, isDM]);
+  }, [groupDetail]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -228,11 +239,15 @@ export default function MessageList({
           )}
           {filteredMessages.map((msg, idx) => {
             const isOwn = msg.sender?.id === currentUserId || msg.senderId === currentUserId;
-            const prevMsg = idx > 0 ? filteredMessages[idx - 1] : null;
+            const previousMessage = idx > 0 ? filteredMessages[idx - 1] : null;
             const prevDateKey = idx > 0 ? getDateKey(filteredMessages[idx - 1].createdAt) : null;
             const currDateKey = getDateKey(msg.createdAt);
             const showDateSeparator = prevDateKey !== currDateKey;
-            const isFirstInRun = !prevMsg || prevMsg.senderId !== msg.senderId || showDateSeparator;
+            const isFirstInRun =
+              !previousMessage ||
+              previousMessage.type === 'system' ||
+              previousMessage.senderId !== msg.senderId ||
+              showDateSeparator;
             const name = isOwn || isDM || !isFirstInRun ? undefined : (msg.sender?.fullName ?? 'Unknown');
             const showAvatar = !isOwn && !isDM && isFirstInRun;
             const showSpacer = !isOwn && !isDM && !showAvatar;
@@ -284,7 +299,14 @@ export default function MessageList({
           <div ref={messagesEndRef} />
           {typingUsers.length > 0 && (
             <div className="flex items-end gap-2 px-1 py-1">
-              {!isDM && (
+              {isDM ? (
+                <Avatar className="h-7 w-7 ring-2 ring-background">
+                  {peerAvatarUrl && <AvatarImage src={resolveFileUrl(peerAvatarUrl)} alt={typingUsers[0]?.name} />}
+                  <AvatarFallback className="bg-chat-incoming-bg text-[10px] text-muted-foreground">
+                    {(typingUsers[0]?.name || '?').trim().charAt(0).toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
                 <div className="flex -space-x-2">
                   {typingUsers.slice(0, 3).map((t) => {
                     const avatar = typingAvatars.get(t.userId);
