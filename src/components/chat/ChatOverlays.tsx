@@ -449,7 +449,7 @@ export default function ChatOverlays({
             </div>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black/60 p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => selectMedia((activeMediaIndex - 1 + previewMedia.length) % previewMedia.length)} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous photo" title="Previous photo" disabled={previewMedia.length < 2}><ChevronLeft size={24} /></button>
+            <button onClick={(e) => { e.stopPropagation(); selectMedia((activeMediaIndex - 1 + previewMedia.length) % previewMedia.length); }} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous photo" title="Previous photo" disabled={previewMedia.length < 2}><ChevronLeft size={24} /></button>
             {activeMedia?.kind === 'video' ? (
               <div className="group relative flex items-center justify-center" style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)' }}>
                 <video
@@ -483,11 +483,11 @@ export default function ChatOverlays({
                 style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${lightboxZoom})` }}
               />
             )}
-            <button onClick={() => selectMedia((activeMediaIndex + 1) % previewMedia.length)} className="absolute right-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Next photo" title="Next photo" disabled={previewMedia.length < 2}><ChevronRight size={24} /></button>
+            <button onClick={(e) => { e.stopPropagation(); selectMedia((activeMediaIndex + 1) % previewMedia.length); }} className="absolute right-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Next photo" title="Next photo" disabled={previewMedia.length < 2}><ChevronRight size={24} /></button>
           </div>
           <div className="flex min-h-20 shrink-0 items-center gap-2 overflow-x-auto border-t border-white/10 bg-black/60 px-4 pb-[env(safe-area-inset-bottom)]">
             {previewMedia.map((media, index) => (
-              <button key={media.id} onClick={() => selectMedia(index)} className={`h-14 w-14 shrink-0 rounded bg-black/30 p-0.5 ${index === activeMediaIndex ? 'border-2 border-[#00a884]' : 'border border-transparent opacity-70 hover:opacity-100'}`} aria-label={`Open ${media.label}`} title={media.label}>
+              <button key={media.id} onClick={(e) => { e.stopPropagation(); selectMedia(index); }} className={`h-14 w-14 shrink-0 rounded bg-black/30 p-0.5 ${index === activeMediaIndex ? 'border-2 border-[#00a884]' : 'border border-transparent opacity-70 hover:opacity-100'}`} aria-label={`Open ${media.label}`} title={media.label}>
                 {media.kind === 'video' ? (
                   <video src={media.url} muted preload="metadata" className="h-full w-full rounded object-cover" />
                 ) : (
