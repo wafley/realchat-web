@@ -103,30 +103,55 @@ function MessageBubbleComp({
   }
 
   const showReadMore = (msg.content || '').length > 500;
-  const displayedContent = showReadMore && !isExpanded 
+  const displayedContent = showReadMore && !isExpanded
     ? (msg.content || '').slice(0, 500) + '...'
     : (msg.content || '');
 
-  const renderMeta = (isOverlay = false) => {
-    return (
-      <span className={`inline-flex items-center gap-1 select-none ${
-        isOverlay
-          ? 'text-[9px] lg:text-[10px] text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium'
-          : `pb-0.5 text-[9px] lg:text-[10px] ${isOwn ? 'text-white/60' : 'text-muted-foreground/75'}`
-      }`}>
-        {msg.isPinned && <Pin size={10} className={`shrink-0 ${isOverlay ? 'text-white' : 'text-foreground/80'}`} aria-label="Pinned" />}
-        {msg.isStarred && <Star size={10} className="shrink-0 fill-current" aria-label="Starred" />}
-        {formatTime(msg.createdAt)}
-        {isOwn && msg.status && (
-          (msg.status === 'pending' || msg.status === 'sending') ? <Clock size={13} className={`${isOverlay ? 'text-white' : 'text-white/70'} lg:size-3.5`} />
-          : msg.status === 'sent' ? <Check size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
-          : msg.status === 'delivered' ? <CheckCheck size={13} className={`${isOverlay ? 'text-white' : 'text-chat-status-unread'} lg:size-3.5`} />
-          : msg.status === 'read' ? <CheckCheck size={13} strokeWidth={3} className={`${isOverlay ? 'text-white' : 'text-chat-status-read'} lg:size-3.5`} />
-          : null
-        )}
-      </span>
-    );
+  // WhatsApp-style ticks: rendered without the extra bubble/backdrop wrapper
+  // since it now sits inline with the text, floated to the right.
+  const renderTicks = () => {
+    if (!isOwn || !msg.status) return null;
+    if (msg.status === 'pending' || msg.status === 'sending') {
+      return <Clock size={13} className="text-white/70" />;
+    }
+    if (msg.status === 'sent') {
+      return <Check size={15} className="text-white/70" />;
+    }
+    if (msg.status === 'delivered') {
+      return <CheckCheck size={15} className="text-white/70" />;
+    }
+    if (msg.status === 'read') {
+      return <CheckCheck size={15} strokeWidth={2.5} className="text-chat-status-read" />;
+    }
+    return null;
   };
+
+  // Used for the overlay variant on media without a caption (image/video with no text),
+  // where the meta still needs its little pill background to stay legible over the photo.
+  const renderMetaOverlay = () => (
+    <span className="inline-flex items-center gap-1 select-none text-[9px] lg:text-[10px] text-white bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-[1px] absolute bottom-2 right-2 font-medium">
+      {msg.isPinned && <Pin size={10} className="shrink-0 text-white" aria-label="Pinned" />}
+      {msg.isStarred && <Star size={10} className="shrink-0 fill-current" aria-label="Starred" />}
+      {formatTime(msg.createdAt)}
+      {renderTicks()}
+    </span>
+  );
+
+  // The WhatsApp trick: this span is floated right so short captions wrap
+  // beside it on the same line, and long captions push it to wrap onto its
+  // own trailing line naturally, matching native WA bubble behavior.
+  const renderMetaInline = () => (
+    <span
+      className={`float-right ml-2 mt-1.5 inline-flex translate-y-0.5 items-center gap-1 select-none whitespace-nowrap text-[12px] lg:text-[13px] ${
+        isOwn ? 'text-white/60' : 'text-muted-foreground/75'
+      }`}
+    >
+      {msg.isPinned && <Pin size={11} className="shrink-0 text-foreground/80" aria-label="Pinned" />}
+      {msg.isStarred && <Star size={11} className="shrink-0 fill-current" aria-label="Starred" />}
+      {formatTime(msg.createdAt)}
+      {renderTicks()}
+    </span>
+  );
 
   return (
     <div
@@ -167,11 +192,11 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`cursor-pointer relative transition-all duration-700 ${
-            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-[14px] py-[8px] text-[length:var(--fs-bubble,16px)]'
+          className={`chat-bubble cursor-pointer relative transition-all duration-700 ${
+            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-xl' : 'rounded-xl px-[9px] py-[6px] text-[length:var(--fs-bubble,16px)]'
           } ${isOwn
-            ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'rounded-tr-xs' : ''}`
-            : `bg-chat-incoming-bg text-chat-incoming-foreground border border-black/5 ${isFirstInRun ? 'rounded-tl-xs' : ''}`
+            ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'chat-bubble-tail-own rounded-tr-xs' : ''}`
+            : `bg-chat-incoming-bg text-chat-incoming-foreground border border-black/5 ${isFirstInRun ? 'chat-bubble-tail-other rounded-tl-xs' : ''}`
           } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''} ${isHighlighted ? 'ring-2 ring-accent shadow-lg shadow-accent/40 bg-accent/30 dark:bg-accent/40' : ''}`}
         >
           {!isOwn && name && (
@@ -211,26 +236,21 @@ function MessageBubbleComp({
                       decoding="async"
                     />
                   </div>
-                  <div className="mx-4 h-px bg-black/10" />
-                  <div className="flex w-full items-end justify-between gap-3">
-                    <p className={`px-[16px] pb-[4px] pt-[8px] text-[length:var(--fs-bubble,16px)] whitespace-pre-wrap [overflow-wrap:anywhere]`}>
-                      {highlightText(displayedContent, searchQuery)}
-                      {showReadMore && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsExpanded(!isExpanded);
-                          }}
-                          className="text-white font-semibold hover:underline cursor-pointer ml-1 inline"
-                        >
-                          {isExpanded ? 'Read less' : 'Read more'}
-                        </button>
-                      )}
-                    </p>
-                    <div className="shrink-0 pb-0.5 pr-1">
-                      {renderMeta(false)}
-                    </div>
-                  </div>
+                  <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
+                    {highlightText(displayedContent, searchQuery)}
+                    {showReadMore && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsExpanded(!isExpanded);
+                        }}
+                        className="text-white font-semibold hover:underline cursor-pointer ml-1"
+                      >
+                        {isExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    {renderMetaInline()}
+                  </p>
                 </>
               ) : (
                 <div className="relative overflow-hidden">
@@ -243,7 +263,7 @@ function MessageBubbleComp({
                     loading="lazy"
                     decoding="async"
                   />
-                  {renderMeta(true)}
+                  {renderMetaOverlay()}
                 </div>
               )}
             </div>
@@ -258,46 +278,42 @@ function MessageBubbleComp({
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  <div className="flex w-full items-end justify-between gap-3">
-                    <p className={`px-[16px] pb-[4px] pt-[8px] text-[length:var(--fs-bubble,16px)] whitespace-pre-wrap [overflow-wrap:anywhere]`}>
-                      {highlightText(displayedContent, searchQuery)}
-                      {showReadMore && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsExpanded(!isExpanded);
-                          }}
-                          className="text-white font-semibold hover:underline cursor-pointer ml-1 inline"
-                        >
-                          {isExpanded ? 'Read less' : 'Read more'}
-                        </button>
-                      )}
-                    </p>
-                    <div className="shrink-0 pb-0.5 pr-1">
-                      {renderMeta(false)}
-                    </div>
-                  </div>
+                  <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
+                    {highlightText(displayedContent, searchQuery)}
+                    {showReadMore && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsExpanded(!isExpanded);
+                        }}
+                        className="text-white font-semibold hover:underline cursor-pointer ml-1"
+                      >
+                        {isExpanded ? 'Read less' : 'Read more'}
+                      </button>
+                    )}
+                    {renderMetaInline()}
+                  </p>
                 </>
               ) : (
                 <div className="relative">
                   <video
                     src={msg.fileUrl}
                     controls
-                    className="block w-full rounded-2xl"
+                    className="block w-full rounded-xl"
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
-                  {renderMeta(true)}
+                  {renderMetaOverlay()}
                 </div>
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="flex w-full items-end justify-between gap-3 pb-0.5">
+            <div className="flex w-full flex-col gap-1">
               <a
                 href={msg.fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex flex-1 items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 min-w-0 transition-colors hover:bg-card`}
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 min-w-0 transition-colors hover:bg-card"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
@@ -310,40 +326,30 @@ function MessageBubbleComp({
                   )}
                 </div>
               </a>
-              <div className="shrink-0">
-                {renderMeta(false)}
-              </div>
+              <p className="text-right leading-none">{renderMetaInline()}</p>
             </div>
           ) : msg.isDeleted ? (
-            <div className="flex w-full items-end justify-between gap-3">
-              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5 text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
-                <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
-                <span>{msg.content}</span>
-              </p>
-              <div className="shrink-0">
-                {renderMeta(false)}
-              </div>
-            </div>
+            <p className="[overflow-wrap:anywhere] text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
+              <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
+              <span>{msg.content}</span>
+              {renderMetaInline()}
+            </p>
           ) : (
-            <div className="flex w-full min-w-0 items-end justify-between gap-3">
-              <p className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5">
-                {highlightText(displayedContent, searchQuery)}
-                {showReadMore && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsExpanded(!isExpanded);
-                    }}
-                    className="text-white font-semibold hover:underline cursor-pointer ml-1 inline"
-                  >
-                    {isExpanded ? 'Read less' : 'Read more'}
-                  </button>
-                )}
-              </p>
-              <div className="shrink-0 self-end">
-                {renderMeta(false)}
-              </div>
-            </div>
+            <p className="min-w-0 [overflow-wrap:anywhere]">
+              {highlightText(displayedContent, searchQuery)}
+              {showReadMore && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="text-white font-semibold hover:underline cursor-pointer ml-1"
+                >
+                  {isExpanded ? 'Read less' : 'Read more'}
+                </button>
+              )}
+              {renderMetaInline()}
+            </p>
           )}
         </div>
         {msg.edited && (
