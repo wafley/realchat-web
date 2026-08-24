@@ -38,6 +38,7 @@ interface ChatInputProps {
   selectedImage: File | null;
   selectedFile: File | null;
   groupMembers?: GroupMember[];
+  currentUserId?: string;
   showEmojiPicker: boolean;
   disabled?: boolean;
 
@@ -74,6 +75,7 @@ export default function ChatInput({
   selectedImage,
   selectedFile,
   groupMembers = [],
+  currentUserId,
   showEmojiPicker,
   disabled = false,
   onInputChange,
@@ -117,7 +119,7 @@ export default function ChatInput({
         const username = member.user?.username ?? '';
         const name = member.user?.fullName ?? '';
         return username.toLowerCase().includes(mentionMatch.query) || name.toLowerCase().includes(mentionMatch.query);
-      }).slice(0, 6)
+      }).filter((member) => member.userId !== currentUserId).slice(0, 6)
     : [];
 
   useEffect(() => {
