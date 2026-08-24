@@ -362,7 +362,12 @@ export default function ChatRoom() {
           onTouchStart={actions.handleTouchStart}
           onTouchMove={actions.handleTouchMove}
           onTouchEnd={actions.handleTouchEnd}
-          onClickImage={(url) => state.setLightboxUrl(url)}
+          onClickImage={(url, fileName, mimeType) => {
+            const metadata = new URLSearchParams();
+            if (fileName) metadata.set('downloadName', fileName);
+            if (mimeType) metadata.set('mimeType', mimeType);
+            state.setLightboxUrl(`${url.split('#')[0]}#${metadata.toString()}`);
+          }}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}

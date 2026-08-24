@@ -37,7 +37,7 @@ interface MessageListProps {
   onTouchStart: (msg: Message, e: TouchEvent) => void;
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
-  onClickImage: (url: string) => void;
+  onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];

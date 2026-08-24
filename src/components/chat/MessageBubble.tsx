@@ -25,7 +25,7 @@ interface MessageBubbleProps {
   onTouchStart: (msg: Message, e: TouchEvent) => void;
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
-  onClickImage: (url: string) => void;
+  onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -231,7 +231,7 @@ function MessageBubbleComp({
                       alt={msg.content || 'Image'}
                       className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                       style={{ maxHeight: '300px' }}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!); }}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
                       loading="lazy"
                       decoding="async"
                     />
@@ -259,7 +259,7 @@ function MessageBubbleComp({
                     alt="Image"
                     className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                     style={{ maxHeight: '300px' }}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!); }}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
                     loading="lazy"
                     decoding="async"
                   />

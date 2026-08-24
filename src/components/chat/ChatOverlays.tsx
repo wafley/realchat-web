@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Download } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message } from '@/types';
@@ -366,15 +366,43 @@ export default function ChatOverlays({
           >
             <X size={22} />
           </button>
-          <a
-            href={`${lightboxUrl.split('#')[0]}?downloadName=${encodeURIComponent(new URLSearchParams(lightboxUrl.split('#')[1] || '').get('downloadName') || 'photo')}`}
-            download={new URLSearchParams(lightboxUrl.split('#')[1] || '').get('downloadName') || 'photo'}
-            onClick={(e) => e.stopPropagation()}
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              const metadata = new URLSearchParams(lightboxUrl.split('#')[1] || '');
+              const fileName = metadata.get('downloadName') || 'photo';
+              const mimeType = metadata.get('mimeType') || 'application/octet-stream';
+              const extension = fileName.includes('.') ? `.${fileName.split('.').pop()}` : undefined;
+              const downloadUrl = `${lightboxUrl.split('#')[0]}?downloadName=${encodeURIComponent(fileName)}`;
+
+              if ('showSaveFilePicker' in window) {
+                try {
+                  const response = await fetch(downloadUrl);
+                  const blob = await response.blob();
+                  const handle = await window.showSaveFilePicker({
+                    suggestedName: fileName,
+                    ...(extension && { types: [{ description: mimeType, accept: { [mimeType]: [extension] } }] }),
+                  });
+                  const writable = await handle.createWritable();
+                  await writable.write(blob);
+                  await writable.close();
+                  return;
+                } catch (error) {
+                  if ((error as DOMException).name === 'AbortError') return;
+                }
+              }
+
+              const link = document.createElement('a');
+              link.href = downloadUrl;
+              link.download = fileName;
+              link.click();
+            }}
             className="absolute right-16 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-            aria-label="Download photo"
+            aria-label="Save as"
+            title="Save as"
           >
-            <Download size={20} />
-          </a>
+            <Save size={20} />
+          </button>
           <img
             src={lightboxUrl}
             alt="Full size"
