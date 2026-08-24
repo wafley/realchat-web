@@ -555,7 +555,6 @@ function onTypingStop(data: { conversationId: string; userId: string }) {
 interface StatusEvent {
   messageId: string;
   status: string;
-  userId?: string;
   seenAt?: string | null;
 }
 

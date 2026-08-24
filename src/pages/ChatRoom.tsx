@@ -455,6 +455,8 @@ export default function ChatRoom() {
         reportConfirmOpen={state.reportConfirmOpen}
         clearConfirmOpen={state.clearConfirmOpen}
         readReceiptTarget={state.readReceiptTarget}
+        isGroupChat={!state.isDM}
+        chatId={state.chatId}
         chatName={state.chatName}
         currentUserId={state.currentUser?.id}
         onCloseDelete={() => {

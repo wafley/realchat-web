@@ -1344,4 +1344,34 @@ export async function getMutualGroups(userId: string): Promise<ChatConversation[
   }
 }
 
+export interface MessageReader {
+  userId: string;
+  fullName: string;
+  username?: string;
+  avatarUrl?: string;
+  status: 'seen' | 'delivered' | 'sent';
+  seenAt: string | null;
+}
+
+export async function getMessageReaders(conversationId: string, messageId: string): Promise<MessageReader[]> {
+  try {
+    if (DEV_MODE) return [];
+    const { data } = await api.get(`/conversations/${conversationId}/messages/${messageId}/readers`);
+    const rows = Array.isArray(data) ? data : [];
+    return rows.map((r: Record<string, unknown>) => {
+      const s = normalizeRemoteStatus(r.status as string);
+      return {
+        userId: String(r.userId ?? ''),
+        fullName: (r.fullName as string) ?? 'Unknown',
+        username: (r.username as string) ?? undefined,
+        avatarUrl: (r.avatarUrl as string) ?? undefined,
+        status: s === 'read' ? 'seen' as const : s === 'delivered' ? 'delivered' as const : 'sent' as const,
+        seenAt: (r.seenAt as string) ?? null,
+      };
+    });
+  } catch (err) {
+    throw toError(err, 'Failed to get message readers');
+  }
+}
+
 export type { ChatConversation };
