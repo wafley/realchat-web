@@ -77,6 +77,15 @@ export default function ChatRoom() {
     markConversationAsSeen(state.chatId).catch(() => {});
   };
 
+  const handleReplyClick = (messageId: string) => {
+    setHighlightedMsgId(messageId);
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    window.setTimeout(() => setHighlightedMsgId(null), 3000);
+  };
+
   useEffect(() => {
     const targetId = location.state?.highlightMessageId;
     if (!targetId || handledHighlightIdRef.current === targetId) return;
@@ -385,6 +394,7 @@ export default function ChatRoom() {
             if (mimeType) metadata.set('mimeType', mimeType);
             state.setLightboxUrl(`${url.split('#')[0]}#${metadata.toString()}`);
           }}
+          onReplyClick={handleReplyClick}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}

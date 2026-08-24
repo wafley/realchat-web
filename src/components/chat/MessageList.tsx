@@ -38,6 +38,7 @@ interface MessageListProps {
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
   onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
+  onReplyClick: (messageId: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -74,6 +75,7 @@ export default function MessageList({
   onTouchMove,
   onTouchEnd,
   onClickImage,
+  onReplyClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -287,6 +289,7 @@ export default function MessageList({
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                   onClickImage={onClickImage}
+                  onReplyClick={onReplyClick}
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
                   onReactionPickerOpen={onReactionPickerOpen}
