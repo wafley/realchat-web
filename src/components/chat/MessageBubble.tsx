@@ -108,6 +108,8 @@ function MessageBubbleComp({
   const displayedContent = showReadMore && !isExpanded
     ? (msg.content || '').slice(0, 500) + '...'
     : (msg.content || '');
+  const replyText = msg.replyTo?.content || '';
+  const displayedReplyText = replyText.length > 120 ? `${replyText.slice(0, 120)}...` : replyText;
 
   // WhatsApp-style ticks: rendered without the extra bubble/backdrop wrapper
   // since it now sits inline with the text, floated to the right.
@@ -248,7 +250,7 @@ function MessageBubbleComp({
                   <span className="min-w-0 break-words text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : '🎥 Video'}</span>
                 </span>
               ) : (
-                <p className="min-w-0 max-w-full whitespace-normal break-all [overflow-wrap:anywhere] text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.type === 'video' ? '🎥 Video' : msg.replyTo.content}</p>
+                <p className="min-w-0 max-w-full whitespace-normal break-all [overflow-wrap:anywhere] text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.type === 'video' ? '🎥 Video' : displayedReplyText}</p>
               )}
             </button>
           )}
