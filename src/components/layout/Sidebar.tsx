@@ -1,10 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems } from '@/lib/navigation';
-import NotificationBell from '@/components/layout/NotificationBell';
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
@@ -31,21 +30,6 @@ export default function Sidebar() {
             <Icon size={22} />
           </NavLink>
         ))}
-        <NotificationBell />
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-            'relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors lg:h-12 lg:w-12',
-            isActive
-              ? 'bg-accent/15 text-accent'
-              : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground',
-            )
-          }
-          title="Settings"
-        >
-          <Settings size={22} />
-        </NavLink>
       </nav>
 
       <div className="flex-1" />

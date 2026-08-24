@@ -190,7 +190,7 @@ export default function MessageList({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex h-full flex-col overflow-y-auto bg-chat-tile-overlay px-4 py-4"
+        className="chat-scroll flex h-full flex-col overflow-y-auto bg-chat-tile-overlay px-4 py-4"
       >
       {isPending ? (
         <div className="flex h-full items-center justify-center">

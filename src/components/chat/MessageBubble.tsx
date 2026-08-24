@@ -141,16 +141,16 @@ function MessageBubbleComp({
           {isSelected ? <CheckSquare size={18} className="text-accent" /> : <Square size={18} className="text-muted-foreground" />}
         </button>
       ) : showAvatar ? (
-        <Avatar className="mt-0.5 h-8 w-8 shrink-0 lg:h-9 lg:w-9">
+        <Avatar className="mt-0.5 h-9 w-9 shrink-0">
           {msg.sender?.avatarUrl && (
             <AvatarImage src={msg.sender.avatarUrl} alt={msg.sender.fullName || name || 'User avatar'} />
           )}
-          <AvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground lg:text-sm">
+          <AvatarFallback className="bg-muted text-[length:var(--fs-bubble-sm,12px)] font-semibold text-muted-foreground">
             {(msg.sender?.fullName || msg.sender?.username || name || 'U').charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       ) : showSpacer ? (
-        <div className="mt-0.5 h-8 w-8 shrink-0 lg:h-9 lg:w-9" aria-hidden="true" />
+        <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
       <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col min-w-0`}>
         <div
@@ -168,14 +168,14 @@ function MessageBubbleComp({
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
           className={`cursor-pointer relative transition-all duration-700 ${
-            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-3 py-2 text-sm lg:px-3.5 lg:py-2 lg:text-base'
+            msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-2xl' : 'rounded-2xl px-[14px] py-[8px] text-[length:var(--fs-bubble,16px)]'
           } ${isOwn
             ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'rounded-tr-xs' : ''}`
             : `bg-chat-incoming-bg text-chat-incoming-foreground border border-black/5 ${isFirstInRun ? 'rounded-tl-xs' : ''}`
           } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''} ${isHighlighted ? 'ring-2 ring-accent shadow-lg shadow-accent/40 bg-accent/30 dark:bg-accent/40' : ''}`}
         >
           {!isOwn && name && (
-            <div className="mb-1 flex items-center justify-between gap-3 text-xs font-semibold">
+            <div className="mb-1 flex items-center justify-between gap-3 text-[length:var(--fs-bubble-sm,12px)] font-semibold">
               <span className={`truncate ${getSenderColor(name)}`}>
                 ~ {name}
               </span>
@@ -187,10 +187,10 @@ function MessageBubbleComp({
             </div>
           )}
           {msg.replyTo && (
-            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-xs ${
+            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-[length:var(--fs-bubble-sm,12px)] ${
               isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
             }`}>
-              <p className={`text-[11px] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)} lg:text-xs`}>
+              <p className={`text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
                 ~ {msg.replyTo.senderName}
               </p>
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
@@ -213,7 +213,7 @@ function MessageBubbleComp({
                   </div>
                   <div className="mx-4 h-px bg-black/10" />
                   <div className="flex w-full items-end justify-between gap-3">
-                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap [overflow-wrap:anywhere]`}>
+                    <p className={`px-[16px] pb-[4px] pt-[8px] text-[length:var(--fs-bubble,16px)] whitespace-pre-wrap [overflow-wrap:anywhere]`}>
                       {highlightText(displayedContent, searchQuery)}
                       {showReadMore && (
                         <button
@@ -259,7 +259,7 @@ function MessageBubbleComp({
                     preload="metadata"
                   />
                   <div className="flex w-full items-end justify-between gap-3">
-                    <p className={`px-3 pb-0.5 pt-1.5 text-sm lg:px-4 lg:pb-1 lg:pt-2 lg:text-base whitespace-pre-wrap [overflow-wrap:anywhere]`}>
+                    <p className={`px-[16px] pb-[4px] pt-[8px] text-[length:var(--fs-bubble,16px)] whitespace-pre-wrap [overflow-wrap:anywhere]`}>
                       {highlightText(displayedContent, searchQuery)}
                       {showReadMore && (
                         <button
@@ -316,7 +316,7 @@ function MessageBubbleComp({
             </div>
           ) : msg.isDeleted ? (
             <div className="flex w-full items-end justify-between gap-3">
-              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5 text-sm italic opacity-50">
+              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] pb-0.5 text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
                 <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
                 <span>{msg.content}</span>
               </p>

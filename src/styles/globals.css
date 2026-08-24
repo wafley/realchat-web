@@ -2,6 +2,30 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+html {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+
+@media (max-width: 1023px) {
+  html {
+    font-size: calc(17px * var(--font-scale, 1));
+  }
+}
+
+:root {
+  --fs-bubble: calc(16px * var(--font-scale, 1));
+  --fs-bubble-md: calc(14px * var(--font-scale, 1));
+  --fs-bubble-sm: calc(12px * var(--font-scale, 1));
+}
+
 :root {
   --background: #09090b;
   --foreground: #fafafa;
@@ -137,23 +161,33 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: var(--scrollbar-track);
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: 3px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--scrollbar-thumb) 80%, white);
+    width: 0;
+    height: 0;
   }
   * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: none;
+    scrollbar-color: transparent transparent;
   }
+}
+
+/* Visible scrollbar opt-in (chat room message list) */
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+.chat-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.chat-scroll::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--scrollbar-thumb) 80%, white);
 }
 
 /* Safe area spacing utilities for mobile view & native status bar */

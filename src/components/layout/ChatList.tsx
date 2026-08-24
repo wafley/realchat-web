@@ -290,29 +290,29 @@ export default function ChatList() {
       ) : (
         <div className="flex flex-col pt-safe-top">
           <div className="flex items-center justify-between gap-2 p-4 pb-2 lg:px-5 lg:pb-3 lg:pt-5">
-            <h1 className="text-xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
+            <h1 className="text-2xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/starred')}
                 aria-label="Starred messages"
                 className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
                   location.pathname === '/starred'
                     ? 'border-accent bg-accent/10 text-accent'
                     : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )}
               >
-                <Star size={18} />
+                <Star className="h-5 w-5 lg:h-[18px] lg:w-[18px]" />
               </button>
               <button
                 onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
                 aria-label="New chat"
-                className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
+                className="hidden shrink-0 lg:flex h-11 w-11 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >
-                <Plus size={20} />
+                <Plus className="h-5 w-5" />
               </button>
               <Link to="/profile" className="lg:hidden">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-9 w-9">
                   {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
                   <AvatarFallback className="text-xs font-semibold">
                     {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
@@ -324,8 +324,7 @@ export default function ChatList() {
           <div className="px-4 pb-4 lg:px-5 lg:pb-4">
             <div className="relative">
               <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground lg:left-3.5"
+                className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground lg:h-[18px] lg:w-[18px]"
               />
               <input
                 type="text"
@@ -333,7 +332,7 @@ export default function ChatList() {
                 placeholder="Search chats..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-full border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
+                className="w-full rounded-full border border-muted bg-muted py-3 pl-11 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:pr-3 lg:text-sm"
               />
             </div>
           </div>
