@@ -410,6 +410,7 @@ export default function ChatRoom() {
           imagePreview={state.imagePreview}
           selectedImage={state.selectedImage}
           selectedFile={state.selectedFile}
+          groupMembers={mutations.group?.members}
           showEmojiPicker={state.showEmojiPicker}
           disabled={isPeerBlocked}
           onInputChange={state.setInput}

@@ -14,7 +14,7 @@ import {
   Check,
 } from 'lucide-react';
 
-import type { Message } from '@/types';
+import type { GroupMember, Message } from '@/types';
 
 import { useThemeStore } from '@/store/themeStore';
 
@@ -23,6 +23,7 @@ import EmojiPicker, {
 } from 'emoji-picker-react';
 
 import { formatFileSize } from '@/lib/chatHelpers';
+import { resolveFileUrl } from '@/lib/url';
 
 import { IMAGE_ACCEPT } from '@/utils/imageValidation';
 
@@ -36,6 +37,7 @@ interface ChatInputProps {
   imagePreview: string | null;
   selectedImage: File | null;
   selectedFile: File | null;
+  groupMembers?: GroupMember[];
   showEmojiPicker: boolean;
   disabled?: boolean;
 
@@ -71,6 +73,7 @@ export default function ChatInput({
   imagePreview,
   selectedImage,
   selectedFile,
+  groupMembers = [],
   showEmojiPicker,
   disabled = false,
   onInputChange,
@@ -100,6 +103,40 @@ export default function ChatInput({
 
   const [isMultiline, setIsMultiline] =
     useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const mentionMatch = (() => {
+    if (groupMembers.length === 0 || !textareaRef.current) return null;
+    const cursor = textareaRef.current.selectionStart;
+    const beforeCursor = input.slice(0, cursor);
+    const match = beforeCursor.match(/(^|\s)@([A-Za-z0-9_]*)$/);
+    return match ? { start: cursor - match[0].length + match[1].length, query: match[2].toLowerCase() } : null;
+  })();
+  const mentionOptions = mentionMatch
+    ? groupMembers.filter((member) => {
+        const username = member.user?.username ?? '';
+        const name = member.user?.fullName ?? '';
+        return username.toLowerCase().includes(mentionMatch.query) || name.toLowerCase().includes(mentionMatch.query);
+      }).slice(0, 6)
+    : [];
+
+  useEffect(() => {
+    setMentionIndex(0);
+  }, [input]);
+
+  const selectMention = (member: GroupMember) => {
+    if (!mentionMatch) return;
+    const username = member.user?.username;
+    if (!username) return;
+    const cursor = textareaRef.current?.selectionStart ?? input.length;
+    const nextInput = `${input.slice(0, mentionMatch.start)}@${username} ${input.slice(cursor)}`;
+    onInputChange(nextInput);
+    requestAnimationFrame(() => {
+      const nextCursor = mentionMatch.start + username.length + 2;
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -322,6 +359,37 @@ export default function ChatInput({
         </div>
       )}
 
+      {mentionOptions.length > 0 && (
+        <div className="absolute bottom-full left-3 right-3 z-50 mb-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-xl lg:left-4 lg:right-4" role="listbox" aria-label="Mention group member">
+          {mentionOptions.map((member, index) => {
+            const displayName = member.user?.fullName || member.user?.username || member.userId;
+            const username = member.user?.username || member.userId;
+            return (
+              <button
+                key={member.userId}
+                type="button"
+                role="option"
+                aria-selected={index === mentionIndex}
+                onMouseDown={(e) => { e.preventDefault(); selectMention(member); }}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left ${index === mentionIndex ? 'bg-accent/15' : 'hover:bg-accent/10'}`}
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-semibold text-accent">
+                  {member.user?.avatarUrl ? (
+                    <img src={resolveFileUrl(member.user.avatarUrl)} alt={displayName} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    displayName.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-foreground">{displayName}</span>
+                  <span className="block truncate text-xs text-muted-foreground">@{username}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Chat input */}
       <div className="mx-3 mb-3 mt-3 flex items-end gap-2 lg:mx-4">
         {/* Main input */}
@@ -389,6 +457,17 @@ export default function ChatInput({
               onInputChange(e.target.value)
             }
             onKeyDown={(e) => {
+              if (mentionOptions.length > 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter')) {
+                e.preventDefault();
+                if (e.key === 'ArrowDown') {
+                  setMentionIndex((index) => (index + 1) % mentionOptions.length);
+                } else if (e.key === 'ArrowUp') {
+                  setMentionIndex((index) => (index - 1 + mentionOptions.length) % mentionOptions.length);
+                } else {
+                  selectMention(mentionOptions[mentionIndex]);
+                }
+                return;
+              }
               if (
                 e.key === 'Enter' &&
                 !e.shiftKey &&

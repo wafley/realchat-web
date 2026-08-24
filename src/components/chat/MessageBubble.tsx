@@ -53,6 +53,15 @@ function getSenderColor(nameStr?: string) {
   return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
 }
 
+function renderMessageContent(content: string, searchQuery: string, isOwn: boolean) {
+  const parts = content.split(/(@[A-Za-z0-9_]{3,30})/g);
+  return parts.map((part, index) =>
+    /^@[A-Za-z0-9_]{3,30}$/.test(part)
+      ? <mark key={`mention-${index}`} className={`rounded-md px-1 py-0.5 font-semibold leading-6 underline decoration-current/50 underline-offset-2 ${isOwn ? 'bg-white/15 text-white' : 'bg-accent/25 text-accent'}`}>{part}</mark>
+      : <span key={`text-${index}`}>{highlightText(part, searchQuery)}</span>,
+  );
+}
+
 function MessageBubbleComp({
   isHighlighted = false,
   msg,
@@ -270,7 +279,7 @@ function MessageBubbleComp({
                     />
                   </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {highlightText(displayedContent, searchQuery)}
+                    {renderMessageContent(displayedContent, searchQuery, isOwn)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -328,7 +337,7 @@ function MessageBubbleComp({
                     </button>
                   </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {highlightText(displayedContent, searchQuery)}
+                    {renderMessageContent(displayedContent, searchQuery, isOwn)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -410,7 +419,7 @@ function MessageBubbleComp({
             </p>
           ) : (
             <p className="min-w-0 [overflow-wrap:anywhere]">
-              {highlightText(displayedContent, searchQuery)}
+              {renderMessageContent(displayedContent, searchQuery, isOwn)}
               {showReadMore && (
                 <button
                   onClick={(e) => {
