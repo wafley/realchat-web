@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MoreVertical, Play, Pause } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message } from '@/types';
@@ -169,6 +169,8 @@ export default function ChatOverlays({
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [lightboxZoom, setLightboxZoom] = useState(1);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const lightboxVideoRef = useRef<HTMLVideoElement>(null);
   const activeLightboxUrl = lightboxUrl?.split('#')[0];
   const activeMediaIndex = Math.max(0, previewMedia.findIndex((media) => media.url === activeLightboxUrl));
   const activeMedia = previewMedia[activeMediaIndex];
@@ -180,6 +182,7 @@ export default function ChatOverlays({
   useEffect(() => {
     setLightboxZoom(1);
     setMoreOpen(false);
+    setVideoPlaying(false);
   }, [lightboxUrl]);
 
   useLayoutEffect(() => {
@@ -448,13 +451,30 @@ export default function ChatOverlays({
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black/60 p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => selectMedia((activeMediaIndex - 1 + previewMedia.length) % previewMedia.length)} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous photo" title="Previous photo" disabled={previewMedia.length < 2}><ChevronLeft size={24} /></button>
             {activeMedia?.kind === 'video' ? (
-              <video
-                src={lightboxUrl.split('#')[0]}
-                controls
-                autoPlay
-                className="rounded-sm object-contain shadow-2xl transition-transform duration-200"
-                style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${lightboxZoom})` }}
-              />
+              <div className="group relative flex items-center justify-center" style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)' }}>
+                <video
+                  ref={lightboxVideoRef}
+                  src={lightboxUrl.split('#')[0]}
+                  controls
+                  autoPlay
+                  onPlay={() => setVideoPlaying(true)}
+                  onPause={() => setVideoPlaying(false)}
+                  className="h-full w-full rounded-sm object-contain shadow-2xl transition-transform duration-200"
+                  style={{ transform: `scale(${lightboxZoom})` }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const video = lightboxVideoRef.current;
+                    if (video) void (video.paused ? video.play() : video.pause());
+                  }}
+                  className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-black/75 group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label={videoPlaying ? 'Pause video' : 'Play video'}
+                  title={videoPlaying ? 'Pause video' : 'Play video'}
+                >
+                  {videoPlaying ? <Pause size={27} fill="currentColor" /> : <Play size={27} fill="currentColor" className="ml-1" />}
+                </button>
+              </div>
             ) : (
               <img
                 src={lightboxUrl.split('#')[0]}

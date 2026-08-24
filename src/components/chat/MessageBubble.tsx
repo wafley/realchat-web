@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban, Play } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
 import type { Message } from '@/types';
@@ -271,13 +271,29 @@ function MessageBubbleComp({
             <div className="flex flex-col">
               {msg.content ? (
                 <>
-                  <video
-                    src={msg.fileUrl}
-                    controls
-                    className="block w-full rounded-t-2xl"
-                    style={{ maxHeight: '400px' }}
-                    preload="metadata"
-                  />
+                  <div className="group relative">
+                    <video
+                      src={msg.fileUrl}
+                      preload="metadata"
+                      className="block w-full cursor-pointer rounded-t-2xl"
+                      style={{ maxHeight: '400px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
+                      }}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
+                      }}
+                      className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-lg transition hover:bg-black/75"
+                      aria-label="Play video"
+                      title="Play video"
+                    >
+                      <Play size={25} fill="currentColor" className="ml-1" />
+                    </button>
+                  </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
@@ -296,13 +312,29 @@ function MessageBubbleComp({
                 </>
               ) : (
                 <div className="relative">
-                  <video
-                    src={msg.fileUrl}
-                    controls
-                    className="block w-full rounded-xl"
-                    style={{ maxHeight: '400px' }}
-                    preload="metadata"
-                  />
+                  <div className="group relative">
+                    <video
+                      src={msg.fileUrl}
+                      preload="metadata"
+                      className="block w-full cursor-pointer rounded-xl"
+                      style={{ maxHeight: '400px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
+                      }}
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
+                      }}
+                      className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-lg transition hover:bg-black/75"
+                      aria-label="Play video"
+                      title="Play video"
+                    >
+                      <Play size={25} fill="currentColor" className="ml-1" />
+                    </button>
+                  </div>
                   {renderMetaOverlay()}
                 </div>
               )}
