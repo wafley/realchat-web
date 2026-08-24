@@ -22,7 +22,7 @@ export interface ReplyTo {
   senderId: string;
   senderName: string;
   content: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'video';
   fileUrl?: string;
   fileName?: string;
 }

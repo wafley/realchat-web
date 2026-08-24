@@ -14,7 +14,7 @@ function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
     senderId: replyingTo.senderId,
     senderName: replyingTo.sender?.fullName ?? replyingTo.sender?.username ?? 'Unknown',
     content: replyingTo.content,
-    type: replyingTo.type as 'text' | 'image',
+    type: replyingTo.type as 'text' | 'image' | 'video',
     fileUrl: replyingTo.fileUrl,
     fileName: replyingTo.fileName,
   };

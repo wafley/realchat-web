@@ -212,13 +212,33 @@ function MessageBubbleComp({
             </div>
           )}
           {msg.replyTo && (
-            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-[length:var(--fs-bubble-sm,12px)] ${
+            <div className={`mb-1.5 min-w-0 max-w-full overflow-hidden rounded-lg border-l-4 px-2.5 py-1.5 text-[length:var(--fs-bubble-sm,12px)] ${
               isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
             }`}>
-              <p className={`text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
+              <p className={`truncate text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
                 ~ {msg.replyTo.senderName}
               </p>
-              <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
+              {msg.replyTo.fileUrl && (msg.replyTo.type === 'image' || msg.replyTo.type === 'video') ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClickImage(resolveFileUrl(msg.replyTo!.fileUrl)!, msg.replyTo!.fileName, msg.replyTo!.type === 'video' ? 'video/mp4' : 'image/*');
+                  }}
+                  className="mt-1 flex w-full min-w-0 items-center gap-2 overflow-hidden rounded-md text-left transition-opacity hover:opacity-80"
+                >
+                  <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded bg-black/30">
+                    {msg.replyTo.type === 'video' ? (
+                      <video src={resolveFileUrl(msg.replyTo.fileUrl)} muted preload="metadata" className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={resolveFileUrl(msg.replyTo.fileUrl)} alt="Replied photo" className="h-full w-full object-cover" />
+                    )}
+                    {msg.replyTo.type === 'video' && <Play size={15} fill="currentColor" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" />}
+                  </span>
+                  <span className="min-w-0 break-words text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : '🎥 Video'}</span>
+                </button>
+              ) : (
+                <p className="min-w-0 whitespace-normal break-words [overflow-wrap:anywhere] text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.type === 'video' ? '🎥 Video' : msg.replyTo.content}</p>
+              )}
             </div>
           )}
           {msg.type === 'image' && msg.fileUrl ? (
