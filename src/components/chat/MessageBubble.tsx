@@ -248,7 +248,7 @@ function MessageBubbleComp({
                   <span className="min-w-0 break-words text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : '🎥 Video'}</span>
                 </span>
               ) : (
-                <p className="min-w-0 whitespace-normal break-words [overflow-wrap:anywhere] text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.type === 'video' ? '🎥 Video' : msg.replyTo.content}</p>
+                <p className="min-w-0 max-w-full whitespace-normal break-all [overflow-wrap:anywhere] text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.type === 'video' ? '🎥 Video' : msg.replyTo.content}</p>
               )}
             </button>
           )}
