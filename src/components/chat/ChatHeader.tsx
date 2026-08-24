@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
@@ -47,7 +46,6 @@ export default function ChatHeader({
   onGroupInfoClick,
   onClearChat,
 }: ChatHeaderProps) {
-  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +62,7 @@ export default function ChatHeader({
   useNow(30000);
 
   return (
-    <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 pt-safe-top">
+    <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 pt-safe-top lg:py-4 lg:!pt-4">
       <button
         onClick={onBack}
         aria-label="Back to chats"
@@ -80,7 +78,7 @@ export default function ChatHeader({
       </Avatar>
       <div className="flex-1">
         {isDM && userId ? (
-          <button onClick={() => navigate(`/profile/${userId}`)} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
+          <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         ) : (
           <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         )}

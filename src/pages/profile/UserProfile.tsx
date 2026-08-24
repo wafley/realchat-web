@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
@@ -112,14 +112,21 @@ function MediaThumb({ media, onClickImage }: { media: { id: string; type: string
   );
 }
 
-export default function UserProfile() {
+interface UserProfileProps {
+  userIdOverride?: string;
+  onPanelClose?: () => void;
+  onClearChat?: () => void;
+}
+
+export default function UserProfile({ userIdOverride, onPanelClose, onClearChat }: UserProfileProps = {}) {
   const { userId: paramUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
 
-  const userId = paramUserId || currentUser?.id;
+  const userId = userIdOverride || paramUserId || currentUser?.id;
   const isSelf = currentUser?.id === userId;
+  const isPanel = !!onPanelClose;
 
   const { data: user, isPending, isError } = useQuery({
     queryKey: ['user', userId],
@@ -278,40 +285,66 @@ export default function UserProfile() {
   };
 
   const actionsBar = !isSelf ? (
-    <div className="grid grid-cols-3 gap-2">
+    <div className={cn(
+      isPanel ? 'divide-y divide-border/30 border-t border-border/40 pt-1' : 'grid grid-cols-3 gap-2',
+    )}>
+      <button
+        onClick={async () => {
+          try {
+            const conversationId = await findOrCreateConversation(user?.id ?? userId!);
+            navigate(`/dm/${conversationId}`, { state: { name: displayName, online: user?.status === 'online' } });
+          } catch {
+            toast.error('Failed to open conversation');
+          }
+        }}
+        className={cn(
+          'flex items-center gap-3.5 text-sm font-semibold transition-colors',
+          isPanel
+            ? 'w-full rounded-lg px-2 py-2.5 text-left text-foreground hover:bg-accent/10'
+            : 'justify-center rounded-lg bg-accent px-2 py-2.5 text-accent-foreground hover:bg-accent/80',
+        )}
+      >
+        <MessageSquareText size={20} className="text-muted-foreground" />
+        <span>Chat</span>
+      </button>
       {isContact ? (
         <button
           onClick={() => removeContactMutation.mutate()}
           disabled={removeContactMutation.isPending}
-          className="flex items-center justify-center gap-2 rounded-lg border border-border px-2 py-2.5 text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+          className={cn(
+            'flex items-center gap-3.5 text-sm text-foreground transition-colors disabled:opacity-50',
+            isPanel
+              ? 'w-full rounded-lg px-2 py-2.5 text-left hover:bg-destructive/10 hover:text-destructive'
+              : 'justify-center rounded-lg border border-border px-2 py-2.5 hover:bg-destructive/10 hover:text-destructive',
+          )}
         >
-          {removeContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserMinus size={16} />}
-          <span className="hidden sm:inline">{removeContactMutation.isPending ? 'Removing...' : 'Remove'}</span>
+          {removeContactMutation.isPending ? <Loader2 size={20} className="animate-spin text-muted-foreground" /> : <UserMinus size={20} className="text-muted-foreground" />}
+          <span>{removeContactMutation.isPending ? 'Removing...' : 'Remove contact'}</span>
         </button>
       ) : (
         <button
           onClick={() => addContactMutation.mutate()}
           disabled={addContactMutation.isPending}
-          className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+          className={cn(
+            'flex items-center gap-3.5 text-sm font-medium transition-colors disabled:opacity-50',
+            isPanel
+              ? 'w-full rounded-lg px-2 py-2.5 text-left text-foreground hover:bg-accent/10'
+              : 'justify-center rounded-lg bg-accent px-2 py-2.5 text-accent-foreground hover:bg-accent/80',
+          )}
         >
-          {addContactMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-          <span className="hidden sm:inline">{addContactMutation.isPending ? 'Adding...' : 'Add'}</span>
+          {addContactMutation.isPending ? <Loader2 size={20} className="animate-spin text-muted-foreground" /> : <UserPlus size={20} className="text-muted-foreground" />}
+          <span>{addContactMutation.isPending ? 'Adding...' : 'Add contact'}</span>
         </button>
       )}
-      <button
-        onClick={async () => {
-          try {
-            const dmId = await findOrCreateConversation(user?.id ?? userId!);
-            navigate(`/dm/${dmId}`, { state: { name: displayName, online: user?.status === 'online' } });
-          } catch {
-            toast.error('Failed to open conversation');
-          }
-        }}
-        className="flex items-center justify-center gap-2 rounded-lg bg-accent px-2 py-2.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80"
-      >
-        <MessageSquareText size={16} />
-        <span className="hidden sm:inline">Chat</span>
-      </button>
+      {isPanel && onClearChat && (
+        <button
+          onClick={onClearChat}
+          className="flex w-full items-center gap-3.5 rounded-lg px-2 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
+        >
+          <Trash2 size={20} className="text-muted-foreground" />
+          <span>Clear chat</span>
+        </button>
+      )}
       <button
         onClick={() => {
           if (isBlocked) {
@@ -321,18 +354,24 @@ export default function UserProfile() {
           }
         }}
         disabled={blockMutation.isPending || unblockMutation.isPending}
-        className={`flex items-center justify-center gap-2 rounded-lg border px-2 py-2.5 text-sm transition-colors disabled:opacity-50 ${
+        className={cn(
+          'flex items-center gap-3.5 text-sm transition-colors disabled:opacity-50',
+          isPanel
+            ? 'w-full rounded-lg px-2 py-2.5 text-left'
+            : 'justify-center rounded-lg border px-2 py-2.5',
           isBlocked
-            ? 'border-destructive/30 text-destructive hover:bg-destructive/10'
-            : 'border-border text-foreground hover:bg-accent/10'
-        }`}
+            ? 'text-destructive hover:bg-destructive/10'
+            : 'text-foreground hover:bg-accent/10',
+          !isPanel && isBlocked && 'border-destructive/30',
+          !isPanel && !isBlocked && 'border-border',
+        )}
       >
         {blockMutation.isPending || unblockMutation.isPending ? (
-          <Loader2 size={16} className="animate-spin" />
+          <Loader2 size={20} className="animate-spin text-muted-foreground" />
         ) : (
-          <Ban size={16} />
+          <Ban size={20} className="text-muted-foreground" />
         )}
-        <span className="hidden sm:inline">
+        <span>
           {blockMutation.isPending
             ? 'Blocking...'
             : unblockMutation.isPending
@@ -346,14 +385,18 @@ export default function UserProfile() {
   ) : null;
 
   return (
-    <div className="flex h-full flex-col">
-      <div className={cn('flex-1 overflow-y-auto md:pb-0', !isSelf && 'pb-24')}>
-        <div className="mx-auto max-w-4xl px-6 py-4 pt-safe-top">
-          <div className="relative mb-4 flex items-center">
-            <button onClick={() => (isSelf ? navigate('/') : navigate(-1))} className="text-muted-foreground transition-colors hover:text-accent">
-              <ArrowLeft size={20} />
+    <div className={cn('flex h-full flex-col', isPanel && 'bg-sidebar')}>
+      <div className={cn('flex-1 overflow-y-auto md:pb-0', !isSelf && 'pb-24', isPanel && 'pb-0')}>
+          <div className={cn('mx-auto max-w-4xl px-6 py-4 pt-safe-top', isPanel && 'px-4 py-0 pt-0')}>
+          <div className={cn(
+            'relative mb-4 flex items-center gap-3',
+            isPanel && 'sticky top-0 z-20 -mx-4 mb-3 h-[60px] border-b border-border bg-sidebar/95 px-4 backdrop-blur',
+          )}>
+            <button onClick={() => (onPanelClose ? onPanelClose() : isSelf ? navigate('/') : navigate(-1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent">
+              <X size={18} className="hidden lg:block" />
+              <ArrowLeft size={20} className="lg:hidden" />
             </button>
-            <span className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold text-foreground">Profile</span>
+            <span className={cn('text-sm font-semibold text-foreground', !isPanel && 'absolute left-1/2 -translate-x-1/2')}>Profile</span>
           </div>
 
           {isPending ? (
@@ -369,7 +412,10 @@ export default function UserProfile() {
           ) : (
             <>
               {/* Profile Cover Banner */}
-              <div className="relative h-36 sm:h-44 md:h-52 w-full overflow-hidden rounded-2xl border border-border/40 shadow-md group">
+              <div className={cn(
+                'relative h-36 sm:h-44 md:h-52 w-full overflow-hidden rounded-2xl border border-border/40 shadow-md group',
+                isPanel && 'h-32 rounded-xl',
+              )}>
                 {effectiveUser?.bannerUrl ? (
                   <img
                     src={resolveFileUrl(effectiveUser.bannerUrl)}
@@ -397,13 +443,17 @@ export default function UserProfile() {
               </div>
 
               {/* Avatar & Header Details */}
-              <div className="relative px-2 sm:px-4">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-16 mb-3">
+              <div className={cn('relative px-2 sm:px-4', isPanel && 'px-1')}>
+                <div className={cn(
+                  'flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-16 mb-3',
+                  isPanel && '-mt-10 mb-3',
+                )}>
                   {/* Avatar with Overlap */}
                   <div className="relative shrink-0">
                     <Avatar
                       className={cn(
                         "h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 ring-4 ring-background shadow-2xl bg-card transition-transform hover:scale-105",
+                        isPanel && 'h-20 w-20 sm:h-20 sm:w-20 ring-sidebar',
                         effectiveUser?.avatarUrl && "cursor-pointer"
                       )}
                       onClick={() => effectiveUser?.avatarUrl && setPreviewUrl(effectiveUser.avatarUrl)}
@@ -589,7 +639,7 @@ export default function UserProfile() {
               {!isSelf && <hr className="my-4 border-border/40" />}
 
               {!isSelf && (
-                <div className="space-y-4 px-1">
+                <div className={cn('space-y-4 px-1', isPanel && 'space-y-3 px-0')}>
                   {/* 1. Media, links and docs */}
                   <div>
                     <div className="mb-2.5 flex items-center justify-between">
@@ -664,7 +714,7 @@ export default function UserProfile() {
                     </div>
 
                     {mutualGroups.length > 0 ? (
-                      <div className="space-y-1 pt-1">
+                      <div className="ml-9 space-y-1 pt-1">
                         {mutualGroups.map((g) => (
                           <button
                             key={g.id}
@@ -686,7 +736,7 @@ export default function UserProfile() {
                         ))}
                       </div>
                     ) : (
-                      <div className="py-1 text-xs text-muted-foreground/60 pl-8">
+                      <div className="ml-9 py-1 text-xs text-muted-foreground/60">
                         No mutual groups
                       </div>
                     )}
