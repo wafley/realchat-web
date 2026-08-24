@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 
@@ -263,17 +263,19 @@ export default function UserProfile() {
     [conversations, dmId],
   );
 
-  const muteMutation = useMutation({
-    mutationFn: async () => {
-      if (!dmId) throw new Error('Conversation not found');
-      return dmConversation?.muted ? unmuteConversation(dmId) : muteConversation(dmId);
-    },
-    onSuccess: () => {
+  const [muteDialogOpen, setMuteDialogOpen] = useState(false);
+
+  const handleMuteOption = async (option: 'unmute' | 'forever' | string) => {
+    if (!dmId) return;
+    try {
+      if (option === 'unmute') await unmuteConversation(dmId);
+      else await muteConversation(dmId, option === 'forever' ? undefined : option);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast.success(dmConversation?.muted ? 'Notifications unmuted' : 'Notifications muted');
-    },
-    onError: () => toast.error('Failed to update notification settings'),
-  });
+      toast.success(option === 'unmute' ? 'Notifications unmuted' : 'Notifications muted');
+    } catch {
+      toast.error('Failed to update notification settings');
+    }
+  };
 
   const actionsBar = !isSelf ? (
     <div className="grid grid-cols-3 gap-2">
@@ -640,38 +642,18 @@ export default function UserProfile() {
                     <button
                       onClick={() => {
                         if (!dmId) toast.info('Start a chat with this person first');
-                        else muteMutation.mutate();
+                        else setMuteDialogOpen(true);
                       }}
-                      disabled={muteMutation.isPending}
-                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group disabled:opacity-50"
+                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
                     >
-                      {muteMutation.isPending ? (
-                        <Loader2 size={20} className="shrink-0 text-muted-foreground animate-spin" />
-                      ) : (
-                        <Bell size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-                      )}
+                      <Bell size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-foreground">Mute notifications</p>
                         <p className="text-xs text-muted-foreground">{dmConversation?.muted ? 'Muted' : 'On'}</p>
                       </div>
                       <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
                     </button>
-
-                    {/* Disappearing Messages */}
-                    <button
-                      onClick={() => toast.info('Disappearing messages feature coming soon')}
-                      className="flex w-full items-center gap-3.5 py-2.5 px-2 text-left transition-colors hover:bg-accent/5 rounded-lg group"
-                    >
-                      <Clock size={20} className="shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground">Disappearing messages</p>
-                        <p className="text-xs text-muted-foreground">Off</p>
-                      </div>
-                      <ChevronRight size={16} className="shrink-0 text-muted-foreground/40" />
-                    </button>
                   </div>
-
-                  <hr className="border-border/30" />
 
                   {/* 3. Groups in Common */}
                   <div>
@@ -709,6 +691,41 @@ export default function UserProfile() {
                       </div>
                     )}
                   </div>
+
+                  <Modal open={muteDialogOpen} onClose={() => setMuteDialogOpen(false)} title="Mute notifications">
+                    <div className="space-y-1.5">
+                      {dmConversation?.muted && (
+                        <button
+                          onClick={() => { setMuteDialogOpen(false); void handleMuteOption('unmute'); }}
+                          className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                        >
+                          <span className="font-medium">Unmute</span>
+                          <BellOff size={15} className="text-muted-foreground" />
+                        </button>
+                      )}
+                      {[
+                        { label: '15 minutes', ms: 15 * 60 * 1000 },
+                        { label: '1 hour', ms: 60 * 60 * 1000 },
+                        { label: '8 hours', ms: 8 * 60 * 60 * 1000 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.label}
+                          onClick={() => { setMuteDialogOpen(false); void handleMuteOption(new Date(Date.now() + opt.ms).toISOString()); }}
+                          className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                        >
+                          <span>{opt.label}</span>
+                          <Clock size={15} className="text-muted-foreground" />
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => { setMuteDialogOpen(false); void handleMuteOption('forever'); }}
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
+                      >
+                        <span>Forever</span>
+                        <BellOff size={15} className="text-muted-foreground" />
+                      </button>
+                    </div>
+                  </Modal>
                 </div>
               )}
 
