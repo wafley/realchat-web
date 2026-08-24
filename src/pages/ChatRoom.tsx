@@ -18,11 +18,28 @@ import { usePageVisibility } from '@/hooks/chat/usePageVisibility';
 import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
 import { getBlockedUsers, unblockUser, markConversationAsSeen } from '@/services/chat';
 import { clearChatViewport } from '@/lib/chatViewport';
+import { resolveFileUrl } from '@/lib/url';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = useChatState();
+  const previewMedia = [
+    ...state.messages
+      .filter((message) => (message.type === 'image' || message.type === 'video') && !!message.fileUrl)
+      .map((message) => ({
+        id: message.id,
+        url: resolveFileUrl(message.fileUrl)!,
+        fileName: message.fileName,
+        mimeType: message.mimeType,
+        label: message.fileName || 'Photo',
+        kind: message.type,
+        senderName: message.senderId === state.currentUser?.id
+          ? 'You'
+          : message.sender?.fullName || message.sender?.username || state.chatName,
+        senderAvatarUrl: message.sender?.avatarUrl,
+      })),
+  ];
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const handledHighlightIdRef = useRef<string | null>(null);
 
@@ -457,6 +474,7 @@ export default function ChatRoom() {
         forwardSearch={state.forwardSearch}
         forwardableConversations={mutations.forwardableConversations}
         lightboxUrl={state.lightboxUrl}
+          previewMedia={previewMedia}
         blockConfirmOpen={state.blockConfirmOpen}
         reportConfirmOpen={state.reportConfirmOpen}
         clearConfirmOpen={state.clearConfirmOpen}
@@ -478,6 +496,12 @@ export default function ChatRoom() {
         onForwardSearchChange={state.setForwardSearch}
         onForward={actions.handleForward}
         onCloseLightbox={() => state.setLightboxUrl(null)}
+          onSelectLightbox={(url, fileName, mimeType) => {
+            const metadata = new URLSearchParams();
+            if (fileName) metadata.set('downloadName', fileName);
+            if (mimeType) metadata.set('mimeType', mimeType);
+            state.setLightboxUrl(`${url.split('#')[0]}#${metadata.toString()}`);
+          }}
         onCloseBlock={() => state.setBlockConfirmOpen(false)}
         onBlock={actions.handleBlock}
         onCloseReport={() => state.setReportConfirmOpen(false)}

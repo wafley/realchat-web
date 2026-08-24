@@ -308,25 +308,34 @@ function MessageBubbleComp({
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="flex w-full flex-col gap-1">
+            <div className="flex w-full min-w-[250px] max-w-[360px] flex-col gap-1">
               <a
-                href={msg.fileUrl}
+                href={resolveFileUrl(msg.fileUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 min-w-0 transition-colors hover:bg-card"
+                download={msg.fileName || true}
+                className={`group flex min-w-0 items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+                  isOwn
+                    ? 'border-white/10 bg-black/15 hover:bg-black/25'
+                    : 'border-white/5 bg-black/20 hover:bg-black/30'
+                }`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                  <FileText size={18} className="text-accent" />
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+                  isOwn ? 'bg-indigo-500/20' : 'bg-slate-700/70'
+                }`}>
+                  <FileText size={21} strokeWidth={1.8} className={isOwn ? 'text-indigo-300' : 'text-slate-300'} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{msg.fileName || 'Document'}</p>
+                <div className="min-w-0 flex-1 py-0.5">
+                  <p className="truncate text-[13px] font-medium leading-5 text-white">
+                    {msg.fileName || 'Document'}
+                  </p>
                   {msg.fileSize && (
-                    <p className="text-xs text-muted-foreground">{formatFileSize(msg.fileSize)}</p>
+                    <p className="text-[11px] leading-4 text-white/55">{formatFileSize(msg.fileSize)}</p>
                   )}
                 </div>
               </a>
-              <p className="text-right leading-none">{renderMetaInline()}</p>
+              <div className="flex justify-end pr-1 leading-none">{renderMetaInline()}</div>
             </div>
           ) : msg.isDeleted ? (
             <p className="[overflow-wrap:anywhere] text-[length:var(--fs-bubble-md,14px)] italic opacity-50">

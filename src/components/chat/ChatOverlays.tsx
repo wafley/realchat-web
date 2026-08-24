@@ -1,11 +1,21 @@
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message } from '@/types';
 import { senderName, getMessageReaders } from '@/services/chat';
 import { resolveFileUrl } from '@/lib/url';
+
+type SaveFilePicker = (options: {
+  suggestedName: string;
+  types?: { description: string; accept: Record<string, string[]> }[];
+}) => Promise<{
+  createWritable: () => Promise<{
+    write: (data: Blob) => Promise<void>;
+    close: () => Promise<void>;
+  }>;
+}>;
 
 function formatTime(date: Date | string) {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -86,6 +96,7 @@ interface ChatOverlaysProps {
   forwardSearch: string;
   forwardableConversations: { id: string; name: string; type: string; avatarUrl?: string }[];
   lightboxUrl: string | null;
+  previewMedia: { id: string; url: string; fileName?: string; mimeType?: string; label: string; kind: 'image' | 'video'; senderName: string; senderAvatarUrl?: string }[];
   blockConfirmOpen: boolean;
   reportConfirmOpen: boolean;
   clearConfirmOpen: boolean;
@@ -100,6 +111,7 @@ interface ChatOverlaysProps {
   onForwardSearchChange: (value: string) => void;
   onForward: (targetChatId: string, msg: Message) => void;
   onCloseLightbox: () => void;
+  onSelectLightbox: (url: string, fileName?: string, mimeType?: string) => void;
   onCloseBlock: () => void;
   onBlock: () => void;
   onCloseReport: () => void;
@@ -123,6 +135,7 @@ export default function ChatOverlays({
   forwardSearch,
   forwardableConversations,
   lightboxUrl,
+  previewMedia,
   blockConfirmOpen,
   reportConfirmOpen,
   clearConfirmOpen,
@@ -137,6 +150,7 @@ export default function ChatOverlays({
   onForwardSearchChange,
   onForward,
   onCloseLightbox,
+  onSelectLightbox,
   onCloseBlock,
   onBlock,
   onCloseReport,
@@ -153,6 +167,20 @@ export default function ChatOverlays({
 }: ChatOverlaysProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const activeLightboxUrl = lightboxUrl?.split('#')[0];
+  const activeMediaIndex = Math.max(0, previewMedia.findIndex((media) => media.url === activeLightboxUrl));
+  const activeMedia = previewMedia[activeMediaIndex];
+  const selectMedia = (index: number) => {
+    const media = previewMedia[index];
+    if (media) onSelectLightbox(media.url, media.fileName, media.mimeType);
+  };
+
+  useEffect(() => {
+    setLightboxZoom(1);
+    setMoreOpen(false);
+  }, [lightboxUrl]);
 
   useLayoutEffect(() => {
     if (!contextMenu) {
@@ -357,58 +385,97 @@ export default function ChatOverlays({
 
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex flex-col bg-black/60 text-white"
           onClick={onCloseLightbox}
         >
-          <button
-            onClick={onCloseLightbox}
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-          >
-            <X size={22} />
-          </button>
-          <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              const metadata = new URLSearchParams(lightboxUrl.split('#')[1] || '');
-              const fileName = metadata.get('downloadName') || 'photo';
-              const mimeType = metadata.get('mimeType') || 'application/octet-stream';
-              const extension = fileName.includes('.') ? `.${fileName.split('.').pop()}` : undefined;
-              const downloadUrl = `${lightboxUrl.split('#')[0]}?downloadName=${encodeURIComponent(fileName)}`;
-
-              if ('showSaveFilePicker' in window) {
-                try {
-                  const response = await fetch(downloadUrl);
-                  const blob = await response.blob();
-                  const handle = await window.showSaveFilePicker({
-                    suggestedName: fileName,
-                    ...(extension && { types: [{ description: mimeType, accept: { [mimeType]: [extension] } }] }),
-                  });
-                  const writable = await handle.createWritable();
-                  await writable.write(blob);
-                  await writable.close();
-                  return;
-                } catch (error) {
-                  if ((error as DOMException).name === 'AbortError') return;
-                }
-              }
-
-              const link = document.createElement('a');
-              link.href = downloadUrl;
-              link.download = fileName;
-              link.click();
-            }}
-            className="absolute right-16 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-            aria-label="Save as"
-            title="Save as"
-          >
-            <Save size={20} />
-          </button>
-          <img
-            src={lightboxUrl}
-            alt="Full size"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-black/60 px-4 pb-1 pt-[calc(env(safe-area-inset-top)+24px)] shadow-lg">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#667781] text-sm font-semibold">
+              {activeMedia?.senderAvatarUrl ? <img src={resolveFileUrl(activeMedia.senderAvatarUrl)} alt={activeMedia.senderName} className="h-full w-full object-cover" /> : (activeMedia?.senderName.charAt(0).toUpperCase() || 'Y')}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{activeMedia?.senderName || 'Photo'}</p>
+              <p className="text-[11px] text-white/55">{activeMedia?.label || 'Photo'}</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={(e) => { e.stopPropagation(); setLightboxZoom((value) => Math.max(0.75, value - 0.25)); }} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10" aria-label="Zoom out" title="Zoom out"><ZoomOut size={19} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setLightboxZoom((value) => Math.min(3, value + 0.25)); }} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10" aria-label="Zoom in" title="Zoom in"><ZoomIn size={19} /></button>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const metadata = new URLSearchParams(lightboxUrl.split('#')[1] || '');
+                  const fileName = metadata.get('downloadName') || 'photo';
+                  const mimeType = metadata.get('mimeType') || 'application/octet-stream';
+                  const extension = fileName.includes('.') ? `.${fileName.split('.').pop()}` : undefined;
+                  const downloadUrl = `${lightboxUrl.split('#')[0]}?downloadName=${encodeURIComponent(fileName)}`;
+                  const saveFilePicker = (window as Window & { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
+                  if (saveFilePicker) {
+                    try {
+                      const response = await fetch(downloadUrl);
+                      const blob = await response.blob();
+                      const handle = await saveFilePicker({ suggestedName: fileName, ...(extension && { types: [{ description: mimeType, accept: { [mimeType]: [extension] } }] }) });
+                      const writable = await handle.createWritable();
+                      await writable.write(blob);
+                      await writable.close();
+                      return;
+                    } catch (error) {
+                      if ((error as DOMException).name === 'AbortError') return;
+                    }
+                  }
+                  const link = document.createElement('a');
+                  link.href = downloadUrl;
+                  link.download = fileName;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10"
+                aria-label="Save as"
+                title="Save as"
+              ><Save size={19} /></button>
+              <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setMoreOpen((value) => !value); }} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10" aria-label="More options" title="More options"><MoreVertical size={19} /></button>
+                {moreOpen && (
+                  <div className="absolute right-0 top-12 z-20 w-40 overflow-hidden rounded-md bg-[#233138] py-1 text-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => { setLightboxZoom(1); setMoreOpen(false); }} className="w-full px-4 py-2.5 text-left hover:bg-white/10">Reset zoom</button>
+                    <button onClick={onCloseLightbox} className="w-full px-4 py-2.5 text-left hover:bg-white/10">Close preview</button>
+                  </div>
+                )}
+              </div>
+              <button onClick={onCloseLightbox} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10" aria-label="Close preview" title="Close preview"><X size={21} /></button>
+            </div>
+          </div>
+          <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black/60 p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => selectMedia((activeMediaIndex - 1 + previewMedia.length) % previewMedia.length)} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous photo" title="Previous photo" disabled={previewMedia.length < 2}><ChevronLeft size={24} /></button>
+            {activeMedia?.kind === 'video' ? (
+              <video
+                src={lightboxUrl.split('#')[0]}
+                controls
+                autoPlay
+                className="rounded-sm object-contain shadow-2xl transition-transform duration-200"
+                style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${lightboxZoom})` }}
+              />
+            ) : (
+              <img
+                src={lightboxUrl.split('#')[0]}
+                alt="Full size"
+                className="rounded-sm object-contain shadow-2xl transition-transform duration-200"
+                style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${lightboxZoom})` }}
+              />
+            )}
+            <button onClick={() => selectMedia((activeMediaIndex + 1) % previewMedia.length)} className="absolute right-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Next photo" title="Next photo" disabled={previewMedia.length < 2}><ChevronRight size={24} /></button>
+          </div>
+          <div className="flex min-h-20 shrink-0 items-center gap-2 overflow-x-auto border-t border-white/10 bg-black/60 px-4 pb-[env(safe-area-inset-bottom)]">
+            {previewMedia.map((media, index) => (
+              <button key={media.id} onClick={() => selectMedia(index)} className={`h-14 w-14 shrink-0 rounded bg-black/30 p-0.5 ${index === activeMediaIndex ? 'border-2 border-[#00a884]' : 'border border-transparent opacity-70 hover:opacity-100'}`} aria-label={`Open ${media.label}`} title={media.label}>
+                {media.kind === 'video' ? (
+                  <video src={media.url} muted preload="metadata" className="h-full w-full rounded object-cover" />
+                ) : (
+                  <img src={media.url} alt={media.label} className="h-full w-full rounded object-cover" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
