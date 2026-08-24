@@ -37,6 +37,7 @@ export interface Message {
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+  mimeType?: string;
   duration?: number;
   status?: MessageStatus;
   replyTo?: ReplyTo;

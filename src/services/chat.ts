@@ -79,6 +79,11 @@ export interface RemoteMessage {
   starredAt?: string | null;
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  duration?: number | null;
   status?: string | null;
   seenAt?: string | null;
   createdAt?: string | null;
@@ -122,6 +127,11 @@ export function mapMessage(row: RemoteMessage): Message {
     senderId: row.senderId,
     content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
     type,
+    fileUrl: row.fileUrl ?? undefined,
+    fileName: row.fileName ?? undefined,
+    fileSize: row.fileSize ?? undefined,
+    mimeType: row.mimeType ?? undefined,
+    duration: row.duration ?? undefined,
     isPinned: row.isPinned ?? false,
     isStarred: row.isStarred ?? false,
     starredAt: row.starredAt ? new Date(row.starredAt) : null,
@@ -185,7 +195,37 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
   }
 }
 
-export async function sendImageMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
+function readVideoDuration(file: File): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const d = video.duration;
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(d) && d > 0 ? d : undefined);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(undefined);
+    };
+    video.src = url;
+  });
+}
+
+async function postAttachment(chatId: string, file: File, caption?: string, replyTo?: ReplyTo, duration?: number): Promise<Message> {
+  const form = new FormData();
+  form.append('file', file);
+  if (caption) form.append('caption', caption);
+  if (replyTo?.id) form.append('replyToId', replyTo.id);
+  if (typeof duration === 'number') form.append('duration', String(Math.round(duration)));
+  const { data } = await api.post<Message>(`/conversations/${chatId}/messages`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return mapMessage(data as unknown as RemoteMessage);
+}
+
+export async function sendImageMessage(chatId: string, file: File, _isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(500);
@@ -216,13 +256,8 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
       return msg;
     }
 
-    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const form = new FormData();
-    form.append('file', file);
-    if (caption) form.append('caption', caption);
-    if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
-    const { data } = await api.post<Message>(`${endpoint}`, form);
-    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
+    const duration = file.type.startsWith('video/') ? await readVideoDuration(file) : undefined;
+    return await postAttachment(chatId, file, caption, replyTo, duration);
   } catch (err) {
     throw toError(err, 'Failed to send image');
   }
@@ -789,7 +824,7 @@ export async function getStarredMessages(cursor?: string, limit = 50): Promise<S
   }
 }
 
-export async function sendFileMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
+export async function sendFileMessage(chatId: string, file: File, _isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(500);
@@ -822,13 +857,8 @@ export async function sendFileMessage(chatId: string, file: File, isDM: boolean,
       return msg;
     }
 
-    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const form = new FormData();
-    form.append('file', file);
-    if (caption) form.append('caption', caption);
-    if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
-    const { data } = await api.post<Message>(`${endpoint}`, form);
-    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
+    const duration = file.type.startsWith('video/') ? await readVideoDuration(file) : undefined;
+    return await postAttachment(chatId, file, caption, replyTo, duration);
   } catch (err) {
     throw toError(err, 'Failed to send file');
   }

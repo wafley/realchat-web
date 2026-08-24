@@ -4,7 +4,6 @@ import { queryClient } from '@/lib/queryClient';
 import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { isChatViewable } from '@/lib/chatViewport';
-import { isSupportedImage, SUPPORTED_IMAGE_LABEL } from '@/utils/imageValidation';
 import { usePresenceStore } from '@/store/presenceStore';
 import type { Message, ReplyTo } from '@/types';
 
@@ -454,12 +453,14 @@ export function useChatActions(props: UseChatActionsProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (isSupportedImage(file)) {
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
         if (imagePreview) URL.revokeObjectURL(imagePreview);
+        setSelectedFile(null);
         setSelectedImage(file);
         setImagePreview(URL.createObjectURL(file));
       } else {
-        toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+        toast.error('Unsupported format. Please pick an image or video (jpg, png, webp, gif, mp4, webm, mov).');
+        setSelectedImage(null);
         setSelectedFile(null);
         setImagePreview(null);
       }
@@ -473,6 +474,7 @@ export function useChatActions(props: UseChatActionsProps) {
       const file = e.target.files?.[0];
       if (!file) return;
       if (imagePreview) URL.revokeObjectURL(imagePreview);
+      setSelectedImage(null);
       setSelectedFile(file);
       setImagePreview(null);
       e.target.value = '';

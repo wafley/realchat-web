@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message } from '@/types';
@@ -366,6 +366,15 @@ export default function ChatOverlays({
           >
             <X size={22} />
           </button>
+          <a
+            href={`${lightboxUrl.split('#')[0]}?downloadName=${encodeURIComponent(new URLSearchParams(lightboxUrl.split('#')[1] || '').get('downloadName') || 'photo')}`}
+            download={new URLSearchParams(lightboxUrl.split('#')[1] || '').get('downloadName') || 'photo'}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-16 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
+            aria-label="Download photo"
+          >
+            <Download size={20} />
+          </a>
           <img
             src={lightboxUrl}
             alt="Full size"

@@ -26,6 +26,9 @@ import { formatFileSize } from '@/lib/chatHelpers';
 
 import { IMAGE_ACCEPT } from '@/utils/imageValidation';
 
+const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime';
+const DOC_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.7z,.rar';
+
 interface ChatInputProps {
   input: string;
   replyingTo: Message | null;
@@ -228,18 +231,27 @@ export default function ChatInput({
       {imagePreview && (
         <div className="mx-3 mb-2 mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm lg:mx-4">
           <div className="relative shrink-0">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="h-14 w-14 rounded-xl object-cover ring-1 ring-border lg:h-16 lg:w-16"
-            />
+            {selectedImage?.type.startsWith('video/') ? (
+              <video
+                src={imagePreview}
+                muted
+                playsInline
+                className="h-14 w-14 rounded-xl bg-black object-cover ring-1 ring-border lg:h-16 lg:w-16"
+              />
+            ) : (
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-14 w-14 rounded-xl object-cover ring-1 ring-border lg:h-16 lg:w-16"
+              />
+            )}
 
             <div className="absolute inset-0 rounded-xl ring-1 ring-black/10" />
           </div>
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">
-              Image
+              {selectedImage?.type.startsWith('video/') ? 'Video' : 'Image'}
             </p>
 
             <p className="truncate text-xs text-muted-foreground">
@@ -335,6 +347,7 @@ export default function ChatInput({
           <input
             ref={fileInputRef}
             type="file"
+            accept={DOC_ACCEPT}
             className="hidden"
             onChange={onFileSelect}
           />
@@ -354,7 +367,7 @@ export default function ChatInput({
           <input
             ref={imageInputRef}
             type="file"
-            accept={IMAGE_ACCEPT}
+            accept={`${IMAGE_ACCEPT},${VIDEO_ACCEPT}`}
             className="hidden"
             onChange={onImageSelect}
           />
