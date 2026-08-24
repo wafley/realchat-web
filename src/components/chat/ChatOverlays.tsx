@@ -1,12 +1,75 @@
 import { useState, useRef, useLayoutEffect } from 'react';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import type { Message } from '@/types';
-import { senderName } from '@/services/chat';
+import { senderName, getMessageReaders } from '@/services/chat';
+import { resolveFileUrl } from '@/lib/url';
 
 function formatTime(date: Date | string) {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function GroupReadersList({ chatId, msg }: { chatId: string; msg: Message }) {
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['message-readers', chatId, msg.id],
+    queryFn: () => getMessageReaders(chatId, msg.id),
+    staleTime: 30_000,
+  });
+
+  if (isPending) {
+    return (
+      <div className="flex justify-center py-4">
+        <Loader2 size={18} className="animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (isError) {
+    return <p className="py-4 text-center text-sm text-muted-foreground">Failed to load delivery info</p>;
+  }
+
+  const readers = data ?? [];
+  const sections = [
+    { label: 'Seen', items: readers.filter((r) => r.status === 'seen') },
+    { label: 'Delivered', items: readers.filter((r) => r.status === 'delivered') },
+    { label: 'Sent', items: readers.filter((r) => r.status === 'sent') },
+  ].filter((s) => s.items.length > 0);
+
+  if (sections.length === 0) {
+    return <p className="py-4 text-center text-sm text-muted-foreground">No delivery info yet</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {sections.map((s) => (
+        <div key={s.label}>
+          <p className="mb-1 px-2 text-xs font-semibold text-muted-foreground">{s.label}</p>
+          <div className="space-y-0.5">
+            {s.items.map((r) => (
+              <div key={r.userId} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                <Avatar className="h-8 w-8">
+                  {r.avatarUrl && <AvatarImage src={resolveFileUrl(r.avatarUrl)} alt={r.fullName} />}
+                  <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-foreground">{r.fullName}</p>
+                  {r.username && <p className="truncate text-[11px] text-muted-foreground">@{r.username}</p>}
+                </div>
+                {r.seenAt ? (
+                  <span className="shrink-0 text-xs text-muted-foreground">{formatTime(r.seenAt)}</span>
+                ) : s.label === 'Delivered' ? (
+                  <CheckCheck size={14} className="shrink-0 text-muted-foreground" />
+                ) : (
+                  <Check size={14} className="shrink-0 text-muted-foreground" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 interface ContextMenuData {
@@ -48,6 +111,8 @@ interface ChatOverlaysProps {
   onCloseMute: () => void;
   onMute: (option: 'unmute' | 'forever' | string) => Promise<void> | void;
   onCloseReadReceipts: () => void;
+  isGroupChat?: boolean;
+  chatId?: string | null;
 }
 
 export default function ChatOverlays({
@@ -83,6 +148,8 @@ export default function ChatOverlays({
   onCloseMute,
   onMute,
   onCloseReadReceipts,
+  isGroupChat = false,
+  chatId,
 }: ChatOverlaysProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -228,14 +295,14 @@ export default function ChatOverlays({
                   Pin
                 </button>
               ))}
-            {contextMenu.msg.senderId === currentUserId && contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0 && (
+            {contextMenu.msg.senderId === currentUserId && !contextMenu.msg.isDeleted && contextMenu.msg.type !== 'system' && (isGroupChat || (contextMenu.msg.readBy && contextMenu.msg.readBy.length > 0)) && (
               <button
                 onClick={() => onContextMenuAction('read-receipts')}
                 className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
                 role="menuitem"
               >
-                <CheckCheck size={15} className="text-muted-foreground" />
-                Read by
+                {isGroupChat ? <Users size={15} className="text-muted-foreground" /> : <CheckCheck size={15} className="text-muted-foreground" />}
+                {isGroupChat ? 'Message info' : 'Read by'}
               </button>
             )}
             <div className="my-1 border-t border-border" />
@@ -376,30 +443,34 @@ export default function ChatOverlays({
 
 
       {readReceiptTarget && (
-        <Modal open={!!readReceiptTarget} onClose={onCloseReadReceipts} title="Read by">
-          <div className="space-y-2">
-            {readReceiptTarget.readBy?.length ? (
-              readReceiptTarget.readBy.map((userId) => (
-                <div key={userId} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+        <Modal open={!!readReceiptTarget} onClose={onCloseReadReceipts} title={isGroupChat ? 'Message info' : 'Read by'}>
+          {isGroupChat && chatId ? (
+            <GroupReadersList chatId={chatId} msg={readReceiptTarget} />
+          ) : (
+            <div className="space-y-2">
+              {readReceiptTarget.readBy?.length ? (
+                readReceiptTarget.readBy.map((userId) => (
+                  <div key={userId} className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm text-foreground">{senderName(userId)}</span>
+                    <CheckCheck size={14} className="ml-auto text-accent" />
+                  </div>
+                ))
+              ) : readReceiptTarget.status === 'read' && readReceiptTarget.lastReadAt ? (
+                <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-foreground">{senderName(userId)}</span>
+                  <span className="text-sm text-foreground">Seen at {formatTime(readReceiptTarget.lastReadAt)}</span>
                   <CheckCheck size={14} className="ml-auto text-accent" />
                 </div>
-              ))
-            ) : readReceiptTarget.status === 'read' && readReceiptTarget.lastReadAt ? (
-              <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs"><User size={14} /></AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-foreground">Seen at {formatTime(readReceiptTarget.lastReadAt)}</span>
-                <CheckCheck size={14} className="ml-auto text-accent" />
-              </div>
-            ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">No read receipts available</p>
-            )}
-          </div>
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">No read receipts available</p>
+              )}
+            </div>
+          )}
         </Modal>
       )}
     {muteDialogOpen && (

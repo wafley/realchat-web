@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Message, User } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
@@ -31,6 +31,7 @@ export function useChatState() {
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -106,6 +107,7 @@ export function useChatState() {
     setPinnedMessages([]);
     setSelectedFile(null);
     setGroupInfoOpen(false);
+    setProfileInfoOpen(false);
     setBlockConfirmOpen(false);
     setReportConfirmOpen(false);
     setClearConfirmOpen(false);
@@ -151,8 +153,13 @@ export function useChatState() {
     [currentUser, isDM, senderGroup, convFromList, chatName],
   );
   const presence = usePresenceStore((s) => (otherUserId ? s.presenceMap[otherUserId] : undefined));
-  const chatOnline = presence ? presence.isOnline : (convFromList?.online ?? location.state?.online ?? true);
-  const chatLastSeen = presence ? presence.lastSeen : (convFromList?.lastSeen ?? location.state?.lastSeen ?? null);
+  const queryClient = useQueryClient();
+  const conversationsUpdatedAt = queryClient.getQueryState(['conversations'])?.dataUpdatedAt ?? 0;
+  const presenceFresh = !!presence && presence.updatedAt >= conversationsUpdatedAt;
+  const fallbackOnline = convFromList?.online ?? location.state?.online ?? true;
+  const fallbackLastSeen = convFromList?.lastSeen ?? location.state?.lastSeen ?? null;
+  const chatOnline = presence ? (presenceFresh ? presence.isOnline : fallbackOnline) : fallbackOnline;
+  const chatLastSeen = presence ? (presenceFresh ? presence.lastSeen : fallbackLastSeen) : fallbackLastSeen;
   const memberCount = location.state?.members ?? null;
 
   const typers = useTypingStore((s) => s.typingMap[chatId]);
@@ -295,6 +302,7 @@ export function useChatState() {
     pinnedMessages, setPinnedMessages,
     selectedFile, setSelectedFile,
     groupInfoOpen, setGroupInfoOpen,
+    profileInfoOpen, setProfileInfoOpen,
     blockConfirmOpen, setBlockConfirmOpen,
     reportConfirmOpen, setReportConfirmOpen,
     clearConfirmOpen, setClearConfirmOpen,

@@ -257,7 +257,6 @@ export default function GroupInfoPanel({
 
   const isAdmin = group?.members?.some((m) => m.userId === currentUserId && m.role === 'admin');
   const isCreator = group?.creatorId === currentUserId;
-
   // Sync state when group prop updates
   useEffect(() => {
     if (group) {
@@ -738,7 +737,7 @@ export default function GroupInfoPanel({
         </div>
 
         {/* 6. Danger Zone Actions */}
-        <div className="bg-card/30 px-5 py-4 space-y-2">
+        <div className="bg-card/30 px-5 pb-6 pt-8 space-y-2">
           {!isCreator && (
             <button
               onClick={() => setLeaveConfirmOpen(true)}

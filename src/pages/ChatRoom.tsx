@@ -10,6 +10,7 @@ import MessageList from '@/components/chat/MessageList';
 import ChatInput from '@/components/chat/ChatInput';
 import ChatOverlays from '@/components/chat/ChatOverlays';
 import GroupInfoPanel from '@/components/chat/GroupInfoPanel';
+import UserInfoPanel from '@/components/chat/UserInfoPanel';
 import { useChatState } from '@/hooks/chat/useChatState';
 import { useChatMutations } from '@/hooks/chat/useChatMutations';
 import { useChatActions } from '@/hooks/chat/useChatActions';
@@ -235,7 +236,17 @@ export default function ChatRoom() {
           }}
           isBlocked={isPeerBlocked}
           onReportClick={() => state.setReportConfirmOpen(true)}
-          onGroupInfoClick={() => state.setGroupInfoOpen((prev) => !prev)}
+          onGroupInfoClick={() => {
+            if (state.isDM && state.otherUserId) {
+              if (window.matchMedia('(min-width: 1024px)').matches) {
+                state.setProfileInfoOpen((prev) => !prev);
+              } else {
+                navigate(`/profile/${state.otherUserId}`);
+              }
+            } else {
+              state.setGroupInfoOpen((prev) => !prev);
+            }
+          }}
           onClearChat={() => state.setClearConfirmOpen(true)}
         />
 
@@ -324,6 +335,7 @@ export default function ChatRoom() {
           highlightedMsgId={highlightedMsgId}
           chatId={state.chatId}
           isDM={state.isDM}
+          peerAvatarUrl={state.chatAvatarUrl}
           filteredMessages={state.filteredMessages}
           searchQuery={state.searchQuery}
           isPending={state.isPending}
@@ -414,6 +426,16 @@ export default function ChatRoom() {
         </aside>
       )}
 
+      {state.isDM && state.profileInfoOpen && state.otherUserId && (
+        <aside className="fixed inset-0 z-40 h-full w-full shrink-0 animate-in slide-in-from-right-full duration-200 shadow-2xl lg:relative lg:inset-auto lg:z-auto lg:block lg:w-96 lg:shadow-none">
+          <UserInfoPanel
+            userId={state.otherUserId}
+            onClose={() => state.setProfileInfoOpen(false)}
+            onClearChat={() => state.setClearConfirmOpen(true)}
+          />
+        </aside>
+      )}
+
       {state.reactingMsgId && state.reactionPickerRect && (
         <ReactionPicker
           onReact={actions.handleReactionPickerSelect}
@@ -434,6 +456,8 @@ export default function ChatRoom() {
         reportConfirmOpen={state.reportConfirmOpen}
         clearConfirmOpen={state.clearConfirmOpen}
         readReceiptTarget={state.readReceiptTarget}
+        isGroupChat={!state.isDM}
+        chatId={state.chatId}
         chatName={state.chatName}
         currentUserId={state.currentUser?.id}
         onCloseDelete={() => {
