@@ -9,6 +9,7 @@ interface NotificationState {
   addNotification: (notification: Notification) => void;
   setUnreadCount: (count: number) => void;
   markAsRead: (id: string) => void;
+  markMentionsAsRead: (conversationId: string) => string[];
   markAllAsRead: () => void;
   toggleOpen: () => void;
   setOpen: (open: boolean) => void;
@@ -32,12 +33,30 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     }),
   setUnreadCount: (count) => set({ unreadCount: count }),
   markAsRead: (id) =>
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n,
-      ),
-      unreadCount: Math.max(0, state.unreadCount - 1),
-    })),
+    set((state) => {
+      const notification = state.notifications.find((n) => n.id === id);
+      if (!notification || notification.read || notification.isRead) return state;
+      return {
+        notifications: state.notifications.map((n) =>
+          n.id === id ? { ...n, read: true, isRead: true } : n,
+        ),
+        unreadCount: Math.max(0, state.unreadCount - 1),
+      };
+    }),
+  markMentionsAsRead: (conversationId) => {
+    let ids: string[] = [];
+    set((state) => {
+      ids = state.notifications
+        .filter((n) => n.type === 'mention' && n.conversationId === conversationId && !n.read && !n.isRead)
+        .map((n) => n.id);
+      if (ids.length === 0) return state;
+      return {
+        notifications: state.notifications.map((n) => ids.includes(n.id) ? { ...n, read: true, isRead: true } : n),
+        unreadCount: Math.max(0, state.unreadCount - ids.length),
+      };
+    });
+    return ids;
+  },
   markAllAsRead: () =>
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
