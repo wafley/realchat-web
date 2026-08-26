@@ -342,7 +342,9 @@ function MessageBubbleComp({
                 </p>
               )}
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
+                  isOwn ? 'bg-white/20 text-white' : 'bg-accent/15 text-accent'
+                }`}>
                   <FileText size={22} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0 flex-1">
