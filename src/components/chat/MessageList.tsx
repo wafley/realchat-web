@@ -41,6 +41,7 @@ interface MessageListProps {
   onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
   onReplyClick: (messageId: string) => void;
   onSenderClick: (userId: string) => void;
+  onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -79,6 +80,7 @@ export default function MessageList({
   onClickImage,
   onReplyClick,
   onSenderClick,
+  onMentionClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -298,6 +300,7 @@ export default function MessageList({
                   onClickImage={onClickImage}
                   onReplyClick={onReplyClick}
                   onSenderClick={onSenderClick}
+                  onMentionClick={onMentionClick}
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
                   onReactionPickerOpen={onReactionPickerOpen}

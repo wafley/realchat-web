@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,6 +36,7 @@ interface UserProfileProps {
 export default function UserProfile({ userIdOverride, onPanelClose, onClearChat }: UserProfileProps = {}) {
   const { userId: paramUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
 
@@ -307,7 +308,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
             'relative mb-4 flex items-center gap-3',
             isPanel && 'sticky top-0 z-20 -mx-4 mb-3 h-[60px] border-b border-border bg-sidebar/95 px-4 backdrop-blur',
           )}>
-            <button onClick={() => (onPanelClose ? onPanelClose() : isSelf ? navigate('/') : navigate(-1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent">
+            <button onClick={() => (onPanelClose ? onPanelClose() : isSelf ? navigate('/') : location.state?.from ? navigate(location.state.from) : navigate(-1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent">
               <X size={18} className="hidden lg:block" />
               <ArrowLeft size={20} className="lg:hidden" />
             </button>

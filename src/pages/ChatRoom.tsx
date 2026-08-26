@@ -96,6 +96,19 @@ export default function ChatRoom() {
     window.setTimeout(() => setHighlightedMsgId(null), 3000);
   };
 
+  const handleMentionClick = (username: string) => {
+    const member = mutations.group?.members?.find(
+      (m) => m.user?.username?.toLowerCase() === username.toLowerCase(),
+    );
+    if (!member) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      setProfileInfoUserId(member.userId);
+      state.setProfileInfoOpen(true);
+    } else {
+      navigate(`/profile/${member.userId}`, { state: { from: location.pathname } });
+    }
+  };
+
   useEffect(() => {
     const targetId = location.state?.highlightMessageId;
     if (!targetId || handledHighlightIdRef.current === targetId) return;
@@ -274,7 +287,7 @@ export default function ChatRoom() {
               if (window.matchMedia('(min-width: 1024px)').matches) {
                 state.setProfileInfoOpen((prev) => !prev);
               } else {
-                navigate(`/profile/${state.otherUserId}`);
+                navigate(`/profile/${state.otherUserId}`, { state: { from: location.pathname } });
               }
             } else {
               state.setGroupInfoOpen((prev) => !prev);
@@ -407,9 +420,10 @@ export default function ChatRoom() {
               setProfileInfoUserId(userId);
               state.setProfileInfoOpen(true);
             } else {
-              navigate(`/profile/${userId}`);
+              navigate(`/profile/${userId}`, { state: { from: location.pathname } });
             }
           }}
+          onMentionClick={handleMentionClick}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}

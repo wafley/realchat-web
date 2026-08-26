@@ -29,6 +29,7 @@ interface MessageBubbleProps {
   onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
   onReplyClick: (messageId: string) => void;
   onSenderClick: (userId: string) => void;
+  onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -78,6 +79,7 @@ function MessageBubbleComp({
   onClickImage,
   onReplyClick,
   onSenderClick,
+  onMentionClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -260,7 +262,7 @@ function MessageBubbleComp({
                     />
                   </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {highlightText(displayedContent, searchQuery, isOwn)}
+                    {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -312,7 +314,7 @@ function MessageBubbleComp({
                     </div>
                   </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {highlightText(displayedContent, searchQuery, isOwn)}
+                    {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -356,7 +358,7 @@ function MessageBubbleComp({
             </p>
           ) : (
             <p className="min-w-0 max-w-full [overflow-wrap:anywhere]">
-              {highlightText(displayedContent, searchQuery, isOwn)}
+              {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
               {showReadMore && (
                 <button
                   onClick={(e) => {

@@ -24,7 +24,7 @@ export function getDateKey(date: Date | string | number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export function highlightText(text: string, query: string, isOwn = false): string | ReactNode[] {
+export function highlightText(text: string, query: string, isOwn = false, onMentionClick?: (username: string) => void): string | ReactNode[] {
   if (!text) return text;
 
   const escapedQuery = query.trim() ? query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
@@ -44,18 +44,33 @@ export function highlightText(text: string, query: string, isOwn = false): strin
     }
 
     const isMention = /^@[A-Za-z0-9_.-]+$/.test(matchedText);
-    matches.push(
-      <mark
-        key={`${start}-${matchedText}`}
-        className={
-          isMention
-            ? `rounded px-0.5 font-medium underline decoration-2 underline-offset-2 ${isOwn ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent'}`
-            : 'rounded bg-accent/30 px-0.5 text-inherit'
-        }
-      >
-        {matchedText}
-      </mark>,
-    );
+    if (isMention && onMentionClick) {
+      const username = matchedText.slice(1);
+      matches.push(
+        <button
+          key={`${start}-${matchedText}`}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onMentionClick(username); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`rounded px-0.5 font-medium underline decoration-2 underline-offset-2 transition-opacity hover:opacity-80 ${isOwn ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent'}`}
+        >
+          {matchedText}
+        </button>,
+      );
+    } else {
+      matches.push(
+        <mark
+          key={`${start}-${matchedText}`}
+          className={
+            isMention
+              ? `rounded px-0.5 font-medium underline decoration-2 underline-offset-2 ${isOwn ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent'}`
+              : 'rounded bg-accent/30 px-0.5 text-inherit'
+          }
+        >
+          {matchedText}
+        </mark>,
+      );
+    }
 
     lastIndex = start + matchedText.length;
   }
