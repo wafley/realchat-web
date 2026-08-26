@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import type { Group, GroupMember, User as UserType } from '@/types';
 import { uploadGroupAvatar } from '@/services/chat';
+import { getContacts } from '@/services/contacts';
 import { getUser } from '@/services/user';
 import { usePresenceStore } from '@/store/presenceStore';
 
@@ -31,6 +32,7 @@ interface MemberRowProps {
   roleLoading: string | null;
   onRoleToggle: (userId: string, currentRole: 'admin' | 'member') => void;
   onSetRemoveTarget: (target: { userId: string; userName: string }) => void;
+  customNameMap?: Map<string, string>;
 }
 
 function MemberRow({
@@ -44,6 +46,7 @@ function MemberRow({
   roleLoading,
   onRoleToggle,
   onSetRemoveTarget,
+  customNameMap,
 }: MemberRowProps) {
   const navigate = useNavigate();
   const isMe = member.userId === currentUserId;
@@ -62,9 +65,10 @@ function MemberRow({
   const displayUser = fetchedUser || member.user;
   const presence = usePresenceStore((s) => s.presenceMap[member.userId]);
   const isOnline = presence ? presence.isOnline : displayUser?.status === 'online';
+  const customName = customNameMap?.get(member.userId);
   const displayName = isMe
     ? 'You'
-    : (displayUser?.fullName || displayUser?.username || member.userId);
+    : (customName || displayUser?.fullName || displayUser?.username || member.userId);
   const username = displayUser?.username;
   const avatarUrl = displayUser?.avatarUrl;
 
@@ -257,6 +261,12 @@ export default function GroupInfoPanel({
 
   const isAdmin = group?.members?.some((m) => m.userId === currentUserId && m.role === 'admin');
   const isCreator = group?.creatorId === currentUserId;
+
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: getContacts,
+  });
+  const customNameMap = new Map(contacts.map((c) => [c.userId, c.customName]).filter((pair): pair is [string, string] => !!pair[1]));
   // Sync state when group prop updates
   useEffect(() => {
     if (group) {
@@ -290,10 +300,11 @@ export default function GroupInfoPanel({
     .filter((m) => {
       if (!memberSearch.trim()) return true;
       const query = memberSearch.toLowerCase();
+      const custom = customNameMap.get(m.userId)?.toLowerCase() || '';
       const name = m.user?.fullName?.toLowerCase() || '';
       const username = m.user?.username?.toLowerCase() || '';
       const userId = m.userId.toLowerCase();
-      return name.includes(query) || username.includes(query) || userId.includes(query);
+      return custom.includes(query) || name.includes(query) || username.includes(query) || userId.includes(query);
     })
     .sort((a, b) => {
       const aIsCreator = a.userId === group.creatorId;
@@ -315,9 +326,9 @@ export default function GroupInfoPanel({
       if (aIsMe && !bIsMe) return -1;
       if (!aIsMe && bIsMe) return 1;
 
-      // 4. Alphabetical fallback by display name
-      const nameA = a.user?.fullName || a.userId;
-      const nameB = b.user?.fullName || b.userId;
+      // 4. Alphabetical fallback by display name (customName > fullName)
+      const nameA = customNameMap.get(a.userId) || a.user?.fullName || a.userId;
+      const nameB = customNameMap.get(b.userId) || b.user?.fullName || b.userId;
       return nameA.localeCompare(nameB);
     });
 
@@ -727,6 +738,7 @@ export default function GroupInfoPanel({
                 roleLoading={roleLoading}
                 onRoleToggle={handleRoleToggle}
                 onSetRemoveTarget={setRemoveTarget}
+                customNameMap={customNameMap}
               />
             ))}
 

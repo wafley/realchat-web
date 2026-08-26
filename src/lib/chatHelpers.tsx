@@ -24,7 +24,7 @@ export function getDateKey(date: Date | string | number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export function highlightText(text: string, query: string): string | ReactNode[] {
+export function highlightText(text: string, query: string, isOwn = false): string | ReactNode[] {
   if (!text) return text;
 
   const escapedQuery = query.trim() ? query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
@@ -49,7 +49,7 @@ export function highlightText(text: string, query: string): string | ReactNode[]
         key={`${start}-${matchedText}`}
         className={
           isMention
-            ? 'rounded bg-accent/20 px-0.5 font-medium text-accent underline decoration-2 underline-offset-2'
+            ? `rounded px-0.5 font-medium underline decoration-2 underline-offset-2 ${isOwn ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent'}`
             : 'rounded bg-accent/30 px-0.5 text-inherit'
         }
       >

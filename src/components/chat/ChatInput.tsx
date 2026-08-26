@@ -5,6 +5,7 @@ import {
   type RefObject,
 } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
 import {
   Send,
   ImagePlus,
@@ -24,6 +25,7 @@ import EmojiPicker, {
 
 import { formatFileSize } from '@/lib/chatHelpers';
 import { resolveFileUrl } from '@/lib/url';
+import { getContacts } from '@/services/contacts';
 
 import { IMAGE_ACCEPT } from '@/utils/imageValidation';
 
@@ -107,6 +109,12 @@ export default function ChatInput({
     useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
 
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: getContacts,
+  });
+  const customNameMap = new Map(contacts.map((c) => [c.userId, c.customName]).filter((pair): pair is [string, string] => !!pair[1]));
+
   const mentionMatch = (() => {
     if (groupMembers.length === 0 || !textareaRef.current) return null;
     const cursor = textareaRef.current.selectionStart;
@@ -118,7 +126,8 @@ export default function ChatInput({
     ? groupMembers.filter((member) => {
         const username = member.user?.username ?? '';
         const name = member.user?.fullName ?? '';
-        return username.toLowerCase().includes(mentionMatch.query) || name.toLowerCase().includes(mentionMatch.query);
+        const custom = customNameMap.get(member.userId) ?? '';
+        return custom.toLowerCase().includes(mentionMatch.query) || username.toLowerCase().includes(mentionMatch.query) || name.toLowerCase().includes(mentionMatch.query);
       }).filter((member) => member.userId !== currentUserId).slice(0, 6)
     : [];
 
@@ -364,7 +373,7 @@ export default function ChatInput({
       {mentionOptions.length > 0 && (
         <div className="absolute bottom-full left-3 right-3 z-50 mb-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-xl lg:left-4 lg:right-4" role="listbox" aria-label="Mention group member">
           {mentionOptions.map((member, index) => {
-            const displayName = member.user?.fullName || member.user?.username || member.userId;
+            const displayName = customNameMap.get(member.userId) || member.user?.fullName || member.user?.username || member.userId;
             const username = member.user?.username || member.userId;
             return (
               <button
