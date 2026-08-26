@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, User, MessageSquareText, Search, Loader2, X, ArrowLeft } from 'lucide-react';
+import { UserPlus, MessageSquareText, Search, Loader2, X, ArrowLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { getContacts, addContact, searchContacts, findUser } from '@/services/contacts';
+import { getContacts, addContact, searchContacts } from '@/services/contacts';
+import { parseAuthError } from '@/services/auth';
 import { findOrCreateConversation } from '@/services/chat';
 import type { User as UserType } from '@/types';
 
@@ -90,21 +91,16 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
     setNewContactLoading(true);
     setNewContactError(null);
     try {
-      const user = await findUser(newUsername.trim());
-      if (!user) {
-        setNewContactError('User not found');
-        return;
-      }
-      await addContact(user.id, newCustomName.trim() || undefined);
+      const contact = await addContact(newUsername.trim(), newCustomName.trim() || undefined);
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setShowNewContactForm(false);
       setNewUsername('');
       setNewCustomName('');
       toast.success('Contact added!');
-      await handleStartDM(user.id, newCustomName.trim() || user.fullName);
+      await handleStartDM(contact.userId, contact.customName || contact.user.fullName);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     } catch (err) {
-      setNewContactError(err instanceof Error ? err.message : 'Failed to add contact');
+      setNewContactError(parseAuthError(err));
     } finally {
       setNewContactLoading(false);
     }
@@ -120,25 +116,27 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
       <div className="fixed inset-0 z-[100]" onClick={onClose} />
       <div
         ref={drawerRef}
-        className="fixed left-0 top-0 z-[101] flex h-full w-full flex-col rounded-r-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 lg:left-20 lg:w-[30rem]"
+        className="fixed left-0 top-0 z-[101] flex h-full w-full flex-col rounded-r-2xl border border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 lg:left-20 lg:w-[30rem] pt-safe-top"
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           {showNewContactForm ? (
-            <>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowNewContactForm(false)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+                aria-label="Back"
               >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={18} />
               </button>
               <h2 className="text-sm font-bold text-foreground">New Contact</h2>
-            </>
+            </div>
           ) : (
             <h2 className="text-sm font-bold text-foreground">New Conversation</h2>
           )}
           <button
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
@@ -247,8 +245,8 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
                           >
                             <Avatar className="h-8 w-8">
                               {user.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                              <AvatarFallback className="text-xs">
-                                <User size={13} />
+                              <AvatarFallback className="text-xs font-semibold">
+                                {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1 text-left">
@@ -280,8 +278,8 @@ export default function ContactPopover({ anchorEl, onClose }: ContactPopoverProp
                         >
                           <Avatar className="h-8 w-8">
                             {contact.user.avatarUrl && <AvatarImage src={contact.user.avatarUrl} />}
-                            <AvatarFallback className="text-xs">
-                              <User size={13} />
+                            <AvatarFallback className="text-xs font-semibold">
+                              {(displayName || contact.user.username || 'U').charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1 text-left">

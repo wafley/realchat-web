@@ -18,7 +18,7 @@ export default function Groups() {
     : groups;
 
   return (
-    <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
+    <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5 pt-safe-top">
       <button
         onClick={() => navigate('/')}
         className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -59,15 +59,17 @@ export default function Groups() {
           >
             <Avatar className="h-12 w-12 shrink-0">
               {g.avatarUrl && <AvatarImage src={g.avatarUrl} alt={g.name} />}
-              <AvatarFallback className="font-bold"><Users size={20} /></AvatarFallback>
+              <AvatarFallback className="font-bold text-sm">
+                {g.name ? g.name.charAt(0).toUpperCase() : 'G'}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-lg font-semibold text-foreground">{g.name}</h3>
             </div>
             <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
               <Users size={14} />
-              <span>{g.members?.length ?? 0}</span>
-              {g.online && <span className="ml-1 text-green-500">● {g.online}</span>}
+              <span>{g.members ?? 0}</span>
+              {g.online && <span className="ml-1 text-green-500">● Online</span>}
             </div>
           </Link>
         ))}

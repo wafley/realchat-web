@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Users, Bell } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useMarkNotificationRead } from '@/hooks/useNotifications';
@@ -16,20 +15,24 @@ export default function NotificationItem({ notification }: NotificationItemProps
   const markRead = useMarkNotificationRead();
 
   const sender = notification.sender || (notification as any).user || (notification as any).data?.sender || (notification as any).data?.user;
+  const actorId = notification.actorId || (notification as any).data?.actorId;
   const avatarUrl = sender?.avatarUrl || (notification as any).avatarUrl || (notification as any).data?.avatarUrl;
   const senderName = sender?.fullName || sender?.username || (notification as any).senderName || (notification as any).data?.senderName;
-  const isContactNotif = notification.type === 'contact_added';
+  const isContactNotif = notification.type === 'contact_added' || notification.type === 'new_contact';
 
   const handleClick = () => {
     if (!notification.read) {
       markRead.mutate(notification.id);
     }
 
-    if (notification.type === 'contact_added' && sender) {
-      navigate(`/profile/${sender.id}`);
+    if (isContactNotif) {
+      navigate(`/profile/${sender?.id ?? actorId}`);
     } else if (notification.type === 'message' && notification.conversationId) {
       navigate(`/dm/${notification.conversationId}`);
-    } else if (notification.type === 'group' && notification.conversationId) {
+    } else if (
+      (notification.type === 'group' || notification.type === 'group_invite' || notification.type === 'mention') &&
+      notification.conversationId
+    ) {
       navigate(`/chat/${notification.conversationId}`);
     }
   };
@@ -45,8 +48,8 @@ export default function NotificationItem({ notification }: NotificationItemProps
       <div className="relative shrink-0">
         <Avatar className="h-10 w-10">
           {avatarUrl && <AvatarImage src={avatarUrl} />}
-          <AvatarFallback className="text-xs">
-            {notification.type === 'message' || notification.type === 'MESSAGE' ? <MessageCircle size={16} /> : notification.type === 'group' || notification.type === 'GROUP' ? <Users size={16} /> : <Bell size={16} />}
+          <AvatarFallback className="text-xs font-semibold">
+            {senderName ? senderName.charAt(0).toUpperCase() : 'N'}
           </AvatarFallback>
         </Avatar>
         {!notification.read && (

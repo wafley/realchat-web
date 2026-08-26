@@ -1,30 +1,85 @@
 import type { ReactNode } from 'react';
 
-export function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+export function formatTime(date: Date | string | number) {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-export function formatDateSeparator(date: Date): string {
+export function formatDateSeparator(date: Date | string | number): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const diff = Math.floor((today.getTime() - target.getTime()) / 86400000);
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Yesterday';
-  return date.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+  return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
 }
 
-export function getDateKey(date: Date): string {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+export function getDateKey(date: Date | string | number): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-export function highlightText(text: string, query: string): string | ReactNode[] {
-  if (!query.trim()) return text;
-  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  const parts = text.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? <mark key={i} className="rounded bg-accent/30 px-0.5 text-inherit">{part}</mark> : part,
-  );
+export function highlightText(text: string, query: string, isOwn = false, onMentionClick?: (username: string) => void): string | ReactNode[] {
+  if (!text) return text;
+
+  const escapedQuery = query.trim() ? query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+  const pattern = escapedQuery
+    ? new RegExp(`(${escapedQuery}|@[A-Za-z0-9_.-]+)`, 'gi')
+    : /@[A-Za-z0-9_.-]+/g;
+
+  const matches: ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    const matchedText = match[0];
+    const start = match.index ?? 0;
+
+    if (start > lastIndex) {
+      matches.push(text.slice(lastIndex, start));
+    }
+
+    const isMention = /^@[A-Za-z0-9_.-]+$/.test(matchedText);
+    if (isMention && onMentionClick) {
+      const username = matchedText.slice(1);
+      matches.push(
+        <button
+          key={`${start}-${matchedText}`}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onMentionClick(username); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`rounded px-0.5 font-medium underline decoration-2 underline-offset-2 transition-opacity hover:opacity-80 ${isOwn ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent'}`}
+        >
+          {matchedText}
+        </button>,
+      );
+    } else {
+      matches.push(
+        <mark
+          key={`${start}-${matchedText}`}
+          className={
+            isMention
+              ? `rounded px-0.5 font-medium underline decoration-2 underline-offset-2 ${isOwn ? 'bg-white/20 text-white' : 'bg-accent/20 text-accent'}`
+              : 'rounded bg-accent/30 px-0.5 text-inherit'
+          }
+        >
+          {matchedText}
+        </mark>,
+      );
+    }
+
+    lastIndex = start + matchedText.length;
+  }
+
+  if (lastIndex < text.length) {
+    matches.push(text.slice(lastIndex));
+  }
+
+  return matches.length > 0 ? matches : text;
 }
 
 export function formatFileSize(bytes: number): string {

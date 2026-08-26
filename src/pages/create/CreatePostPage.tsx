@@ -5,6 +5,7 @@ import { Image, Loader2, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { createPost } from '@/services/posts';
 import { toast } from 'sonner';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 
 export default function CreatePostPage() {
   const navigate = useNavigate();
@@ -29,6 +30,11 @@ export default function CreatePostPage() {
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isSupportedImage(file)) {
+      toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
     setPreview(url);
     setImageUrl(url);
@@ -41,7 +47,7 @@ export default function CreatePostPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto py-6">
+    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto py-6 pt-safe-top">
       <div className="flex items-center justify-between px-6 pb-4">
         <button onClick={() => navigate(-1)} className="text-sm text-foreground">
           Cancel
@@ -94,7 +100,7 @@ export default function CreatePostPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={IMAGE_ACCEPT}
         onChange={handleImageSelect}
         className="hidden"
       />

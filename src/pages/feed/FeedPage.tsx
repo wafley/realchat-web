@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getFeed } from '@/services/posts';
 import type { Post } from '@/types';
 import PostDetailModal from '@/components/post/PostDetailModal';
+import { resolveFileUrl } from '@/lib/url';
 
 export default function FeedPage() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function FeedPage() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-4">
+      <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-4 pt-safe-top">
         {isPending ? (
           <div className="flex justify-center py-20">
             <Loader2 size={24} className="animate-spin text-muted-foreground" />
@@ -49,7 +50,7 @@ export default function FeedPage() {
                   className="w-full"
                 >
                   <img
-                    src={post.imageUrl}
+                    src={resolveFileUrl(post.imageUrl)}
                     alt={post.caption || 'Post image'}
                     className="aspect-square w-full object-cover"
                     loading="lazy"

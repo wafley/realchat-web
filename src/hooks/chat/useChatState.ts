@@ -1,10 +1,12 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import type { Message } from '@/types';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Message, User } from '@/types';
 import { useAuthStore } from '@/store/authStore';
-import { useTypingStore } from '@/store/typingStore';
-import { getMessages, getConversations, DM_USER_MAP } from '@/services/chat';
+import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
+import { usePresenceStore } from '@/store/presenceStore';
+import { getMessages, getConversations, getGroup, DM_USER_MAP } from '@/services/chat';
+import { isChatCleared } from '@/lib/chatCleared';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 export function useChatState() {
@@ -27,10 +29,12 @@ export function useChatState() {
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
   const [forwardSearch, setForwardSearch] = useState('');
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [muteDialogOpen, setMuteDialogOpen] = useState(false);
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
   const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
@@ -38,12 +42,12 @@ export function useChatState() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchMatches, setSearchMatches] = useState<string[]>([]);
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const [newMessagesAnchorId, setNewMessagesAnchorId] = useState<string | null>(null);
 
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const scrollTriggerRef = useRef<HTMLDivElement>(null);
@@ -55,7 +59,7 @@ export function useChatState() {
   const keyboardHeight = useKeyboardHeight();
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [], isPending: isConversationsPending } = useQuery({
     queryKey: ['conversations'],
     queryFn: getConversations,
   });
@@ -65,13 +69,104 @@ export function useChatState() {
     [conversations, chatId],
   );
 
-  const chatName = convFromList?.name || location.state?.name || 'Chat';
-  const chatOnline = location.state?.online ?? convFromList?.online ?? true;
-  const chatLastSeen = location.state?.lastSeen ?? convFromList?.lastSeen ?? null;
-  const memberCount = location.state?.members ?? null;
-  const otherUserId = isDM && userId ? (DM_USER_MAP[userId] ?? undefined) : undefined;
+  const { data: senderGroup } = useQuery({
+    queryKey: ['group', chatId],
+    queryFn: () => getGroup(chatId),
+    enabled: !isDM && !!chatId,
+  });
 
-  const otherTyping = useTypingStore((s) => !!s.typingMap[chatId]);
+  useEffect(() => {
+    setMuted(convFromList?.muted ?? false);
+  }, [convFromList?.muted]);
+
+  useEffect(() => {
+    const onPinnedUpdated = (e: Event) => {
+      const pinned = (e as CustomEvent<Message[]>).detail;
+      setPinnedMessages(Array.isArray(pinned) ? pinned : []);
+    };
+    window.addEventListener('chat:pinned-updated', onPinnedUpdated);
+    return () => window.removeEventListener('chat:pinned-updated', onPinnedUpdated);
+  }, []);
+
+  useEffect(() => {
+    setInput('');
+    setShowSearch(false);
+    setSearchQuery('');
+    setSelectedImage(null);
+    setImagePreview(null);
+    setShowEmojiPicker(false);
+    setReplyingTo(null);
+    setEditingMsg(null);
+    setLightboxUrl(null);
+    setContextMenu(null);
+    setDeleteTarget(null);
+    setForwardTarget(null);
+    setForwardSearch('');
+    setPinnedMessages([]);
+    setGroupInfoOpen(false);
+    setProfileInfoOpen(false);
+    setBlockConfirmOpen(false);
+    setReportConfirmOpen(false);
+    setClearConfirmOpen(false);
+    setReadReceiptTarget(null);
+    setReactingMsgId(null);
+    setReactionPickerRect(null);
+    setSelectedIds([]);
+    setSearchMatches([]);
+    setActiveMatchIndex(0);
+    setNewMessagesAnchorId(null);
+    return () => {
+      useTypingStore.getState().clearTyping(chatId);
+    };
+  }, [chatId]);
+
+  useEffect(() => {
+    const onNewMessages = (e: Event) => {
+      const detail = (e as CustomEvent<{ chatId: string; messageId: string }>).detail;
+      if (detail?.chatId !== chatId || !detail.messageId) return;
+      setNewMessagesAnchorId((prev) => prev ?? detail.messageId);
+    };
+    window.addEventListener('chat:new-messages', onNewMessages);
+    return () => window.removeEventListener('chat:new-messages', onNewMessages);
+  }, [chatId]);
+
+  const chatName = convFromList?.name || location.state?.name || 'Chat';
+  const chatAvatarUrl = convFromList?.avatarUrl;
+  const otherUserId = isDM && userId ? (convFromList?.userId || DM_USER_MAP[userId]) : undefined;
+
+  const senderNameCacheRef = useRef<Map<string, string>>(new Map());
+
+  const resolveSenderName = useCallback(
+    (senderId: string): string => {
+      if (senderId === currentUser?.id) return currentUser?.fullName || 'You';
+      if (!isDM) {
+        const m = senderGroup?.members?.find((mem) => mem.userId === senderId);
+        const name = m?.user?.fullName || m?.user?.username;
+        if (name) return name;
+      }
+      if (isDM) return convFromList?.name || chatName;
+      return senderNameCacheRef.current.get(senderId) || 'Unknown';
+    },
+    [currentUser, isDM, senderGroup, convFromList, chatName],
+  );
+  const presence = usePresenceStore((s) => (otherUserId ? s.presenceMap[otherUserId] : undefined));
+  const queryClient = useQueryClient();
+  const conversationsUpdatedAt = queryClient.getQueryState(['conversations'])?.dataUpdatedAt ?? 0;
+  const presenceFresh = !!presence && presence.updatedAt >= conversationsUpdatedAt;
+  const fallbackOnline = convFromList?.online ?? location.state?.online ?? true;
+  const fallbackLastSeen = convFromList?.lastSeen ?? location.state?.lastSeen ?? null;
+  const chatOnline = presence ? (presenceFresh ? presence.isOnline : fallbackOnline) : fallbackOnline;
+  const chatLastSeen = presence ? (presenceFresh ? presence.lastSeen : fallbackLastSeen) : fallbackLastSeen;
+  const memberCount = location.state?.members ?? null;
+
+  const typers = useTypingStore((s) => s.typingMap[chatId]);
+  const otherTyping = (typers?.length ?? 0) > 0;
+  const typingNames = useMemo(() => (typers ?? []).map((t) => t.name).filter(Boolean), [typers]);
+  const typingLabel = useMemo(() => {
+    if (!otherTyping) return null;
+    if (isDM) return 'typing...';
+    return formatTypingLabel(typingNames);
+  }, [otherTyping, isDM, typingNames]);
 
   const {
     data,
@@ -84,24 +179,85 @@ export function useChatState() {
     refetch,
   } = useInfiniteQuery({
     queryKey: ['messages', chatId, isDM],
-    queryFn: ({ pageParam = 1 }) => getMessages(chatId, isDM, pageParam),
-    initialPageParam: 1,
+    queryFn: ({ pageParam }) => getMessages(chatId, isDM, pageParam),
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
-      if (lastPage.page < lastPage.totalPages) return lastPage.page + 1;
+      if (lastPage.nextCursor) return lastPage.nextCursor;
       return undefined;
     },
-    enabled: !!chatId,
+    enabled: !!chatId && (!isDM || !isConversationsPending),
   });
 
-  const messages = useMemo(
-    () => [...(data?.pages ?? [])].reverse().flatMap((p) => p.data),
-    [data],
-  );
+  const messages = useMemo(() => {
+    if (!data?.pages) return [];
+    const clearedAt = isChatCleared(chatId);
+    const clearedMs = clearedAt ? new Date(clearedAt).getTime() : null;
+    const raw = [...data.pages].reverse().flatMap((p) => p.data);
+    for (const msg of raw) {
+      const name = msg?.sender?.fullName || msg?.sender?.username;
+      if (name && msg?.senderId) senderNameCacheRef.current.set(msg.senderId, name);
+    }
+    const map = new Map<string, Message>();
+    for (const msg of raw) {
+      if (msg && msg.id && (!clearedMs || new Date(msg.createdAt).getTime() >= clearedMs)) {
+        map.set(msg.id, msg);
+      }
+    }
+    const unique = Array.from(map.values());
+    unique.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeA - timeB;
+    });
+    return unique.map((m) => {
+      const withSender: Message = m.sender?.fullName || m.sender?.username
+        ? m
+        : {
+            ...m,
+            sender: {
+              ...(m.sender ?? ({} as Message['sender'])),
+              id: m.sender?.id ?? m.senderId,
+              fullName: resolveSenderName(m.senderId),
+            } as User,
+          };
+      if (!withSender.replyTo?.id) return withSender;
+      const target = map.get(withSender.replyTo.id);
+      if (!target) {
+        return { ...withSender, replyTo: { ...withSender.replyTo, senderName: 'Unknown', content: 'Message unavailable' } };
+      }
+      return {
+        ...withSender,
+        replyTo: {
+          id: target.id,
+          senderId: target.senderId,
+          senderName: resolveSenderName(target.senderId),
+          content: target.type === 'image' ? '📷 Photo' : target.type === 'video' ? '🎥 Video' : target.content,
+          type: target.type as 'text' | 'image' | 'video',
+          fileUrl: target.fileUrl,
+          fileName: target.fileName,
+        },
+      };
+    });
+  }, [data, resolveSenderName]);
+
+  // Mengirim pesan sendiri berarti semua pesan sudah dilihat → pill hilang.
+  useEffect(() => {
+    if (!newMessagesAnchorId || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    const isOwnLast = last.senderId === currentUser?.id || last.sender?.id === currentUser?.id;
+    if (isOwnLast) setNewMessagesAnchorId(null);
+  }, [messages, newMessagesAnchorId, currentUser]);
+
+  const clearNewMessagesAnchor = useCallback(() => setNewMessagesAnchorId(null), []);
 
   const filteredMessages = useMemo(() => {
     if (!showSearch || !searchQuery.trim()) return messages;
     const q = searchQuery.toLowerCase();
-    return messages.filter((m) => m.content.toLowerCase().includes(q));
+    return messages.filter(
+      (m) =>
+        m.content.toLowerCase().includes(q) ||
+        (m.fileName ?? '').toLowerCase().includes(q),
+    );
   }, [messages, showSearch, searchQuery]);
 
   const searchMatchIds = useMemo(() => filteredMessages.map((m) => m.id), [filteredMessages]);
@@ -114,7 +270,10 @@ export function useChatState() {
     chatId,
     isDM,
     chatName,
+    chatAvatarUrl,
     chatOnline,
+    newMessagesAnchorId,
+    clearNewMessagesAnchor,
     chatLastSeen,
     memberCount,
     otherUserId,
@@ -126,6 +285,9 @@ export function useChatState() {
     imagePreview, setImagePreview,
     showEmojiPicker, setShowEmojiPicker,
     otherTyping,
+    typers,
+    typingNames,
+    typingLabel,
     replyingTo, setReplyingTo,
     editingMsg, setEditingMsg,
     lightboxUrl, setLightboxUrl,
@@ -135,10 +297,12 @@ export function useChatState() {
     forwardTarget, setForwardTarget,
     forwardSearch, setForwardSearch,
     pinnedMessages, setPinnedMessages,
-    selectedFile, setSelectedFile,
     groupInfoOpen, setGroupInfoOpen,
+    profileInfoOpen, setProfileInfoOpen,
     blockConfirmOpen, setBlockConfirmOpen,
     reportConfirmOpen, setReportConfirmOpen,
+    clearConfirmOpen, setClearConfirmOpen,
+    muteDialogOpen, setMuteDialogOpen,
     readReceiptTarget, setReadReceiptTarget,
     reactingMsgId, setReactingMsgId,
     reactionPickerRect, setReactionPickerRect,
@@ -151,7 +315,6 @@ export function useChatState() {
     typingDoneTimerRef,
     messagesEndRef,
     searchInputRef,
-    fileInputRef,
     emojiPickerRef,
     emojiToggleRef,
     scrollTriggerRef,

@@ -10,7 +10,7 @@ export default function ConnectionStatus() {
     <WifiOff
       size={14}
       className="shrink-0 animate-pulse text-destructive"
-      title="Reconnecting..."
+      aria-label="Reconnecting..."
     />
   );
 }

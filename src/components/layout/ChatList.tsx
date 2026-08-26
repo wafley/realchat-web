@@ -1,25 +1,24 @@
-import { useState, useRef, useEffect, useMemo, type ElementType } from 'react';
+import { useState, useRef, useEffect, useMemo, useLayoutEffect, type ElementType } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
-import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, User, AlertCircle, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
+import { Search, Plus, MessageSquareText, MessageSquarePlus, Users, AlertCircle, RefreshCw, Trash2, Check, X, Loader2, Star, BellOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
-import NotificationBell from '@/components/layout/NotificationBell';
-import { useTypingStore } from '@/store/typingStore';
-import { getConversations, bulkDeleteConversations, searchAllMessages } from '@/services/chat';
+import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
+import { usePresenceStore } from '@/store/presenceStore';
+import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP, type ChatConversation } from '@/services/chat';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
 import { useDebounce } from '@/hooks/useDebounce';
+import { isChatCleared } from '@/lib/chatCleared';
+import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
+import { useNotificationStore } from '@/store/notificationStore';
+import { useMarkNotificationRead } from '@/hooks/useNotifications';
 import type { Conversation, SearchMessageResult } from '@/types';
-
-const tabs = [
-  { id: 'messages', label: 'Messages', icon: MessageSquareText },
-  { id: 'groups', label: 'Groups', icon: Users },
-] as const;
 
 function formatTime(time?: string): string {
   if (!time) return '';
@@ -28,14 +27,33 @@ function formatTime(time?: string): string {
   return formatLastSeen(date) ?? time;
 }
 
+function clampText(s?: string, max = 50): string {
+  if (!s) return s ?? '';
+  return s.length > max ? `${s.slice(0, max).trimEnd()}...` : s;
+}
+
+function ChatPreview({ chat }: { chat: ChatConversation }) {
+  return (
+    <>
+      {chat.lastSenderName && (
+        <span className="text-muted-foreground">{chat.lastSenderName}: </span>
+      )}
+      {clampText(chat.lastMessage)}
+    </>
+  );
+}
+
 export default function ChatList() {
   const navigate = useNavigate();
   const { groupId, userId } = useParams();
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const [tab, setTab] = useState<'messages' | 'groups'>('messages');
+  const notifications = useNotificationStore((s) => s.notifications);
+  const markMentionsAsRead = useNotificationStore((s) => s.markMentionsAsRead);
+  const markNotificationRead = useMarkNotificationRead();
   const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<'all' | 'groups' | 'unread'>('all');
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -45,14 +63,43 @@ export default function ChatList() {
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const [contextMenu, setContextMenu] = useState<{ chatId: string; x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setMenuPos(null);
+      return;
+    }
+    const el = contextMenuRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const MARGIN = 8;
+    let x = contextMenu.x;
+    let y = contextMenu.y;
+    if (x + w > window.innerWidth - MARGIN) x = Math.max(MARGIN, window.innerWidth - w - MARGIN);
+    if (y + h > window.innerHeight - MARGIN) y = Math.max(MARGIN, window.innerHeight - h - MARGIN);
+    setMenuPos({ x, y });
+  }, [contextMenu]);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [alsoDeleteMedia, setAlsoDeleteMedia] = useState(true);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useNow(30000);
+
   const typingMap = useTypingStore((s) => s.typingMap);
+  const presenceMap = usePresenceStore((s) => s.presenceMap);
+
+  const presenceOf = (chat: ChatConversation) => {
+    const uid = chat.userId || (chat.type === 'dm' ? DM_USER_MAP[chat.id] : undefined);
+    const presence = uid ? presenceMap[uid] : undefined;
+    return presence
+      ? { online: presence.isOnline, lastSeen: presence.lastSeen }
+      : { online: chat.online, lastSeen: chat.lastSeen };
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (ids: string[]) => bulkDeleteConversations(ids),
@@ -71,10 +118,12 @@ export default function ChatList() {
       }
       setToast({ message: 'Failed to delete chats. Please try again.' });
     },
+    onSuccess: () => {
+      setToast({ message: pendingDeleteIds.length > 1 ? 'Chats deleted' : 'Chat deleted' });
+    },
     onSettled: () => {
       setDeleteConfirmOpen(false);
       setDeleteLoading(false);
-      setAlsoDeleteMedia(true);
       exitSelectionMode();
     },
   });
@@ -86,10 +135,22 @@ export default function ChatList() {
 
   const conversations = Array.isArray(data) ? data : [];
 
+  useEffect(() => {
+    if (!groupId) return;
+    const mentionIds = markMentionsAsRead(groupId);
+    mentionIds.forEach((notificationId) => markNotificationRead.mutate(notificationId));
+  }, [groupId, markMentionsAsRead, markNotificationRead]);
+
   const filtered = conversations.filter((c) => {
-    if (tab === 'messages' && c.type !== 'dm') return false;
-    if (tab === 'groups' && c.type !== 'group') return false;
-    return c.name.toLowerCase().includes(search.toLowerCase());
+    if (category === 'groups' && c.type !== 'group') return false;
+    if (category === 'unread' && (c.unread ?? 0) <= 0) return false;
+    if (!c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    const clearedAt = isChatCleared(c.id);
+    if (clearedAt) {
+      const lastTimeMs = c.lastTime ? Date.parse(c.lastTime) : NaN;
+      if (Number.isNaN(lastTimeMs) || lastTimeMs <= Date.parse(clearedAt)) return false;
+    }
+    return true;
   });
 
   const debouncedSearch = useDebounce(search, 300);
@@ -217,7 +278,7 @@ export default function ChatList() {
   return (
     <div className="flex h-full flex-col">
       {isSelectionMode ? (
-        <div className="flex items-center gap-3 border-b border-border px-3 py-2 lg:px-4 lg:py-3">
+        <div className="flex items-center gap-3 border-b border-border px-3 py-2 lg:px-4 lg:py-3 pt-safe-top">
           <button
             onClick={exitSelectionMode}
             aria-label="Cancel selection"
@@ -238,61 +299,80 @@ export default function ChatList() {
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2 border-b border-border p-4 lg:px-5 lg:py-4">
-          <div className="relative flex-1">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground lg:left-3.5"
-            />
-            <input
-              type="text"
-              aria-label="Search chats"
-              placeholder="Search chats..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:text-base"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
-              aria-label="New chat"
-              className="hidden shrink-0 lg:flex h-9 w-9 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:h-11 lg:w-11"
-            >
-              <Plus size={20} />
-            </button>
-            <div className="lg:hidden">
-              <NotificationBell />
+        <div className="flex flex-col pt-safe-top">
+          <div className="flex items-center justify-between gap-2 p-4 pb-2 lg:px-5 lg:pb-3 lg:pt-5">
+            <h1 className="text-2xl font-bold text-foreground lg:text-2xl">Hallo Wok</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/starred')}
+                aria-label="Starred messages"
+                className={cn(
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors lg:h-11 lg:w-11',
+                  location.pathname === '/starred'
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                <Star className="h-5 w-5 lg:h-[18px] lg:w-[18px]" />
+              </button>
+              <button
+                onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}
+                aria-label="New chat"
+                className="hidden shrink-0 lg:flex h-11 w-11 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+              <Link to="/profile" className="lg:hidden">
+                <Avatar className="h-9 w-9">
+                  {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                  <AvatarFallback className="text-xs font-semibold">
+                    {(user?.fullName || user?.username || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
             </div>
-            <Link to="/profile" className="lg:hidden">
-              <Avatar className="h-8 w-8">
-                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
-                <AvatarFallback className="text-xs"><User size={16} /></AvatarFallback>
-              </Avatar>
-            </Link>
+          </div>
+          <div className="px-4 pb-4 lg:px-5 lg:pb-4">
+            <div className="relative">
+              <Search
+                className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground lg:h-[18px] lg:w-[18px]"
+              />
+              <input
+                type="text"
+                aria-label="Search chats"
+                placeholder="Search chats..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-full border border-muted bg-muted py-3 pl-11 pr-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring lg:py-3 lg:pl-10 lg:pr-3 lg:text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 px-4 pb-4 lg:px-5 lg:pb-4">
+            {(
+              [
+                { id: 'all', label: 'Chat' },
+                { id: 'groups', label: 'Groups' },
+                { id: 'unread', label: 'Unread' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => { setCategory(id); setSearch(''); }}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-medium transition-colors lg:text-sm',
+                  category === id
+                    ? 'bg-accent text-accent-foreground'
+                    : 'border border-border text-muted-foreground hover:bg-accent/10 hover:text-foreground',
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
       <ContactPopover anchorEl={anchorEl} onClose={() => setAnchorEl(null)} />
-
-      <div className="flex items-center border-b border-border">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setTab(id); setSearch(''); }}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors lg:gap-2.5 lg:py-4 lg:text-base',
-              tab === id
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Icon size={16} className="lg:size-[18]" />
-            {label}
-          </button>
-        ))}
-      </div>
 
       <div className="flex-1 overflow-y-auto">
         {isPending ? (
@@ -313,24 +393,25 @@ export default function ChatList() {
         ) : showSearchResults ? (
           <>
             {filtered.length > 0 && (
-              <div>
+              <div role="list">
                 <div className="px-4 py-2 text-xs font-medium text-muted-foreground lg:px-5 lg:py-2.5">
                   Conversations
                 </div>
                 {filtered.map((chat) => {
                   const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
+                  const { online, lastSeen } = presenceOf(chat);
                   return (
                     <Link
                       key={chat.id}
                       to={linkTo}
-                      state={{ name: chat.name, online: chat.online, lastSeen: chat.lastSeen, members: chat.members }}
-                      className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                      state={{ name: chat.name, online, lastSeen, members: chat.members }}
+                      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                     >
                       <div className="relative shrink-0">
                         <Avatar className="lg:h-12 lg:w-12">
                           {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
-                          <AvatarFallback className="lg:text-base">
-                            {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
+                          <AvatarFallback className="font-semibold text-xs lg:text-base">
+                            {chat.type === 'group' ? <Users size={18} /> : (chat.name ? chat.name.charAt(0).toUpperCase() : 'U')}
                           </AvatarFallback>
                         </Avatar>
                       </div>
@@ -339,7 +420,7 @@ export default function ChatList() {
                           <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{chat.name}</span>
                           <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatTime(chat.lastTime)}</span>
                         </div>
-                        <p className="truncate text-xs text-muted-foreground lg:text-sm">{chat.lastMessage}</p>
+                        <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm"><ChatPreview chat={chat} /></p>
                       </div>
                     </Link>
                   );
@@ -347,8 +428,8 @@ export default function ChatList() {
               </div>
             )}
             {messageResults.length > 0 && (
-              <div>
-                <div className="px-4 py-2 text-xs font-medium text-muted-foreground lg:px-5 lg:py-2.5">
+              <div role="list" className="border-t border-border">
+                <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
                   Messages
                 </div>
                 {messageResults.map((msg) => (
@@ -356,12 +437,12 @@ export default function ChatList() {
                     key={msg.messageId}
                     to={msg.conversationType === 'dm' ? `/dm/${msg.conversationId}` : `/chat/${msg.conversationId}`}
                     state={{ name: msg.conversationName }}
-                    className="flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                   >
                     <div className="relative shrink-0">
                       <Avatar className="lg:h-12 lg:w-12">
-                        <AvatarFallback className="lg:text-base">
-                          {msg.conversationType === 'group' ? <Users size={18} /> : <User size={18} />}
+                        <AvatarFallback className="font-semibold text-xs lg:text-base">
+                          {msg.conversationType === 'group' ? <Users size={18} /> : (msg.conversationName ? msg.conversationName.charAt(0).toUpperCase() : 'U')}
                         </AvatarFallback>
                       </Avatar>
                     </div>
@@ -370,9 +451,9 @@ export default function ChatList() {
                         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">{msg.conversationName}</span>
                         <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">{formatLastSeen(msg.createdAt)}</span>
                       </div>
-                      <p className="truncate text-xs text-muted-foreground lg:text-sm">
+                      <p className="line-clamp-1 text-xs text-muted-foreground lg:text-sm">
                         <span className="text-foreground/70">{msg.senderName}: </span>
-                        {msg.content}
+                        {clampText(msg.content)}
                       </p>
                     </div>
                   </Link>
@@ -389,9 +470,7 @@ export default function ChatList() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-muted-foreground lg:text-base">
             <MessageSquareText size={40} className="mb-2 opacity-30" />
-            <p>
-              {tab === 'messages' ? 'No messages yet' : 'No groups yet'}
-            </p>
+            <p>No chats yet</p>
           </div>
         ) : (
           <div role="list">
@@ -399,11 +478,19 @@ export default function ChatList() {
               const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
               const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
               const isSelected = selectedChatIds.has(chat.id);
+              const hasUnreadMention = notifications.some(
+                (notification) =>
+                  notification.type === 'mention' &&
+                  notification.conversationId === chat.id &&
+                  !notification.read &&
+                  !notification.isRead,
+              );
+              const { online, lastSeen } = presenceOf(chat);
               const ItemTag = (isSelectionMode ? 'div' : Link) as ElementType;
               return (
                 <ItemTag
                   key={chat.id}
-                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online: chat.online, lastSeen: chat.lastSeen, members: chat.members } } : {})}
+                  {...(!isSelectionMode ? { to: linkTo, state: { name: chat.name, online, lastSeen, members: chat.members } } : {})}
                   role="listitem"
                   aria-current={isActive && !isSelectionMode ? 'page' : undefined}
                   onMouseDown={(e: React.MouseEvent) => {
@@ -435,7 +522,7 @@ export default function ChatList() {
                     }
                   }}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
+                    'flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors lg:gap-4 lg:px-5 lg:py-4',
                     isActive && !isSelectionMode
                       ? 'bg-accent/10'
                       : 'hover:bg-accent/5',
@@ -445,11 +532,11 @@ export default function ChatList() {
                   <div className="relative shrink-0">
                     <Avatar className="lg:h-12 lg:w-12">
                       {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
-                      <AvatarFallback className="lg:text-base">
-                        {chat.type === 'group' ? <Users size={18} /> : <User size={18} />}
+                      <AvatarFallback className="font-semibold text-xs lg:text-base">
+                        {chat.type === 'group' ? <Users size={18} /> : (chat.name ? chat.name.charAt(0).toUpperCase() : 'U')}
                       </AvatarFallback>
                     </Avatar>
-                    {chat.online && !isSelectionMode && (
+                    {online && !isSelectionMode && (
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 lg:h-3.5 lg:w-3.5" />
                     )}
                     {isSelected && (
@@ -463,24 +550,37 @@ export default function ChatList() {
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground lg:text-base">
                         {chat.name}
                       </span>
+                      {chat.muted && !isSelectionMode && (
+                        <BellOff size={13} className="shrink-0 text-muted-foreground/60" aria-label="Muted" />
+                      )}
                       <span className="shrink-0 text-xs text-muted-foreground lg:text-sm">
                         {formatTime(chat.lastTime)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground lg:text-sm">
-                        {typingMap[chat.id] ? (
-                          <span className="text-accent">typing...</span>
-                        ) : chat.online ? (
-                          chat.lastMessage
-                        ) : chat.lastSeen && shouldShowLastSeen() ? (
-                          <span className="text-muted-foreground">last seen {formatLastSeen(chat.lastSeen)}</span>
+                      <span className="line-clamp-1 min-w-0 flex-1 text-xs text-muted-foreground lg:text-sm">
+                        {typingMap[chat.id]?.length ? (
+                          <span className="text-accent">
+                            {chat.type === 'dm' ? 'typing...' : formatTypingLabel(typingMap[chat.id]!.map((t) => t.name))}
+                          </span>
+                        ) : online ? (
+                          <ChatPreview chat={chat} />
+                        ) : lastSeen && shouldShowLastSeen() ? (
+                          <span className="text-muted-foreground">last seen {formatLastSeen(lastSeen)}</span>
                         ) : (
-                          chat.lastMessage
+                          <ChatPreview chat={chat} />
                         )}
                       </span>
                       <div className="flex shrink-0 items-center gap-2">
-                        {(chat.unread ?? 0) > 0 && !isSelectionMode && (
+                        {chat.type === 'group' && (chat.unread ?? 0) > 0 && !isSelectionMode && (
+                          <span className="inline-flex items-center gap-1 text-accent" aria-label={`${chat.unread} unread group messages`} title="Unread group messages">
+                            {hasUnreadMention && <span className="text-base font-bold leading-none">@</span>}
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium leading-none text-accent-foreground">
+                              {chat.unread}
+                            </span>
+                          </span>
+                        )}
+                        {(chat.unread ?? 0) > 0 && (chat.type !== 'group') && !isSelectionMode && (
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground lg:h-6 lg:w-6 lg:text-xs">
                             {chat.unread}
                           </span>
@@ -498,8 +598,9 @@ export default function ChatList() {
       {contextMenu && (
         <div className="fixed inset-0 z-50" onMouseDown={() => setContextMenu(null)}>
           <div
+            ref={contextMenuRef}
             className="absolute w-48 rounded-lg border border-border bg-popover py-1 shadow-lg"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            style={{ left: menuPos?.x ?? contextMenu.x, top: menuPos?.y ?? contextMenu.y }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <button
@@ -516,26 +617,15 @@ export default function ChatList() {
         </div>
       )}
 
-      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }} title="Delete Chat">
+      <Modal open={deleteConfirmOpen} onClose={() => { setDeleteConfirmOpen(false); }} title="Delete Chat">
         <p className="mb-4 text-sm text-muted-foreground">
           {pendingDeleteIds.length === 1
             ? 'This chat will be deleted from your chat list. This action cannot be undone.'
             : `${pendingDeleteIds.length} chats will be deleted from your chat list. This action cannot be undone.`}
         </p>
-        <label className="mb-4 flex items-start gap-3 rounded-lg bg-accent/5 px-3 py-3">
-          <input
-            type="checkbox"
-            checked={alsoDeleteMedia}
-            onChange={(e) => setAlsoDeleteMedia(e.target.checked)}
-            className="mt-0.5 shrink-0 accent-accent"
-          />
-          <span className="text-sm text-foreground">
-            Also delete media received in {pendingDeleteIds.length === 1 ? 'this chat' : 'these chats'} from the device gallery
-          </span>
-        </label>
         <div className="flex justify-end gap-3">
           <button
-            onClick={() => { setDeleteConfirmOpen(false); setAlsoDeleteMedia(true); }}
+            onClick={() => { setDeleteConfirmOpen(false); }}
             className="rounded-lg border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/10"
           >
             Cancel

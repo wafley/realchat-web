@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { socketClient } from '@/lib/socket';
+import { getApiUrl } from '@/lib/url';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: getApiUrl(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
@@ -10,6 +12,9 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 });
@@ -65,7 +70,7 @@ api.interceptors.response.use(
 
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/refresh`,
+        `${getApiUrl()}/auth/refresh`,
         { refreshToken },
         { headers: { 'Content-Type': 'application/json' } },
       );
@@ -76,16 +81,21 @@ api.interceptors.response.use(
       localStorage.setItem('accessToken', newAccessToken);
       localStorage.setItem('refreshToken', newRefreshToken);
 
+      socketClient.refreshAuthToken();
+
       processQueue(null, newAccessToken);
 
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       return api(originalRequest);
-    } catch (refreshError) {
+    } catch (refreshError: any) {
       processQueue(refreshError, null);
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      window.dispatchEvent(new CustomEvent('auth:force-logout'));
-      window.location.href = '/login';
+      const isAuthError = refreshError.response?.status === 401 || refreshError.response?.status === 403;
+      if (isAuthError) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.dispatchEvent(new CustomEvent('auth:force-logout'));
+        window.location.href = '/login';
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

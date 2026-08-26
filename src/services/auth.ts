@@ -1,25 +1,64 @@
 import type { AuthResponse, LoginPayload, RegisterPayload, UpdateProfilePayload, User } from '@/types';
 import api from '@/lib/api';
+import { getApiErrorMessage } from '@/utils/errors';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/login', payload);
-  return data;
+export interface AuthUserRaw {
+  id: string;
+  username?: string;
+  email?: string;
+  fullName?: string;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  statusText?: string | null;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
+  isVerified?: boolean;
+  createdAt?: string | null;
 }
 
-export async function register(payload: RegisterPayload): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/register', {
-    username: payload.username,
+export function mapUser(raw: AuthUserRaw): User {
+  return {
+    id: raw.id,
+    username: raw.username ?? '',
+    email: raw.email ?? '',
+    fullName: raw.fullName ?? '',
+    bio: raw.bio ?? undefined,
+    avatarUrl: raw.avatarUrl ?? undefined,
+    bannerUrl: raw.bannerUrl ?? undefined,
+    status: raw.isOnline ? 'online' : 'offline',
+    lastSeen: raw.lastSeenAt ? new Date(raw.lastSeenAt) : undefined,
+    createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+  };
+}
+
+export interface RegisteredAccount {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+}
+
+export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/login', payload);
+  return { ...data, user: mapUser(data.user as unknown as AuthUserRaw) };
+}
+
+export async function register(payload: RegisterPayload): Promise<RegisteredAccount> {
+  const { data } = await api.post<RegisteredAccount>('/auth/register', {
+    username: payload.username.trim().toLowerCase(),
     email: payload.email,
     password: payload.password,
+    fullName: payload.fullName,
   });
   return data;
 }
 
 export async function getMe(): Promise<User> {
-  const { data } = await api.get<User>('/users/me');
-  return data;
+  const { data } = await api.get<AuthUserRaw>('/users/me');
+  return mapUser(data);
 }
 
 export async function logout(refreshToken: string): Promise<void> {
@@ -32,24 +71,12 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
 }
 
 export function parseAuthError(err: unknown): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const data = (err as { response: { data: Record<string, unknown> } }).response?.data;
-    if (typeof data?.message === 'string') return data.message;
-    if (typeof data?.error === 'string') return data.error;
-    if (Array.isArray(data?.message)) return (data.message as string[]).join(', ');
-    if (data?.errors && typeof data.errors === 'object') {
-      return Object.values(data.errors as Record<string, string[]>)
-        .flat()
-        .join(', ');
-    }
-  }
-  if (err instanceof Error) return err.message;
-  return 'Something went wrong. Please try again.';
+  return getApiErrorMessage(err, 'Something went wrong. Please try again.');
 }
 
 export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
-  const { data } = await api.put<User>('/users/me', payload);
-  return data;
+  const { data } = await api.put<AuthUserRaw>('/users/me', payload);
+  return mapUser(data);
 }
 
 export async function forgotPassword(email: string): Promise<void> {
@@ -82,7 +109,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
     if (newPassword.length < 6) throw new Error('New password must be at least 6 characters');
     return;
   }
-  await api.post('/auth/change-password', { currentPassword, newPassword });
+  await api.put('/users/me/password', { oldPassword: currentPassword, newPassword });
 }
 
 export async function deleteAccount(password: string): Promise<void> {

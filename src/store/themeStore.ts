@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 
 type ThemeMode = 'dark' | 'light' | 'system';
-type FontSize = 'small' | 'default' | 'large';
-type AccentColor =
+export type FontSize = 'small' | 'default' | 'large';
+export type AccentColor =
   | 'blue'
   | 'green'
   | 'teal'
@@ -43,6 +43,8 @@ const THEME_KEY = 'hallo-wok-theme';
 const FONT_SIZE_KEY = 'hallo-wok-font-size';
 const ACCENT_KEY = 'hallo-wok-accent';
 
+let currentMode: ThemeMode = 'dark';
+
 function getSystemTheme(): 'dark' | 'light' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
@@ -66,6 +68,7 @@ function getInitialAccentColor(): AccentColor {
 }
 
 function applyTheme(mode: ThemeMode) {
+  currentMode = mode;
   const resolved = mode === 'system' ? getSystemTheme() : mode;
   document.documentElement.classList.toggle('light', resolved === 'light');
   localStorage.setItem(THEME_KEY, mode);
@@ -86,20 +89,46 @@ function applyAccentColor(color: AccentColor) {
   localStorage.setItem(ACCENT_KEY, color);
 }
 
+export function initTheme() {
+  applyTheme(getInitialMode());
+  applyFontSize(getInitialFontSize());
+  applyAccentColor(getInitialAccentColor());
+}
+
+function watchSystemTheme() {
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  const onChange = () => {
+    if (currentMode === 'system') {
+      applyTheme('system');
+    }
+  };
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', onChange);
+  } else {
+    mql.addListener(onChange);
+  }
+}
+
 export const useThemeStore = create<ThemeState>((set) => {
   const initialMode = getInitialMode();
   const initialFontSize = getInitialFontSize();
   const initialAccent = getInitialAccentColor();
 
-  applyTheme(initialMode);
-  applyFontSize(initialFontSize);
-  applyAccentColor(initialAccent);
+  initTheme();
+  watchSystemTheme();
 
-  if (initialMode === 'system') {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      applyTheme('system');
-    });
-  }
+  window.addEventListener('storage', (e) => {
+    if (e.key === null || e.key === THEME_KEY || e.key === FONT_SIZE_KEY || e.key === ACCENT_KEY) {
+      const nextMode = getInitialMode();
+      initTheme();
+      set({
+        mode: nextMode,
+        theme: nextMode === 'system' ? getSystemTheme() : nextMode,
+        fontSize: getInitialFontSize(),
+        accentColor: getInitialAccentColor(),
+      });
+    }
+  });
 
   return {
     mode: initialMode,

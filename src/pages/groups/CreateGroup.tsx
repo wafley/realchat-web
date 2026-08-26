@@ -4,19 +4,24 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plus, Search, X, Loader2, Camera, UserIcon } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
+import { toast } from 'sonner';
 import type { User } from '@/types';
-import { createGroupSchema, type createGroupSchema as CreateGroupSchema } from '@/lib/validations';
+import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
+import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
+import { getApiErrorMessage } from '@/utils/errors';
+import ImageCropModal from '@/components/common/ImageCropModal';
 
 export default function CreateGroup() {
   const navigate = useNavigate();
-  const [isPrivate, setIsPrivate] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [croppedFile, setCroppedFile] = useState<File | null>(null);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -37,8 +42,9 @@ export default function CreateGroup() {
 
   const createMutation = useMutation({
     mutationFn: (data: CreateGroupSchema) =>
-      createGroup(data.name, data.description || '', selectedIds, isPrivate),
+      createGroup(data.name, data.description || '', selectedIds, croppedFile ?? undefined),
     onSuccess: (group) => navigate(`/chat/${group.id}`),
+    onError: (err) => toast.error(getApiErrorMessage(err)),
   });
 
   const handleSearch = (q: string) => {
@@ -56,14 +62,27 @@ export default function CreateGroup() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
+    if (!isSupportedImage(file)) {
+      toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
+      e.target.value = '';
+      return;
+    }
     const url = URL.createObjectURL(file);
-    setAvatarPreview(url);
+    setRawImageSrc(url);
+    setCropModalOpen(true);
+    e.target.value = '';
+  };
+
+  const handleCropComplete = (croppedFile: File, croppedPreviewUrl: string) => {
+    setCroppedFile(croppedFile);
+    setAvatarPreview(croppedPreviewUrl);
+    if (rawImageSrc) URL.revokeObjectURL(rawImageSrc);
+    setRawImageSrc(null);
   };
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-border bg-background px-4 py-3 md:px-6">
+      <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 md:px-6 pt-safe-top">
         <button
           onClick={() => navigate('/')}
           className="-ml-1 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/10 hover:text-foreground lg:hidden"
@@ -90,7 +109,7 @@ export default function CreateGroup() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               onChange={handleAvatarChange}
               className="hidden"
             />
@@ -124,22 +143,6 @@ export default function CreateGroup() {
             {errors.description && (
               <p className="mt-1 text-xs text-destructive">{errors.description.message}</p>
             )}
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-foreground">Private Group</p>
-              <p className="text-xs text-muted-foreground">Only invited members can join</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsPrivate(!isPrivate)}
-              className={`relative h-6 w-11 rounded-full transition-colors ${isPrivate ? 'bg-accent' : 'bg-muted'}`}
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${isPrivate ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
-              />
-            </button>
           </div>
 
           <div>
@@ -211,11 +214,14 @@ export default function CreateGroup() {
                 })}
               </div>
             )}
+          {selectedIds.length > 0 && selectedIds.length < 2 && (
+            <p className="mt-2 text-xs text-destructive">Select at least 2 members to create a group</p>
+          )}
           </div>
 
           <button
             type="submit"
-            disabled={!groupName?.trim() || createMutation.isPending}
+            disabled={!groupName?.trim() || selectedIds.length < 2 || createMutation.isPending}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
           >
             {createMutation.isPending ? (
@@ -227,6 +233,13 @@ export default function CreateGroup() {
           </button>
         </form>
       </div>
+
+      <ImageCropModal
+        open={cropModalOpen}
+        imageSrc={rawImageSrc}
+        onClose={() => setCropModalOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 }

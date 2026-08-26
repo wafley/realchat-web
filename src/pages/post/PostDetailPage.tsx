@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getPost } from '@/services/posts';
 import type { Post } from '@/types';
+import { resolveFileUrl } from '@/lib/url';
 
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -36,7 +37,7 @@ export default function PostDetailPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-4">
+    <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-4 pt-safe-top">
       <button
         onClick={() => navigate(-1)}
         className="mb-3 flex items-center gap-2 px-4 text-sm text-muted-foreground"
@@ -60,7 +61,7 @@ export default function PostDetailPage() {
         </button>
 
         <img
-          src={resolved.imageUrl}
+          src={resolveFileUrl(resolved.imageUrl)}
           alt={resolved.caption || 'Post image'}
           className="w-full object-cover"
           loading="lazy"

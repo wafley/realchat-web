@@ -4,6 +4,7 @@ export interface User {
   username: string;
   fullName: string;
   avatarUrl?: string;
+  bannerUrl?: string;
   bio?: string;
   status: 'online' | 'offline' | 'away';
   lastSeen?: Date;
@@ -21,7 +22,7 @@ export interface ReplyTo {
   senderId: string;
   senderName: string;
   content: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'video';
   fileUrl?: string;
   fileName?: string;
 }
@@ -32,15 +33,20 @@ export interface Message {
   senderId: string;
   sender?: User;
   content: string;
-  type: 'text' | 'image' | 'file' | 'system' | 'video';
+  type: 'text' | 'image' | 'system' | 'video';
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+  mimeType?: string;
   duration?: number;
   status?: MessageStatus;
   replyTo?: ReplyTo;
   isPinned?: boolean;
+  isStarred?: boolean;
+  starredAt?: Date | null;
+  isDeleted?: boolean;
   readBy?: string[];
+  lastReadAt?: Date;
   edited?: boolean;
   reactions?: Reaction[];
   createdAt: Date;
@@ -119,15 +125,19 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  nextCursor?: string | null;
 }
 
 export interface Notification {
   id: string;
-  type: 'contact_added' | 'message' | 'group';
+  type: 'new_contact' | 'contact_added' | 'message' | 'group' | 'group_invite' | 'mention';
   title: string;
   body?: string;
   read: boolean;
+  isRead?: boolean;
   conversationId?: string;
+  actorId?: string;
+  messageId?: string;
   sender?: { id: string; username: string; avatarUrl?: string };
   createdAt: Date;
 }
@@ -160,5 +170,5 @@ export interface SearchMessageResult {
   createdAt: Date;
 }
 
-export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+export type MessageStatus = 'pending' | 'sending' | 'sent' | 'delivered' | 'read';
 export type Theme = 'light' | 'dark' | 'system';

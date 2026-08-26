@@ -1,8 +1,8 @@
+export type LastSeenOption = 'everyone' | 'contacts' | 'nobody';
+export type GroupAddOption = 'everyone' | 'contacts' | 'nobody';
+
 export interface PrivacySettings {
-  lastSeen: 'everyone' | 'contacts' | 'nobody';
-  addToGroups: 'everyone' | 'contacts';
+  lastSeen: LastSeenOption;
+  addToGroups: GroupAddOption;
   readReceipts: boolean;
 }
-
-export type LastSeenOption = PrivacySettings['lastSeen'];
-export type GroupAddOption = PrivacySettings['addToGroups'];

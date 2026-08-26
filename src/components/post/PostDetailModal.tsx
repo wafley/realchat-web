@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Heart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { Post } from '@/types';
+import { resolveFileUrl } from '@/lib/url';
 
 interface Props {
   post: Post;
@@ -53,7 +54,7 @@ export default function PostDetailModal({ post, onClose }: Props) {
 
         <div className="flex-1 overflow-y-auto">
           <img
-            src={post.imageUrl}
+            src={resolveFileUrl(post.imageUrl)}
             alt={post.caption || 'Post image'}
             className="w-full object-cover"
             loading="lazy"

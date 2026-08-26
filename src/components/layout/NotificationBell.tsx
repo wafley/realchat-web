@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { Bell, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useNotifications, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
 import NotificationItem from './NotificationItem';
@@ -48,7 +47,7 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div data-notification-bell className="fixed top-0 left-0 max-lg:bottom-0 lg:left-20 z-50 flex h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200">
+        <div data-notification-bell className="fixed top-0 left-0 max-lg:bottom-0 lg:left-20 z-50 flex h-screen w-full lg:w-[30rem] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left-2 duration-200 pt-safe-top">
           <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
             <h3 className="text-base font-bold text-foreground">Notifications</h3>
             <div className="flex items-center gap-2">

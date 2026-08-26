@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users, User } from 'lucide-react';
+import { Search, Bell, BellOff, Ban, Flag, Info, ArrowLeft, MoreVertical, Trash2, Users } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { formatLastSeen } from '@/utils/time';
 import { shouldShowLastSeen } from '@/utils/privacy';
+import { useNow } from '@/hooks/useNow';
 
 interface ChatHeaderProps {
   chatName: string;
   chatOnline: boolean;
-  otherTyping: boolean;
+  typingLabel?: string | null;
   isDM: boolean;
   muted: boolean;
   userId?: string;
@@ -19,6 +19,8 @@ interface ChatHeaderProps {
   onSearchToggle: () => void;
   onToggleMute: () => void;
   onBlockClick: () => void;
+  onUnblockClick?: () => void;
+  isBlocked?: boolean;
   onReportClick: () => void;
   onGroupInfoClick: () => void;
   onClearChat: () => void;
@@ -27,7 +29,7 @@ interface ChatHeaderProps {
 export default function ChatHeader({
   chatName,
   chatOnline,
-  otherTyping,
+  typingLabel,
   isDM,
   muted,
   userId,
@@ -38,11 +40,12 @@ export default function ChatHeader({
   onSearchToggle,
   onToggleMute,
   onBlockClick,
+  onUnblockClick,
+  isBlocked = false,
   onReportClick,
   onGroupInfoClick,
   onClearChat,
 }: ChatHeaderProps) {
-  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
@@ -56,8 +59,10 @@ export default function ChatHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [moreOpen]);
 
+  useNow(30000);
+
   return (
-    <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3">
+    <div className="flex items-center gap-3 border-b border-border bg-sidebar px-4 py-3 pt-safe-top lg:py-4 lg:!pt-4">
       <button
         onClick={onBack}
         aria-label="Back to chats"
@@ -67,24 +72,24 @@ export default function ChatHeader({
       </button>
       <Avatar className="h-9 w-9 lg:h-11 lg:w-11">
         {avatarUrl && <AvatarImage src={avatarUrl} alt={chatName} />}
-        <AvatarFallback className="lg:text-base">
-          {isDM ? <User size={18} /> : <Users size={18} />}
+        <AvatarFallback className="font-semibold text-xs lg:text-base">
+          {isDM ? (chatName ? chatName.charAt(0).toUpperCase() : 'U') : <Users size={18} />}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1">
         {isDM && userId ? (
-          <button onClick={() => navigate(`/profile/${userId}`)} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
+          <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         ) : (
           <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         )}
-        {otherTyping ? (
+        {typingLabel ? (
           <p className="flex items-center gap-1 text-xs text-accent">
             <span className="flex gap-0.5">
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:0ms]" />
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:150ms]" />
               <span className="h-1 w-1 animate-bounce rounded-full bg-accent [animation-delay:300ms]" />
             </span>
-            typing
+            {typingLabel}
           </p>
         ) : isDM ? (
           <p className="text-xs text-muted-foreground">
@@ -118,9 +123,9 @@ export default function ChatHeader({
                     {muted ? <BellOff size={15} className="text-muted-foreground" /> : <Bell size={15} className="text-muted-foreground" />}
                     {muted ? 'Unmute' : 'Mute'}
                   </button>
-                  <button onClick={() => { setMoreOpen(false); onBlockClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
-                    <Ban size={15} className="text-muted-foreground" />
-                    Block
+                  <button onClick={() => { setMoreOpen(false); if (isBlocked) onUnblockClick?.(); else onBlockClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
+                    <Ban size={15} className={isBlocked ? 'text-destructive' : 'text-muted-foreground'} />
+                    {isBlocked ? 'Unblock' : 'Block'}
                   </button>
                   <button onClick={() => { setMoreOpen(false); onReportClick(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10">
                     <Flag size={15} className="text-muted-foreground" />
