@@ -272,9 +272,12 @@ function MessageBubbleComp({
               {msg.content ? (
                 <>
                   <video
-                    src={msg.fileUrl}
-                    controls
-                    className="block w-full rounded-t-2xl"
+                    src={resolveFileUrl(msg.fileUrl)}
+                    playsInline
+                    controls={false}
+                    onPlay={(e) => e.currentTarget.pause()}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                    className="block w-full cursor-pointer rounded-t-2xl"
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
@@ -297,9 +300,12 @@ function MessageBubbleComp({
               ) : (
                 <div className="relative">
                   <video
-                    src={msg.fileUrl}
-                    controls
-                    className="block w-full rounded-xl"
+                    src={resolveFileUrl(msg.fileUrl)}
+                    playsInline
+                    controls={false}
+                    onPlay={(e) => e.currentTarget.pause()}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                    className="block w-full cursor-pointer rounded-xl"
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
