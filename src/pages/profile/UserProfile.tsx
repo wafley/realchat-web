@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Trash2 } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
+import { MediaThumb, isLinkContent, extractUrl, urlDomain } from '@/components/chat/MediaThumb';
 
 import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
-import { formatTime } from '@/lib/chatHelpers';
+import { formatTime, formatFileSize } from '@/lib/chatHelpers';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations, muteConversation, unmuteConversation } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
@@ -24,93 +25,6 @@ import AppearanceContent from './settings/AppearanceContent';
 import AccountContent from './settings/AccountContent';
 import AboutContent from './settings/AboutContent';
 
-function formatFileSize(bytes: number): string {
-  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
-}
-
-function isLinkContent(content?: string): boolean {
-  return !!content && /https?:\/\/[^\s]+/.test(content);
-}
-
-function extractUrl(content: string): string | null {
-  const match = content.match(/https?:\/\/[^\s]+/);
-  return match ? match[0] : null;
-}
-
-function urlDomain(url: string): string {
-  try { return new URL(url).hostname.replace('www.', ''); }
-  catch { return url; }
-}
-
-function MediaThumb({ media, onClickImage }: { media: { id: string; type: string; content?: string; fileUrl?: string; fileName?: string; fileSize?: number; duration?: number }; onClickImage?: (url: string) => void }) {
-  const isLink = media.type === 'text';
-  const linkUrl = isLink ? extractUrl(media.content || '') : null;
-
-  return (
-    <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
-      {media.type === 'image' ? (
-        <img
-          src={resolveFileUrl(media.fileUrl)}
-          alt={media.fileName || 'Shared image'}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
-          onClick={() => {
-            if (media.fileUrl && media.fileUrl !== '#') {
-              onClickImage?.(media.fileUrl);
-            } else {
-              toast.error('Preview not available');
-            }
-          }}
-        />
-      ) : media.type === 'video' ? (
-        <div
-          className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
-          onClick={() => toast.info('Video playback coming soon')}
-        >
-          {media.fileUrl && media.fileUrl !== '#' ? (
-            <img src={resolveFileUrl(media.fileUrl)} alt={media.fileName || 'Shared video'} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-70" />
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <Play size={24} className="text-muted-foreground" fill="currentColor" />
-            </div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
-              <Play size={14} className="text-white" fill="white" />
-            </div>
-          </div>
-          {media.duration && (
-            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-              {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
-            </span>
-          )}
-        </div>
-      ) : isLink && linkUrl ? (
-        <a
-          href={linkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          </div>
-          <span className="max-w-full truncate text-[10px] font-medium text-foreground">{urlDomain(linkUrl)}</span>
-          <span className="max-w-full truncate text-[9px] text-muted-foreground">{linkUrl}</span>
-        </a>
-      ) : (
-        <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10">
-          <FileText size={20} className="text-muted-foreground" />
-          <span className="max-w-full truncate text-[10px] text-muted-foreground">{media.fileName}</span>
-          {media.fileSize && <span className="text-[10px] text-muted-foreground/60">{formatFileSize(media.fileSize)}</span>}
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface UserProfileProps {
   userIdOverride?: string;
