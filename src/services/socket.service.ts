@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
@@ -132,7 +132,7 @@ function onMessageNew(raw: RemoteMessage) {
   scheduleStatusFlush(0);
 
   // Update conversation preview + reorder + unread badge
-  const preview = msg.type === 'image' ? '📷 Photo' : (msg.type === 'file' ? '📎 File' : msg.type === 'video' ? '🎬 Video' : msg.content);
+  const preview = messagePreview(msg);
   queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; unread?: number; lastSenderName?: string }[]>(
     ['conversations'],
     (prev) => {
@@ -144,7 +144,7 @@ function onMessageNew(raw: RemoteMessage) {
           ? {
               ...c,
               lastMessage: preview,
-              lastSenderName: isDM || msg.type === 'system' ? undefined : messageSenderName(msg),
+              lastSenderName: msg.type === 'system' ? undefined : messageSenderName(msg),
               lastTime: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : (msg.createdAt as string | undefined) ?? 'now',
               unread: shouldCount ? (c.unread ?? 0) + 1 : 0,
             }
@@ -356,6 +356,9 @@ async function fetchTypingName(userId: string): Promise<string> {
 }
 
 async function resolveTypingName(userId: string, conversationId: string): Promise<string> {
+  const contacts = queryClient.getQueryData<{ userId: string; customName?: string }[]>(['contacts']);
+  const customName = contacts?.find((c) => c.userId === userId)?.customName;
+  if (customName) return customName;
   const convs = queryClient.getQueryData<
     { id: string; type: string; name?: string; userId?: string }[]
   >(['conversations']);

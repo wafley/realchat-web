@@ -18,12 +18,38 @@ import { usePageVisibility } from '@/hooks/chat/usePageVisibility';
 import { joinRoom, joinAllConversationRooms, setCurrentChat, emitSeenForConversation } from '@/services/socket.service';
 import { getBlockedUsers, unblockUser, markConversationAsSeen } from '@/services/chat';
 import { clearChatViewport } from '@/lib/chatViewport';
+import { resolveFileUrl } from '@/lib/url';
 
 export default function ChatRoom() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = useChatState();
+  const previewMedia: Array<{
+    id: string;
+    url: string;
+    fileName?: string;
+    mimeType?: string;
+    label: string;
+    kind: 'image' | 'video';
+    senderName: string;
+    senderAvatarUrl?: string;
+  }> = state.messages
+    .filter((message): message is typeof message & { fileUrl: string; type: 'image' | 'video' } =>
+      (message.type === 'image' || message.type === 'video') && !!message.fileUrl)
+    .map((message) => ({
+      id: message.id,
+      url: resolveFileUrl(message.fileUrl)!,
+      fileName: message.fileName,
+      mimeType: message.mimeType,
+      label: message.fileName || (message.type === 'video' ? 'Video' : 'Photo'),
+      kind: message.type,
+      senderName: message.senderId === state.currentUser?.id
+        ? 'You'
+        : message.sender?.fullName || message.sender?.username || state.chatName,
+      senderAvatarUrl: message.sender?.avatarUrl,
+    }));
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const [profileInfoUserId, setProfileInfoUserId] = useState<string | null>(null);
   const handledHighlightIdRef = useRef<string | null>(null);
 
   const queryClient = useQueryClient();
@@ -49,6 +75,7 @@ export default function ChatRoom() {
 
   useEffect(() => {
     handledHighlightIdRef.current = null;
+    setProfileInfoUserId(null);
   }, [state.chatId]);
 
   usePageVisibility(state.chatId);
@@ -58,6 +85,28 @@ export default function ChatRoom() {
     emitSeenForConversation(state.chatId, state.isDM);
     // Reset unreadCount di server tepat saat pesan benar-benar terlihat.
     markConversationAsSeen(state.chatId).catch(() => {});
+  };
+
+  const handleReplyClick = (messageId: string) => {
+    setHighlightedMsgId(messageId);
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    window.setTimeout(() => setHighlightedMsgId(null), 3000);
+  };
+
+  const handleMentionClick = (username: string) => {
+    const member = mutations.group?.members?.find(
+      (m) => m.user?.username?.toLowerCase() === username.toLowerCase(),
+    );
+    if (!member) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      setProfileInfoUserId(member.userId);
+      state.setProfileInfoOpen(true);
+    } else {
+      navigate(`/profile/${member.userId}`, { state: { from: location.pathname } });
+    }
   };
 
   useEffect(() => {
@@ -125,7 +174,6 @@ export default function ChatRoom() {
     chatName: state.chatName,
     otherUserId: state.otherUserId,
     selectedImage: state.selectedImage,
-    selectedFile: state.selectedFile,
     imagePreview: state.imagePreview,
     replyingToForSend: state.replyingTo,
     setInput: state.setInput,
@@ -151,7 +199,6 @@ export default function ChatRoom() {
     setMuted: state.setMuted,
     setSelectedImage: state.setSelectedImage,
     setImagePreview: state.setImagePreview,
-    setSelectedFile: state.setSelectedFile,
     typingTimerRef: state.typingTimerRef,
     typingDoneTimerRef: state.typingDoneTimerRef,
     messagesEndRef: state.messagesEndRef,
@@ -164,7 +211,6 @@ export default function ChatRoom() {
     longPressStartPosRef: state.longPressStartPosRef,
     sendMutation: mutations.sendMutation,
     sendImageMutation: mutations.sendImageMutation,
-    sendFileMutation: mutations.sendFileMutation,
     editMutation: mutations.editMutation,
     deleteMutation: mutations.deleteMutation,
     pinMutation: mutations.pinMutation,
@@ -207,9 +253,9 @@ export default function ChatRoom() {
     return () => window.removeEventListener('chat:forced-leave', handler);
   }, [state.chatId, navigate]);
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
       {/* Main Chat Area */}
-      <div className="flex flex-1 flex-col h-full min-w-0">
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col">
         <ChatHeader
           chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
           typingLabel={state.typingLabel}
@@ -241,7 +287,7 @@ export default function ChatRoom() {
               if (window.matchMedia('(min-width: 1024px)').matches) {
                 state.setProfileInfoOpen((prev) => !prev);
               } else {
-                navigate(`/profile/${state.otherUserId}`);
+                navigate(`/profile/${state.otherUserId}`, { state: { from: location.pathname } });
               }
             } else {
               state.setGroupInfoOpen((prev) => !prev);
@@ -362,7 +408,22 @@ export default function ChatRoom() {
           onTouchStart={actions.handleTouchStart}
           onTouchMove={actions.handleTouchMove}
           onTouchEnd={actions.handleTouchEnd}
-          onClickImage={(url) => state.setLightboxUrl(url)}
+          onClickImage={(url, fileName, mimeType) => {
+            const metadata = new URLSearchParams();
+            if (fileName) metadata.set('downloadName', fileName);
+            if (mimeType) metadata.set('mimeType', mimeType);
+            state.setLightboxUrl(`${url.split('#')[0]}#${metadata.toString()}`);
+          }}
+          onReplyClick={handleReplyClick}
+          onSenderClick={(userId) => {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+              setProfileInfoUserId(userId);
+              state.setProfileInfoOpen(true);
+            } else {
+              navigate(`/profile/${userId}`, { state: { from: location.pathname } });
+            }
+          }}
+          onMentionClick={handleMentionClick}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}
@@ -377,7 +438,8 @@ export default function ChatRoom() {
           editingMsg={state.editingMsg}
           imagePreview={state.imagePreview}
           selectedImage={state.selectedImage}
-          selectedFile={state.selectedFile}
+          groupMembers={mutations.group?.members}
+          currentUserId={state.currentUser?.id}
           showEmojiPicker={state.showEmojiPicker}
           disabled={isPeerBlocked}
           onInputChange={state.setInput}
@@ -388,7 +450,6 @@ export default function ChatRoom() {
           onCancelEdit={actions.handleCancelEdit}
           onCancelImage={actions.handleCancelImage}
           onImageSelect={actions.handleImageSelect}
-          onFileSelect={actions.handleFileSelect}
           onEmojiToggle={() => state.setShowEmojiPicker((v) => !v)}
           onEmojiClick={actions.handleEmojiClick}
           emojiPickerRef={
@@ -396,9 +457,6 @@ export default function ChatRoom() {
           }
           emojiToggleRef={
             state.emojiToggleRef as React.RefObject<HTMLButtonElement>
-          }
-          fileInputRef={
-            state.fileInputRef as React.RefObject<HTMLInputElement>
           }
           imageInputRef={
             state.imageInputRef as React.RefObject<HTMLInputElement>
@@ -426,11 +484,14 @@ export default function ChatRoom() {
         </aside>
       )}
 
-      {state.isDM && state.profileInfoOpen && state.otherUserId && (
+      {state.profileInfoOpen && (state.isDM ? state.otherUserId : profileInfoUserId) && (
         <aside className="fixed inset-0 z-40 h-full w-full shrink-0 animate-in slide-in-from-right-full duration-200 shadow-2xl lg:relative lg:inset-auto lg:z-auto lg:block lg:w-96 lg:shadow-none">
           <UserInfoPanel
-            userId={state.otherUserId}
-            onClose={() => state.setProfileInfoOpen(false)}
+            userId={state.isDM ? state.otherUserId! : profileInfoUserId!}
+            onClose={() => {
+              state.setProfileInfoOpen(false);
+              if (!state.isDM) setProfileInfoUserId(null);
+            }}
             onClearChat={() => state.setClearConfirmOpen(true)}
           />
         </aside>
@@ -452,6 +513,7 @@ export default function ChatRoom() {
         forwardSearch={state.forwardSearch}
         forwardableConversations={mutations.forwardableConversations}
         lightboxUrl={state.lightboxUrl}
+          previewMedia={previewMedia}
         blockConfirmOpen={state.blockConfirmOpen}
         reportConfirmOpen={state.reportConfirmOpen}
         clearConfirmOpen={state.clearConfirmOpen}
@@ -473,6 +535,12 @@ export default function ChatRoom() {
         onForwardSearchChange={state.setForwardSearch}
         onForward={actions.handleForward}
         onCloseLightbox={() => state.setLightboxUrl(null)}
+          onSelectLightbox={(url, fileName, mimeType) => {
+            const metadata = new URLSearchParams();
+            if (fileName) metadata.set('downloadName', fileName);
+            if (mimeType) metadata.set('mimeType', mimeType);
+            state.setLightboxUrl(`${url.split('#')[0]}#${metadata.toString()}`);
+          }}
         onCloseBlock={() => state.setBlockConfirmOpen(false)}
         onBlock={actions.handleBlock}
         onCloseReport={() => state.setReportConfirmOpen(false)}

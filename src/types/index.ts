@@ -22,7 +22,7 @@ export interface ReplyTo {
   senderId: string;
   senderName: string;
   content: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'video';
   fileUrl?: string;
   fileName?: string;
 }
@@ -33,10 +33,11 @@ export interface Message {
   senderId: string;
   sender?: User;
   content: string;
-  type: 'text' | 'image' | 'file' | 'system' | 'video';
+  type: 'text' | 'image' | 'system' | 'video';
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+  mimeType?: string;
   duration?: number;
   status?: MessageStatus;
   replyTo?: ReplyTo;

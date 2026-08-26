@@ -29,7 +29,6 @@ export function useChatState() {
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
   const [forwardSearch, setForwardSearch] = useState('');
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
@@ -49,7 +48,6 @@ export function useChatState() {
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const scrollTriggerRef = useRef<HTMLDivElement>(null);
@@ -61,7 +59,7 @@ export function useChatState() {
   const keyboardHeight = useKeyboardHeight();
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [], isPending: isConversationsPending } = useQuery({
     queryKey: ['conversations'],
     queryFn: getConversations,
   });
@@ -105,7 +103,6 @@ export function useChatState() {
     setForwardTarget(null);
     setForwardSearch('');
     setPinnedMessages([]);
-    setSelectedFile(null);
     setGroupInfoOpen(false);
     setProfileInfoOpen(false);
     setBlockConfirmOpen(false);
@@ -188,7 +185,7 @@ export function useChatState() {
       if (lastPage.nextCursor) return lastPage.nextCursor;
       return undefined;
     },
-    enabled: !!chatId,
+    enabled: !!chatId && (!isDM || !isConversationsPending),
   });
 
   const messages = useMemo(() => {
@@ -234,8 +231,8 @@ export function useChatState() {
           id: target.id,
           senderId: target.senderId,
           senderName: resolveSenderName(target.senderId),
-          content: target.type === 'image' ? '📷 Photo' : target.content,
-          type: target.type as 'text' | 'image',
+          content: target.type === 'image' ? '📷 Photo' : target.type === 'video' ? '🎥 Video' : target.content,
+          type: target.type as 'text' | 'image' | 'video',
           fileUrl: target.fileUrl,
           fileName: target.fileName,
         },
@@ -300,7 +297,6 @@ export function useChatState() {
     forwardTarget, setForwardTarget,
     forwardSearch, setForwardSearch,
     pinnedMessages, setPinnedMessages,
-    selectedFile, setSelectedFile,
     groupInfoOpen, setGroupInfoOpen,
     profileInfoOpen, setProfileInfoOpen,
     blockConfirmOpen, setBlockConfirmOpen,
@@ -319,7 +315,6 @@ export function useChatState() {
     typingDoneTimerRef,
     messagesEndRef,
     searchInputRef,
-    fileInputRef,
     emojiPickerRef,
     emojiToggleRef,
     scrollTriggerRef,

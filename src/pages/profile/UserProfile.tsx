@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, Play, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Trash2 } from 'lucide-react';
+import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlus, UserMinus, Check, Pencil, X, FileText, ChevronRight, Bell, BellOff, Shield, Sun, AlertTriangle, LogOut, Share2, Info, Star, Clock, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
+import { MediaThumb, isLinkContent, extractUrl, urlDomain } from '@/components/chat/MediaThumb';
+import SharedMediaLightbox from '@/components/chat/SharedMediaLightbox';
 
 import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
@@ -24,93 +26,6 @@ import AppearanceContent from './settings/AppearanceContent';
 import AccountContent from './settings/AccountContent';
 import AboutContent from './settings/AboutContent';
 
-function formatFileSize(bytes: number): string {
-  if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} B`;
-}
-
-function isLinkContent(content?: string): boolean {
-  return !!content && /https?:\/\/[^\s]+/.test(content);
-}
-
-function extractUrl(content: string): string | null {
-  const match = content.match(/https?:\/\/[^\s]+/);
-  return match ? match[0] : null;
-}
-
-function urlDomain(url: string): string {
-  try { return new URL(url).hostname.replace('www.', ''); }
-  catch { return url; }
-}
-
-function MediaThumb({ media, onClickImage }: { media: { id: string; type: string; content?: string; fileUrl?: string; fileName?: string; fileSize?: number; duration?: number }; onClickImage?: (url: string) => void }) {
-  const isLink = media.type === 'text';
-  const linkUrl = isLink ? extractUrl(media.content || '') : null;
-
-  return (
-    <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
-      {media.type === 'image' ? (
-        <img
-          src={resolveFileUrl(media.fileUrl)}
-          alt={media.fileName || 'Shared image'}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
-          onClick={() => {
-            if (media.fileUrl && media.fileUrl !== '#') {
-              onClickImage?.(media.fileUrl);
-            } else {
-              toast.error('Preview not available');
-            }
-          }}
-        />
-      ) : media.type === 'video' ? (
-        <div
-          className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
-          onClick={() => toast.info('Video playback coming soon')}
-        >
-          {media.fileUrl && media.fileUrl !== '#' ? (
-            <img src={resolveFileUrl(media.fileUrl)} alt={media.fileName || 'Shared video'} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-70" />
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <Play size={24} className="text-muted-foreground" fill="currentColor" />
-            </div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
-              <Play size={14} className="text-white" fill="white" />
-            </div>
-          </div>
-          {media.duration && (
-            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-              {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
-            </span>
-          )}
-        </div>
-      ) : isLink && linkUrl ? (
-        <a
-          href={linkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10"
-        >
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          </div>
-          <span className="max-w-full truncate text-[10px] font-medium text-foreground">{urlDomain(linkUrl)}</span>
-          <span className="max-w-full truncate text-[9px] text-muted-foreground">{linkUrl}</span>
-        </a>
-      ) : (
-        <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10">
-          <FileText size={20} className="text-muted-foreground" />
-          <span className="max-w-full truncate text-[10px] text-muted-foreground">{media.fileName}</span>
-          {media.fileSize && <span className="text-[10px] text-muted-foreground/60">{formatFileSize(media.fileSize)}</span>}
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface UserProfileProps {
   userIdOverride?: string;
@@ -121,6 +36,7 @@ interface UserProfileProps {
 export default function UserProfile({ userIdOverride, onPanelClose, onClearChat }: UserProfileProps = {}) {
   const { userId: paramUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
 
@@ -201,7 +117,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
   });
 
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
-  const [mediaTab, setMediaTab] = useState<'media' | 'file' | 'link'>('media');
+  const [mediaTab, setMediaTab] = useState<'media' | 'link'>('media');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -392,7 +308,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
             'relative mb-4 flex items-center gap-3',
             isPanel && 'sticky top-0 z-20 -mx-4 mb-3 h-[60px] border-b border-border bg-sidebar/95 px-4 backdrop-blur',
           )}>
-            <button onClick={() => (onPanelClose ? onPanelClose() : isSelf ? navigate('/') : navigate(-1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent">
+            <button onClick={() => (onPanelClose ? onPanelClose() : isSelf ? navigate('/') : location.state?.from ? navigate(location.state.from) : navigate(-1))} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-accent">
               <X size={18} className="hidden lg:block" />
               <ArrowLeft size={20} className="lg:hidden" />
             </button>
@@ -645,7 +561,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                     <div className="mb-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <FileText size={20} className="shrink-0 text-muted-foreground" />
-                        <span className="text-sm font-semibold text-foreground">Media, links and docs</span>
+                        <span className="text-sm font-semibold text-foreground">Media and links</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-medium text-muted-foreground">{sharedMedia.length}</span>
@@ -781,7 +697,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
 
               <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl" hideClose>
                 <div className="mb-4 flex items-center gap-0.5 rounded-xl bg-accent/10 p-1">
-                  {(['media', 'file', 'link'] as const).map((tab) => (
+                  {(['media', 'link'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setMediaTab(tab)}
@@ -791,7 +707,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      {tab === 'media' ? 'Media' : tab === 'file' ? 'Docs' : 'Links'}
+                      {tab === 'media' ? 'Media' : 'Links'}
                     </button>
                   ))}
                   <button
@@ -802,56 +718,36 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                   </button>
                 </div>
                 <div className="h-[420px] overflow-y-auto">
-                  {mediaTab === 'link' || mediaTab === 'file' ? (
+                  {mediaTab === 'link' ? (
                     <div className="space-y-2">
-                      {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').map((item) => {
-                        if (mediaTab === 'link') {
-                          const msg = item;
-                          const url = extractUrl(msg.content || '');
-                          const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
-                          if (!url) return null;
-                          return (
-                            <a
-                              key={msg.id}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
-                                {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
-                                <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-                                  {formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
-                                </p>
-                              </div>
-                            </a>
-                          );
-                        }
+                      {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).map((item) => {
                         const msg = item;
+                        const url = extractUrl(msg.content || '');
+                        const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
+                        if (!url) return null;
                         return (
-                          <div
+                          <a
                             key={msg.id}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
                           >
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                              <FileText size={16} className="text-muted-foreground" />
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-foreground">{msg.fileName || 'File'}</p>
-                              {msg.content && <p className="mt-0.5 truncate text-xs text-muted-foreground">{msg.content}</p>}
+                              <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
+                              {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
                               <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-                                {msg.fileSize ? formatFileSize(msg.fileSize) : null}{msg.fileSize ? ' · ' : ''}{formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
+                                {formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
                               </p>
                             </div>
-                          </div>
+                          </a>
                         );
                       })}
-                      {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').length === 0 && (
-                        <p className="py-10 text-center text-xs text-muted-foreground">{mediaTab === 'link' ? 'No links' : 'No documents'}</p>
+                      {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).length === 0 && (
+                        <p className="py-10 text-center text-xs text-muted-foreground">No links</p>
                       )}
                     </div>
                   ) : (
@@ -881,25 +777,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
         </div>
       )}
 
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <button
-            onClick={() => setPreviewUrl(null)}
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-          >
-            <X size={22} />
-          </button>
-          <img
-            src={resolveFileUrl(previewUrl)}
-            alt="Full size"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {previewUrl && <SharedMediaLightbox media={sharedMedia.filter((media) => media.type === 'image' || media.type === 'video')} url={previewUrl} onClose={() => setPreviewUrl(null)} onSelect={setPreviewUrl} />}
     </div>
   );
 }

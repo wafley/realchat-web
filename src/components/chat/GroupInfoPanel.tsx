@@ -4,16 +4,20 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   X, ArrowLeft, Users, User, UserPlus, UserMinus, Shield, Camera, 
   Pencil, Check, Search, Bell, BellOff, LogOut, Trash2, Loader2, 
-  MoreVertical, MessageSquare, Image as ImageIcon, ChevronRight 
+  MoreVertical, MessageSquare, Image as ImageIcon, ChevronRight
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { toast } from 'sonner';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import type { Group, GroupMember, User as UserType } from '@/types';
-import { uploadGroupAvatar } from '@/services/chat';
+import { uploadGroupAvatar, getSharedMedia } from '@/services/chat';
+import { MediaThumb, isLinkContent, extractUrl, urlDomain } from '@/components/chat/MediaThumb';
+import { formatTime } from '@/lib/chatHelpers';
+import { useCustomNames } from '@/hooks/useCustomNames';
 import { getUser } from '@/services/user';
 import { usePresenceStore } from '@/store/presenceStore';
+import SharedMediaLightbox from '@/components/chat/SharedMediaLightbox';
 
 function formatDate(date?: Date | string) {
   if (!date) return '';
@@ -31,6 +35,7 @@ interface MemberRowProps {
   roleLoading: string | null;
   onRoleToggle: (userId: string, currentRole: 'admin' | 'member') => void;
   onSetRemoveTarget: (target: { userId: string; userName: string }) => void;
+  customNameMap?: Map<string, string>;
 }
 
 function MemberRow({
@@ -44,6 +49,7 @@ function MemberRow({
   roleLoading,
   onRoleToggle,
   onSetRemoveTarget,
+  customNameMap,
 }: MemberRowProps) {
   const navigate = useNavigate();
   const isMe = member.userId === currentUserId;
@@ -62,9 +68,10 @@ function MemberRow({
   const displayUser = fetchedUser || member.user;
   const presence = usePresenceStore((s) => s.presenceMap[member.userId]);
   const isOnline = presence ? presence.isOnline : displayUser?.status === 'online';
+  const customName = customNameMap?.get(member.userId);
   const displayName = isMe
     ? 'You'
-    : (displayUser?.fullName || displayUser?.username || member.userId);
+    : (customName || displayUser?.fullName || displayUser?.username || member.userId);
   const username = displayUser?.username;
   const avatarUrl = displayUser?.avatarUrl;
 
@@ -257,6 +264,19 @@ export default function GroupInfoPanel({
 
   const isAdmin = group?.members?.some((m) => m.userId === currentUserId && m.role === 'admin');
   const isCreator = group?.creatorId === currentUserId;
+
+  const customNameMap = useCustomNames();
+
+  const [mediaModalOpen, setMediaModalOpen] = useState(false);
+  const [mediaTab, setMediaTab] = useState<'media' | 'link'>('media');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { data: sharedMedia = [] } = useQuery({
+    queryKey: ['shared-media', group?.id],
+    queryFn: () => getSharedMedia(group!.id),
+    enabled: !!group?.id,
+    staleTime: 60_000,
+  });
+
   // Sync state when group prop updates
   useEffect(() => {
     if (group) {
@@ -290,10 +310,11 @@ export default function GroupInfoPanel({
     .filter((m) => {
       if (!memberSearch.trim()) return true;
       const query = memberSearch.toLowerCase();
+      const custom = customNameMap.get(m.userId)?.toLowerCase() || '';
       const name = m.user?.fullName?.toLowerCase() || '';
       const username = m.user?.username?.toLowerCase() || '';
       const userId = m.userId.toLowerCase();
-      return name.includes(query) || username.includes(query) || userId.includes(query);
+      return custom.includes(query) || name.includes(query) || username.includes(query) || userId.includes(query);
     })
     .sort((a, b) => {
       const aIsCreator = a.userId === group.creatorId;
@@ -315,9 +336,9 @@ export default function GroupInfoPanel({
       if (aIsMe && !bIsMe) return -1;
       if (!aIsMe && bIsMe) return 1;
 
-      // 4. Alphabetical fallback by display name
-      const nameA = a.user?.fullName || a.userId;
-      const nameB = b.user?.fullName || b.userId;
+      // 4. Alphabetical fallback by display name (customName > fullName)
+      const nameA = customNameMap.get(a.userId) || a.user?.fullName || a.userId;
+      const nameB = customNameMap.get(b.userId) || b.user?.fullName || b.userId;
       return nameA.localeCompare(nameB);
     });
 
@@ -661,14 +682,30 @@ export default function GroupInfoPanel({
             </button>
           )}
 
-          <div className="flex w-full items-center justify-between px-5 py-3 transition-colors hover:bg-accent/5 cursor-pointer">
-            <div className="flex items-center gap-3">
-              <ImageIcon size={18} className="text-muted-foreground" />
-              <span className="text-xs font-medium text-foreground">Media, links and docs</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ChevronRight size={16} />
-            </div>
+          <div>
+            <button
+              type="button"
+              onClick={() => sharedMedia.length > 0 && setMediaModalOpen(true)}
+              className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-accent/5"
+            >
+              <div className="flex items-center gap-3">
+                <ImageIcon size={18} className="text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">Media, links and docs</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span>{sharedMedia.length}</span>
+                <ChevronRight size={16} />
+              </div>
+            </button>
+            {sharedMedia.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto px-5 pb-3 no-scrollbar">
+                {sharedMedia.map((media) => (
+                  <div key={media.id} className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    <MediaThumb media={media} onClickImage={(url) => setPreviewUrl(url)} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -727,6 +764,7 @@ export default function GroupInfoPanel({
                 roleLoading={roleLoading}
                 onRoleToggle={handleRoleToggle}
                 onSetRemoveTarget={setRemoveTarget}
+                customNameMap={customNameMap}
               />
             ))}
 
@@ -902,6 +940,80 @@ export default function GroupInfoPanel({
           </div>
         </Modal>
       )}
+
+      {/* Shared Media Modal */}
+      {mediaModalOpen && (
+        <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl" hideClose>
+          <div className="mb-4 flex items-center gap-0.5 rounded-xl bg-accent/10 p-1">
+            {(['media', 'link'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setMediaTab(tab)}
+                className={`flex-1 rounded-lg px-4 py-1.5 text-xs font-medium transition-all ${
+                  mediaTab === tab
+                    ? 'bg-accent text-accent-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tab === 'media' ? 'Media' : 'Links'}
+              </button>
+            ))}
+            <button
+              onClick={() => setMediaModalOpen(false)}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="h-[420px] overflow-y-auto">
+            {mediaTab === 'link' ? (
+              <div className="space-y-2">
+                {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).map((item) => {
+                  const msg = item;
+                  const url = extractUrl(msg.content || '');
+                  const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
+                  if (!url) return null;
+                  return (
+                    <a
+                      key={msg.id}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
+                        {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/60">
+                          {formatTime(msg.createdAt)} &middot; {customNameMap.get(msg.senderId) || msg.sender?.fullName || 'Unknown'}
+                        </p>
+                      </div>
+                    </a>
+                  );
+                })}
+                {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).length === 0 && (
+                  <p className="py-10 text-center text-xs text-muted-foreground">No links</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                {sharedMedia.filter((m) => m.type === 'image' || m.type === 'video').map((media) => (
+                  <MediaThumb key={media.id} media={media} onClickImage={(url) => setPreviewUrl(url)} />
+                ))}
+                {sharedMedia.filter((m) => m.type === 'image' || m.type === 'video').length === 0 && (
+                  <p className="col-span-full py-10 text-center text-xs text-muted-foreground">No media</p>
+                )}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Full-size image preview */}
+      {previewUrl && <SharedMediaLightbox media={sharedMedia.filter((media) => media.type === 'image' || media.type === 'video')} url={previewUrl} onClose={() => setPreviewUrl(null)} onSelect={setPreviewUrl} />}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
 import { getGroup } from '@/services/chat';
 import { resolveFileUrl } from '@/lib/url';
+import { useCustomNames } from '@/hooks/useCustomNames';
 import { type TypingUser } from '@/store/typingStore';
 import { setChatViewport } from '@/lib/chatViewport';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -37,7 +38,10 @@ interface MessageListProps {
   onTouchStart: (msg: Message, e: TouchEvent) => void;
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
-  onClickImage: (url: string) => void;
+  onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
+  onReplyClick: (messageId: string) => void;
+  onSenderClick: (userId: string) => void;
+  onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -74,6 +78,9 @@ export default function MessageList({
   onTouchMove,
   onTouchEnd,
   onClickImage,
+  onReplyClick,
+  onSenderClick,
+  onMentionClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -108,6 +115,8 @@ export default function MessageList({
     enabled: !isDM,
     staleTime: 60_000,
   });
+
+  const customNames = useCustomNames();
 
   const typingAvatars = useMemo(() => {
     const map = new Map<string, string>();
@@ -197,11 +206,11 @@ export default function MessageList({
   }, [maybeClearNewMessages]);
 
   return (
-    <div className="relative flex-1 overflow-hidden">
+    <div className="relative flex min-h-0 min-w-0 w-full flex-1 overflow-hidden">
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="chat-scroll flex h-full flex-col overflow-y-auto bg-chat-tile-overlay px-4 py-4"
+        className="chat-scroll flex h-full min-w-0 w-full flex-col overflow-x-hidden overflow-y-auto bg-chat-tile-overlay px-4 py-4"
       >
       {isPending ? (
         <div className="flex h-full items-center justify-center">
@@ -231,7 +240,7 @@ export default function MessageList({
           </p>
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="w-full space-y-1">
           {hasNextPage && (
             <div ref={scrollTriggerRef} className="flex justify-center py-2">
               {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
@@ -248,7 +257,9 @@ export default function MessageList({
               previousMessage.type === 'system' ||
               previousMessage.senderId !== msg.senderId ||
               showDateSeparator;
-            const name = isOwn || isDM || !isFirstInRun ? undefined : (msg.sender?.fullName ?? 'Unknown');
+            const name = isOwn || isDM || !isFirstInRun
+              ? undefined
+              : (customNames.get(msg.senderId) || msg.sender?.fullName || 'Unknown');
             const showAvatar = !isOwn && !isDM && isFirstInRun;
             const showSpacer = !isOwn && !isDM && !showAvatar;
             return (
@@ -287,6 +298,9 @@ export default function MessageList({
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}
                   onClickImage={onClickImage}
+                  onReplyClick={onReplyClick}
+                  onSenderClick={onSenderClick}
+                  onMentionClick={onMentionClick}
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
                   onReactionPickerOpen={onReactionPickerOpen}

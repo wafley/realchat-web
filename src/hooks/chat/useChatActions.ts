@@ -4,7 +4,6 @@ import { queryClient } from '@/lib/queryClient';
 import { markConversationAsSeen, muteConversation, unmuteConversation, blockUser, reportUser, searchUsers, saveLocalUnread } from '@/services/chat';
 import { emitTypingStart, emitTypingStop } from '@/services/socket.service';
 import { isChatViewable } from '@/lib/chatViewport';
-import { isSupportedImage, SUPPORTED_IMAGE_LABEL } from '@/utils/imageValidation';
 import { usePresenceStore } from '@/store/presenceStore';
 import type { Message, ReplyTo } from '@/types';
 
@@ -15,7 +14,7 @@ function buildReplyTo(replyingTo: Message | null): ReplyTo | undefined {
     senderId: replyingTo.senderId,
     senderName: replyingTo.sender?.fullName ?? replyingTo.sender?.username ?? 'Unknown',
     content: replyingTo.content,
-    type: replyingTo.type as 'text' | 'image',
+    type: replyingTo.type as 'text' | 'image' | 'video',
     fileUrl: replyingTo.fileUrl,
     fileName: replyingTo.fileName,
   };
@@ -45,7 +44,6 @@ interface UseChatActionsProps {
   chatName: string;
   otherUserId: string | undefined;
   selectedImage: File | null;
-  selectedFile: File | null;
   replyingToForSend: Message | null;
   imagePreview: string | null;
   // Setters
@@ -72,7 +70,6 @@ interface UseChatActionsProps {
   setMuted: (v: boolean) => void;
   setSelectedImage: React.Dispatch<React.SetStateAction<File | null>>;
   setImagePreview: React.Dispatch<React.SetStateAction<string | null>>;
-  setSelectedFile: React.Dispatch<React.SetStateAction<File | null>>;
   // Refs
   typingTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
   typingDoneTimerRef: React.RefObject<ReturnType<typeof setTimeout> | null>;
@@ -87,7 +84,6 @@ interface UseChatActionsProps {
   // Mutations
   sendMutation: { mutate: (vars: { content: string; replyTo?: any }, options?: { onError?: () => void }) => void; isPending: boolean };
   sendImageMutation: { mutate: (vars: { file: File; caption: string; replyTo?: any; preview?: string | null }, options?: { onError?: () => void }) => void; isPending: boolean };
-  sendFileMutation: { mutate: (vars: { file: File; caption: string; replyTo?: ReplyTo }, options?: { onError?: () => void }) => void; isPending: boolean };
   editMutation: { mutate: (vars: { msgId: string; content: string }) => void };
   deleteMutation: { mutate: (vars: { msgId: string; delForAll: boolean }) => void };
   pinMutation: { mutate: (msgId: string) => void };
@@ -129,7 +125,6 @@ export function useChatActions(props: UseChatActionsProps) {
     chatName,
     otherUserId,
     selectedImage,
-    selectedFile,
     imagePreview,
     setInput,
     setShowSearch,
@@ -154,7 +149,6 @@ export function useChatActions(props: UseChatActionsProps) {
     setMuted,
     setSelectedImage,
     setImagePreview,
-    setSelectedFile,
     typingTimerRef,
     typingDoneTimerRef,
     messagesEndRef,
@@ -167,7 +161,6 @@ export function useChatActions(props: UseChatActionsProps) {
     longPressStartPosRef,
     sendMutation,
     sendImageMutation,
-    sendFileMutation,
     editMutation,
     deleteMutation,
     pinMutation,
@@ -186,6 +179,7 @@ export function useChatActions(props: UseChatActionsProps) {
   const isInitialLoadRef = useRef(true);
   const ioCooldownRef = useRef(false);
   const typingActiveRef = useRef(false);
+  const typingKeepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const emittedReadIdsRef = useRef<Set<string>>(new Set());
 
   // --- Effects ---
@@ -234,6 +228,10 @@ export function useChatActions(props: UseChatActionsProps) {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
+    if (typingKeepaliveRef.current) {
+      clearInterval(typingKeepaliveRef.current);
+      typingKeepaliveRef.current = null;
+    }
     if (typingActiveRef.current) {
       typingActiveRef.current = false;
       emitTypingStop(chatId);
@@ -252,6 +250,10 @@ export function useChatActions(props: UseChatActionsProps) {
         typingTimerRef.current = null;
         typingActiveRef.current = true;
         emitTypingStart(chatId);
+        if (typingKeepaliveRef.current) clearInterval(typingKeepaliveRef.current);
+        typingKeepaliveRef.current = setInterval(() => {
+          if (typingActiveRef.current) emitTypingStart(chatId);
+        }, 8000);
       }, 300);
     }
     typingDoneTimerRef.current = setTimeout(stopTyping, 10000);
@@ -454,27 +456,15 @@ export function useChatActions(props: UseChatActionsProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      if (isSupportedImage(file)) {
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
         if (imagePreview) URL.revokeObjectURL(imagePreview);
         setSelectedImage(file);
         setImagePreview(URL.createObjectURL(file));
       } else {
-        toast.error(`Unsupported image format. Please upload ${SUPPORTED_IMAGE_LABEL}.`);
-        setSelectedFile(null);
+        toast.error('Unsupported format. Please pick an image or video (jpg, png, webp, gif, mp4, webm, mov).');
+        setSelectedImage(null);
         setImagePreview(null);
       }
-      e.target.value = '';
-    },
-    [imagePreview],
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-      setSelectedFile(file);
-      setImagePreview(null);
       e.target.value = '';
     },
     [imagePreview],
@@ -485,53 +475,33 @@ export function useChatActions(props: UseChatActionsProps) {
   }, []);
 
   const handleSendImage = useCallback(() => {
-    if (selectedImage) {
-      const file = selectedImage;
-      const caption = input.trim();
-      const rp = buildReplyTo(replyingTo);
-      const preview = imagePreview;
-      if (sendImageMutation.isPending) return;
-      setInput('');
-      setReplyingTo(null);
-      setSelectedImage(null);
-      setImagePreview(null);
-      sendImageMutation.mutate(
-        { file, caption, replyTo: rp, preview },
-        {
-          onError: () => {
-            setInput((prev) => prev || caption);
-            setReplyingTo((prev) => prev ?? replyingTo);
-            setSelectedImage((prev) => prev || file);
-            setImagePreview((prev) => prev || preview);
-          },
+    if (!selectedImage) return;
+    const file = selectedImage;
+    const caption = input.trim();
+    const rp = buildReplyTo(replyingTo);
+    const preview = imagePreview;
+    if (sendImageMutation.isPending) return;
+    setInput('');
+    setReplyingTo(null);
+    setSelectedImage(null);
+    setImagePreview(null);
+    sendImageMutation.mutate(
+      { file, caption, replyTo: rp, preview },
+      {
+        onError: () => {
+          setInput((prev) => prev || caption);
+          setReplyingTo((prev) => prev ?? replyingTo);
+          setSelectedImage((prev) => prev || file);
+          setImagePreview((prev) => prev || preview);
         },
-      );
-    } else if (selectedFile) {
-      const file = selectedFile;
-      const caption = input.trim();
-      const rp = buildReplyTo(replyingTo);
-      if (sendFileMutation.isPending) return;
-      setInput('');
-      setReplyingTo(null);
-      setSelectedFile(null);
-      sendFileMutation.mutate(
-        { file, caption, replyTo: rp },
-        {
-          onError: () => {
-            setInput((prev) => prev || caption);
-            setReplyingTo((prev) => prev ?? replyingTo);
-            setSelectedFile((prev) => prev || file);
-          },
-        },
-      );
-    }
-  }, [selectedImage, selectedFile, input, replyingTo, imagePreview, sendImageMutation, sendFileMutation]);
+      },
+    );
+  }, [selectedImage, input, replyingTo, imagePreview, sendImageMutation]);
 
   const handleCancelImage = useCallback(() => {
     if (imagePreview) URL.revokeObjectURL(imagePreview);
     setSelectedImage(null);
     setImagePreview(null);
-    setSelectedFile(null);
   }, [imagePreview]);
 
   const handleLongPressStart = useCallback(
@@ -803,7 +773,7 @@ export function useChatActions(props: UseChatActionsProps) {
   }, []);
 
   const handleSend = useCallback(() => {
-    if (selectedImage || selectedFile) {
+    if (selectedImage) {
       handleSendImage();
       return;
     }
@@ -821,7 +791,7 @@ export function useChatActions(props: UseChatActionsProps) {
         },
       },
     );
-  }, [selectedImage, selectedFile, input, replyingTo, sendMutation, handleSendImage]);
+  }, [selectedImage, input, replyingTo, sendMutation, handleSendImage]);
 
   const handleSearchUsers = useCallback(async (query: string) => {
     return searchUsers(query);
@@ -832,7 +802,6 @@ export function useChatActions(props: UseChatActionsProps) {
     handleKeyDown,
     handleEmojiClick,
     handleImageSelect,
-    handleFileSelect,
     handleCancelReply,
     handleSendImage,
     handleCancelImage,

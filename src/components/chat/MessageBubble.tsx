@@ -1,9 +1,10 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
+import { useCustomNames } from '@/hooks/useCustomNames';
 import type { Message } from '@/types';
-import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
+import { formatTime, highlightText } from '@/lib/chatHelpers';
 
 interface MessageBubbleProps {
   isHighlighted?: boolean;
@@ -25,7 +26,10 @@ interface MessageBubbleProps {
   onTouchStart: (msg: Message, e: TouchEvent) => void;
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
-  onClickImage: (url: string) => void;
+  onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
+  onReplyClick: (messageId: string) => void;
+  onSenderClick: (userId: string) => void;
+  onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -73,6 +77,9 @@ function MessageBubbleComp({
   onTouchMove,
   onTouchEnd,
   onClickImage,
+  onReplyClick,
+  onSenderClick,
+  onMentionClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -81,6 +88,8 @@ function MessageBubbleComp({
   const isSelected = selectedIds.includes(msg.id);
   const inSelectionMode = selectedIds.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
+  const customNames = useCustomNames();
+  const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
 
   if (msg.type === 'system') {
     return (
@@ -168,16 +177,16 @@ function MessageBubbleComp({
       ) : showAvatar ? (
         <Avatar className="mt-0.5 h-9 w-9 shrink-0">
           {msg.sender?.avatarUrl && (
-            <AvatarImage src={msg.sender.avatarUrl} alt={msg.sender.fullName || name || 'User avatar'} />
+            <AvatarImage src={msg.sender.avatarUrl} alt={senderName || name || 'User avatar'} />
           )}
           <AvatarFallback className="bg-muted text-[length:var(--fs-bubble-sm,12px)] font-semibold text-muted-foreground">
-            {(msg.sender?.fullName || msg.sender?.username || name || 'U').charAt(0).toUpperCase()}
+            {(senderName || msg.sender?.username || name || 'U').charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col min-w-0`}>
+      <div className={`w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -192,18 +201,27 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`chat-bubble cursor-pointer relative transition-all duration-700 ${
+          className={`chat-bubble relative max-w-full cursor-pointer transition-all duration-700 ${
             msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-xl' : 'rounded-xl px-[9px] py-[6px] text-[length:var(--fs-bubble,16px)]'
           } ${isOwn
             ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'chat-bubble-tail-own rounded-tr-xs' : ''}`
             : `bg-chat-incoming-bg text-chat-incoming-foreground border border-black/5 ${isFirstInRun ? 'chat-bubble-tail-other rounded-tl-xs' : ''}`
-          } ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''} ${isHighlighted ? 'ring-2 ring-accent shadow-lg shadow-accent/40 bg-accent/30 dark:bg-accent/40' : ''}`}
+          } ${msg.type === 'image' || msg.type === 'video' ? 'w-[min(75vw,420px)]' : ''} ${hasActiveSearch && searchMatchIds.includes(msg.id) && searchMatchIds[activeMatchIndex] === msg.id ? 'ring-2 ring-accent' : ''} ${isSelected ? 'ring-2 ring-accent' : ''} ${isHighlighted ? 'ring-2 ring-accent shadow-lg shadow-accent/40 bg-accent/30 dark:bg-accent/40' : ''}`}
         >
           {!isOwn && name && (
             <div className="mb-1 flex items-center justify-between gap-3 text-[length:var(--fs-bubble-sm,12px)] font-semibold">
-              <span className={`truncate ${getSenderColor(name)}`}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSenderClick(msg.senderId);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`truncate text-left hover:underline ${getSenderColor(name)}`}
+                aria-label={`Open ${name}'s profile`}
+              >
                 ~ {name}
-              </span>
+              </button>
               {msg.sender?.username && (
                 <span className="shrink-0 text-[10px] font-normal opacity-60">
                   @{msg.sender.username}
@@ -212,14 +230,21 @@ function MessageBubbleComp({
             </div>
           )}
           {msg.replyTo && (
-            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-[length:var(--fs-bubble-sm,12px)] ${
-              isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
-            }`}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReplyClick(msg.replyTo!.id);
+              }}
+              className={`mb-1.5 w-full rounded-lg border-l-4 px-2.5 py-1.5 text-left text-[length:var(--fs-bubble-sm,12px)] transition-opacity hover:opacity-90 ${
+                isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
+              }`}
+            >
               <p className={`text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
-                ~ {msg.replyTo.senderName}
+                ~ {customNames.get(msg.replyTo.senderId) || msg.replyTo.senderName}
               </p>
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
-            </div>
+            </button>
           )}
           {msg.type === 'image' && msg.fileUrl ? (
             <div className="flex flex-col">
@@ -231,13 +256,13 @@ function MessageBubbleComp({
                       alt={msg.content || 'Image'}
                       className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                       style={{ maxHeight: '300px' }}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!); }}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
                       loading="lazy"
                       decoding="async"
                     />
                   </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {highlightText(displayedContent, searchQuery)}
+                    {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -259,7 +284,7 @@ function MessageBubbleComp({
                     alt="Image"
                     className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                     style={{ maxHeight: '300px' }}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!); }}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
                     loading="lazy"
                     decoding="async"
                   />
@@ -271,15 +296,25 @@ function MessageBubbleComp({
             <div className="flex flex-col">
               {msg.content ? (
                 <>
-                  <video
-                    src={msg.fileUrl}
-                    controls
-                    className="block w-full rounded-t-2xl"
-                    style={{ maxHeight: '400px' }}
-                    preload="metadata"
-                  />
+                  <div className="relative overflow-hidden rounded-t-2xl">
+                    <video
+                      src={resolveFileUrl(msg.fileUrl)}
+                      playsInline
+                      controls={false}
+                      onPlay={(e) => e.currentTarget.pause()}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                      className="block w-full cursor-pointer"
+                      style={{ maxHeight: '400px' }}
+                      preload="metadata"
+                    />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                        <span className="ml-1 text-2xl text-white">▶</span>
+                      </div>
+                    </div>
+                  </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {highlightText(displayedContent, searchQuery)}
+                    {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -295,38 +330,25 @@ function MessageBubbleComp({
                   </p>
                 </>
               ) : (
-                <div className="relative">
+                <div className="relative overflow-hidden rounded-xl">
                   <video
-                    src={msg.fileUrl}
-                    controls
-                    className="block w-full rounded-xl"
+                    src={resolveFileUrl(msg.fileUrl)}
+                    playsInline
+                    controls={false}
+                    onPlay={(e) => e.currentTarget.pause()}
+                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                    className="block w-full cursor-pointer"
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                      <span className="ml-1 text-2xl text-white">▶</span>
+                    </div>
+                  </div>
                   {renderMetaOverlay()}
                 </div>
               )}
-            </div>
-          ) : msg.fileUrl ? (
-            <div className="flex w-full flex-col gap-1">
-              <a
-                href={msg.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card/50 px-3 py-2 min-w-0 transition-colors hover:bg-card"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10">
-                  <FileText size={18} className="text-accent" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{msg.fileName || 'Document'}</p>
-                  {msg.fileSize && (
-                    <p className="text-xs text-muted-foreground">{formatFileSize(msg.fileSize)}</p>
-                  )}
-                </div>
-              </a>
-              <p className="text-right leading-none">{renderMetaInline()}</p>
             </div>
           ) : msg.isDeleted ? (
             <p className="[overflow-wrap:anywhere] text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
@@ -335,8 +357,8 @@ function MessageBubbleComp({
               {renderMetaInline()}
             </p>
           ) : (
-            <p className="min-w-0 [overflow-wrap:anywhere]">
-              {highlightText(displayedContent, searchQuery)}
+            <p className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+              {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
               {showReadMore && (
                 <button
                   onClick={(e) => {

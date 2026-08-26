@@ -16,6 +16,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { isChatCleared } from '@/lib/chatCleared';
 import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/store/authStore';
+import { useNotificationStore } from '@/store/notificationStore';
+import { useMarkNotificationRead } from '@/hooks/useNotifications';
 import type { Conversation, SearchMessageResult } from '@/types';
 
 function formatTime(time?: string): string {
@@ -33,7 +35,7 @@ function clampText(s?: string, max = 50): string {
 function ChatPreview({ chat }: { chat: ChatConversation }) {
   return (
     <>
-      {chat.type === 'group' && chat.lastSenderName && (
+      {chat.lastSenderName && (
         <span className="text-muted-foreground">{chat.lastSenderName}: </span>
       )}
       {clampText(chat.lastMessage)}
@@ -47,6 +49,9 @@ export default function ChatList() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const notifications = useNotificationStore((s) => s.notifications);
+  const markMentionsAsRead = useNotificationStore((s) => s.markMentionsAsRead);
+  const markNotificationRead = useMarkNotificationRead();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<'all' | 'groups' | 'unread'>('all');
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -129,6 +134,12 @@ export default function ChatList() {
   });
 
   const conversations = Array.isArray(data) ? data : [];
+
+  useEffect(() => {
+    if (!groupId) return;
+    const mentionIds = markMentionsAsRead(groupId);
+    mentionIds.forEach((notificationId) => markNotificationRead.mutate(notificationId));
+  }, [groupId, markMentionsAsRead, markNotificationRead]);
 
   const filtered = conversations.filter((c) => {
     if (category === 'groups' && c.type !== 'group') return false;
@@ -467,6 +478,13 @@ export default function ChatList() {
               const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
               const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
               const isSelected = selectedChatIds.has(chat.id);
+              const hasUnreadMention = notifications.some(
+                (notification) =>
+                  notification.type === 'mention' &&
+                  notification.conversationId === chat.id &&
+                  !notification.read &&
+                  !notification.isRead,
+              );
               const { online, lastSeen } = presenceOf(chat);
               const ItemTag = (isSelectionMode ? 'div' : Link) as ElementType;
               return (
@@ -554,7 +572,15 @@ export default function ChatList() {
                         )}
                       </span>
                       <div className="flex shrink-0 items-center gap-2">
-                        {(chat.unread ?? 0) > 0 && !isSelectionMode && (
+                        {chat.type === 'group' && (chat.unread ?? 0) > 0 && !isSelectionMode && (
+                          <span className="inline-flex items-center gap-1 text-accent" aria-label={`${chat.unread} unread group messages`} title="Unread group messages">
+                            {hasUnreadMention && <span className="text-base font-bold leading-none">@</span>}
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium leading-none text-accent-foreground">
+                              {chat.unread}
+                            </span>
+                          </span>
+                        )}
+                        {(chat.unread ?? 0) > 0 && (chat.type !== 'group') && !isSelectionMode && (
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground lg:h-6 lg:w-6 lg:text-xs">
                             {chat.unread}
                           </span>

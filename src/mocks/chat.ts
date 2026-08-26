@@ -68,7 +68,6 @@ const EXISTING_DM_MESSAGES: Record<string, Message[]> = {
     { id: 'da10', groupId: 'dm-aang', senderId: DEV_USER_ID, content: 'revisi-1.png', type: 'image', fileUrl: 'https://picsum.photos/seed/aang7/200/200', fileName: 'revisi-1.png', fileSize: 210000, createdAt: new Date('2026-07-10T10:30') },
     { id: 'da11', groupId: 'dm-aang', senderId: DEV_USER_ID, content: 'revisi-2.png', type: 'image', fileUrl: 'https://picsum.photos/seed/aang8/200/200', fileName: 'revisi-2.png', fileSize: 225000, createdAt: new Date('2026-07-10T10:31') },
     { id: 'da12', groupId: 'dm-aang', senderId: 'aang', content: 'final-design.png', type: 'image', fileUrl: 'https://picsum.photos/seed/aang9/200/200', fileName: 'final-design.png', fileSize: 280000, createdAt: new Date('2026-07-10T10:35') },
-    { id: 'da13', groupId: 'dm-aang', senderId: 'aang', content: 'presentasi.pptx', type: 'file', fileUrl: '#', fileName: 'presentasi.pptx', fileSize: 3145728, createdAt: new Date('2026-07-10T10:40') },
     { id: 'da14', groupId: 'dm-aang', senderId: 'aang', content: 'Cek referensi desain di https://dribbble.com/search/purple-gradient', type: 'text', createdAt: new Date('2026-07-10T10:45') },
     { id: 'da15', groupId: 'dm-aang', senderId: 'aang', content: 'Ini inspirasinya https://www.behance.net/gallery/123456', type: 'text', createdAt: new Date('2026-07-10T10:46') },
     { id: 'da16', groupId: 'dm-aang', senderId: 'aang', content: 'Font pake dari https://fonts.google.com/ aja', type: 'text', createdAt: new Date('2026-07-10T10:47') },
@@ -100,7 +99,6 @@ const EXISTING_DM_MESSAGES: Record<string, Message[]> = {
     { id: 'dc3', groupId: 'dm-cici', senderId: 'cici', content: 'Sampai ketemu besok ya', type: 'text', createdAt: new Date('2026-07-10T16:06') },
     { id: 'dc4', groupId: 'dm-cici', senderId: 'cici', content: 'foto-liburan.jpg', type: 'image', fileUrl: 'https://picsum.photos/seed/cici1/200/200', fileName: 'foto-liburan.jpg', fileSize: 420000, createdAt: new Date('2026-07-10T16:10') },
     { id: 'dc5', groupId: 'dm-cici', senderId: 'cici', content: 'foto-sunset.jpg', type: 'image', fileUrl: 'https://picsum.photos/seed/cici2/400/300', fileName: 'foto-sunset.jpg', fileSize: 350000, createdAt: new Date('2026-07-10T16:11') },
-    { id: 'dc6', groupId: 'dm-cici', senderId: DEV_USER_ID, content: 'dokumen-tugas.pdf', type: 'file', fileUrl: '#', fileName: 'dokumen-tugas.pdf', fileSize: 1048576, createdAt: new Date('2026-07-10T16:15') },
   ],
   'dm-dewi': [
     { id: 'dd1', groupId: 'dm-dewi', senderId: 'dewi', content: 'Deadline-nya diundur', type: 'text', createdAt: new Date('2026-07-10T14:00') },
@@ -109,7 +107,6 @@ const EXISTING_DM_MESSAGES: Record<string, Message[]> = {
     { id: 'dd4', groupId: 'dm-dewi', senderId: 'dewi', content: 'mockup-v2.png', type: 'image', fileUrl: 'https://picsum.photos/seed/dewi1/200/200', fileName: 'mockup-v2.png', fileSize: 275000, createdAt: new Date('2026-07-10T14:10') },
     { id: 'dd5', groupId: 'dm-dewi', senderId: 'dewi', content: 'wireframe-baru.png', type: 'image', fileUrl: 'https://picsum.photos/seed/dewi2/200/200', fileName: 'wireframe-baru.png', fileSize: 310000, createdAt: new Date('2026-07-10T14:12') },
     { id: 'dd6', groupId: 'dm-dewi', senderId: DEV_USER_ID, content: 'feedback-design.png', type: 'image', fileUrl: 'https://picsum.photos/seed/dewi3/200/200', fileName: 'feedback-design.png', fileSize: 195000, createdAt: new Date('2026-07-10T14:15') },
-    { id: 'dd7', groupId: 'dm-dewi', senderId: DEV_USER_ID, content: 'asset-icons.zip', type: 'file', fileUrl: '#', fileName: 'asset-icons.zip', fileSize: 2097152, createdAt: new Date('2026-07-10T14:18') },
   ],
   'dm-eko': [
     { id: 'de1', groupId: 'dm-eko', senderId: 'eko', content: 'Gw submit PR buat review', type: 'text', createdAt: new Date('2026-07-10T11:00') },

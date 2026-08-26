@@ -79,6 +79,11 @@ export interface RemoteMessage {
   starredAt?: string | null;
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  duration?: number | null;
   status?: string | null;
   seenAt?: string | null;
   createdAt?: string | null;
@@ -115,13 +120,18 @@ export function normalizeRemoteStatus(status?: string | null): MessageStatus | u
 export function mapMessage(row: RemoteMessage): Message {
   const t = (row.type ?? '').toLowerCase();
   const type: Message['type'] =
-    t === 'image' || t === 'file' || t === 'video' || t === 'system' ? t : 'text';
+    t === 'image' || t === 'video' || t === 'system' ? t : 'text';
   return {
     id: row.id,
     groupId: row.conversationId ?? '',
     senderId: row.senderId,
     content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
     type,
+    fileUrl: row.fileUrl ?? undefined,
+    fileName: row.fileName ?? undefined,
+    fileSize: row.fileSize ?? undefined,
+    mimeType: row.mimeType ?? undefined,
+    duration: row.duration ?? undefined,
     isPinned: row.isPinned ?? false,
     isStarred: row.isStarred ?? false,
     starredAt: row.starredAt ? new Date(row.starredAt) : null,
@@ -185,7 +195,37 @@ export async function getMessages(chatId: string, _isDM: boolean, cursor?: strin
   }
 }
 
-export async function sendImageMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
+function readVideoDuration(file: File): Promise<number | undefined> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const d = video.duration;
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(d) && d > 0 ? d : undefined);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(undefined);
+    };
+    video.src = url;
+  });
+}
+
+async function postAttachment(chatId: string, file: File, caption?: string, replyTo?: ReplyTo, duration?: number): Promise<Message> {
+  const form = new FormData();
+  form.append('file', file);
+  if (caption) form.append('caption', caption);
+  if (replyTo?.id) form.append('replyToId', replyTo.id);
+  if (typeof duration === 'number') form.append('duration', String(Math.round(duration)));
+  const { data } = await api.post<Message>(`/conversations/${chatId}/messages`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return mapMessage(data as unknown as RemoteMessage);
+}
+
+export async function sendImageMessage(chatId: string, file: File, _isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
   try {
     if (DEV_MODE) {
       await delay(500);
@@ -216,13 +256,8 @@ export async function sendImageMessage(chatId: string, file: File, isDM: boolean
       return msg;
     }
 
-    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const form = new FormData();
-    form.append('file', file);
-    if (caption) form.append('caption', caption);
-    if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
-    const { data } = await api.post<Message>(`${endpoint}`, form);
-    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
+    const duration = file.type.startsWith('video/') ? await readVideoDuration(file) : undefined;
+    return await postAttachment(chatId, file, caption, replyTo, duration);
   } catch (err) {
     throw toError(err, 'Failed to send image');
   }
@@ -452,6 +487,7 @@ interface RemoteConversation {
     isDeleted?: boolean | null;
     senderId?: string | null;
     sender?: { username?: string | null; fullName?: string | null } | null;
+    fileName?: string | null;
   } | null;
 }
 
@@ -459,16 +495,15 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
   if (!lm) return '';
   if (lm.isDeleted) return 'Message deleted';
   const content = lm.content ?? '';
-  if (lm.type === 'image') return content ? `📷 ${content}` : '📷 Photo';
-  if (lm.type === 'file') return content ? `📎 ${content}` : '📎 File';
-  if (lm.type === 'video') return content ? `🎬 ${content}` : '🎬 Video';
+  const t = (lm.type ?? '').toLowerCase();
+  if (t === 'image') return content ? `📷 ${content}` : '📷 Photo';
+  if (t === 'video') return content ? `🎬 ${content}` : '🎬 Video';
   return content;
 }
 
 export function messagePreview(m: Message): string {
   if (m.isDeleted) return 'Message deleted';
   if (m.type === 'image') return '📷 Photo';
-  if (m.type === 'file') return '📎 File';
   if (m.type === 'video') return '🎬 Video';
   return m.content;
 }
@@ -572,7 +607,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
         avatarUrl: r.avatar ?? r.avatarUrl ?? undefined,
         type: isPrivate ? 'dm' : 'group',
         lastMessage: conversationPreview(r.lastMessage),
-        lastSenderName: isPrivate || String(r.lastMessage?.type ?? '').toLowerCase() === 'system'
+        lastSenderName: String(r.lastMessage?.type ?? '').toLowerCase() === 'system'
           ? undefined
           : messageSenderName({ senderId: r.lastMessage?.senderId ?? '', sender: r.lastMessage?.sender ?? null }),
         lastTime: r.lastMessage?.createdAt ?? r.createdAt,
@@ -786,51 +821,6 @@ export async function getStarredMessages(cursor?: string, limit = 50): Promise<S
     });
   } catch (err) {
     throw toError(err, 'Failed to get starred messages');
-  }
-}
-
-export async function sendFileMessage(chatId: string, file: File, isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
-  try {
-    if (DEV_MODE) {
-      await delay(500);
-      msgCounter++;
-      const url = URL.createObjectURL(file);
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-      const isVideo = ['mp4', 'webm', 'mov', 'avi'].includes(ext);
-      const msg: Message = {
-        id: `msg-${msgCounter}`,
-        groupId: chatId,
-        senderId: DEV_USER_ID,
-        content: caption ?? '',
-        type: isVideo ? 'video' : 'file',
-        fileUrl: url,
-        fileName: file.name,
-        fileSize: file.size,
-        duration: isVideo ? 0 : undefined,
-        status: 'pending',
-        replyTo,
-        createdAt: new Date(),
-        sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
-      };
-      if (!MOCK_MESSAGES[chatId]) MOCK_MESSAGES[chatId] = [];
-      MOCK_MESSAGES[chatId].push(msg);
-      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      if (conv) {
-        conv.lastMessage = isVideo ? '🎬 Video' : `📎 ${file.name}`;
-        conv.lastTime = new Date().toISOString();
-      }
-      return msg;
-    }
-
-    const endpoint = isDM ? `/dm/${chatId}/messages` : `/groups/${chatId}/messages`;
-    const form = new FormData();
-    form.append('file', file);
-    if (caption) form.append('caption', caption);
-    if (replyTo) form.append('replyTo', JSON.stringify(replyTo));
-    const { data } = await api.post<Message>(`${endpoint}`, form);
-    return { ...data, status: normalizeStatus((data as { status?: string }).status) ?? 'sent' };
-  } catch (err) {
-    throw toError(err, 'Failed to send file');
   }
 }
 
@@ -1286,7 +1276,7 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
     await delay(200);
     const messages = MOCK_MESSAGES[conversationId] ?? [];
     return messages.filter((m) => {
-      if (m.type === 'image' || m.type === 'video' || m.type === 'file') return true;
+      if (m.type === 'image' || m.type === 'video') return true;
       if (m.type === 'text') return /https?:\/\/[^\s]+/.test(m.content);
       return false;
     });
@@ -1297,7 +1287,7 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
     for (let page = 0; page < 5; page++) {
       const res = await getMessages(conversationId, true, cursor, 50);
       for (const m of res.data) {
-        if (m.type === 'image' || m.type === 'video' || m.type === 'file') media.push(m);
+        if (m.type === 'image' || m.type === 'video') media.push(m);
         else if (m.type === 'text' && /https?:\/\/[^\s]+/.test(m.content)) media.push(m);
       }
       cursor = res.nextCursor ?? undefined;
