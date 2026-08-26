@@ -468,7 +468,7 @@ export default function ChatOverlays({
                     const video = lightboxVideoRef.current;
                     if (video) void (video.paused ? video.play() : video.pause());
                   }}
-                  className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white opacity-0 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-black/75 group-hover:opacity-100 focus-visible:opacity-100"
+                  className={`absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-black/75 focus-visible:opacity-100 ${videoPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}
                   aria-label={videoPlaying ? 'Pause video' : 'Play video'}
                   title={videoPlaying ? 'Pause video' : 'Play video'}
                 >

@@ -26,6 +26,7 @@ interface MessageBubbleProps {
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
   onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
+  onReplyClick: (messageId: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -73,6 +74,7 @@ function MessageBubbleComp({
   onTouchMove,
   onTouchEnd,
   onClickImage,
+  onReplyClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -212,14 +214,21 @@ function MessageBubbleComp({
             </div>
           )}
           {msg.replyTo && (
-            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-[length:var(--fs-bubble-sm,12px)] ${
-              isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
-            }`}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReplyClick(msg.replyTo!.id);
+              }}
+              className={`mb-1.5 w-full rounded-lg border-l-4 px-2.5 py-1.5 text-left text-[length:var(--fs-bubble-sm,12px)] transition-opacity hover:opacity-90 ${
+                isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
+              }`}
+            >
               <p className={`text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
                 ~ {msg.replyTo.senderName}
               </p>
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
-            </div>
+            </button>
           )}
           {msg.type === 'image' && msg.fileUrl ? (
             <div className="flex flex-col">
@@ -271,16 +280,23 @@ function MessageBubbleComp({
             <div className="flex flex-col">
               {msg.content ? (
                 <>
-                  <video
-                    src={resolveFileUrl(msg.fileUrl)}
-                    playsInline
-                    controls={false}
-                    onPlay={(e) => e.currentTarget.pause()}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                    className="block w-full cursor-pointer rounded-t-2xl"
-                    style={{ maxHeight: '400px' }}
-                    preload="metadata"
-                  />
+                  <div className="relative overflow-hidden rounded-t-2xl">
+                    <video
+                      src={resolveFileUrl(msg.fileUrl)}
+                      playsInline
+                      controls={false}
+                      onPlay={(e) => e.currentTarget.pause()}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                      className="block w-full cursor-pointer"
+                      style={{ maxHeight: '400px' }}
+                      preload="metadata"
+                    />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                        <span className="ml-1 text-2xl text-white">▶</span>
+                      </div>
+                    </div>
+                  </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
@@ -298,17 +314,22 @@ function MessageBubbleComp({
                   </p>
                 </>
               ) : (
-                <div className="relative">
+                <div className="relative overflow-hidden rounded-xl">
                   <video
                     src={resolveFileUrl(msg.fileUrl)}
                     playsInline
                     controls={false}
                     onPlay={(e) => e.currentTarget.pause()}
                     onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                    className="block w-full cursor-pointer rounded-xl"
+                    className="block w-full cursor-pointer"
                     style={{ maxHeight: '400px' }}
                     preload="metadata"
                   />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                      <span className="ml-1 text-2xl text-white">▶</span>
+                    </div>
+                  </div>
                   {renderMetaOverlay()}
                 </div>
               )}

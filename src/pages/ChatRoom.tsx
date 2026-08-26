@@ -24,22 +24,30 @@ export default function ChatRoom() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = useChatState();
-  const previewMedia = [
-    ...state.messages
-      .filter((message) => (message.type === 'image' || message.type === 'video') && !!message.fileUrl)
-      .map((message) => ({
-        id: message.id,
-        url: resolveFileUrl(message.fileUrl)!,
-        fileName: message.fileName,
-        mimeType: message.mimeType,
-        label: message.fileName || 'Photo',
-        kind: message.type,
-        senderName: message.senderId === state.currentUser?.id
-          ? 'You'
-          : message.sender?.fullName || message.sender?.username || state.chatName,
-        senderAvatarUrl: message.sender?.avatarUrl,
-      })),
-  ];
+  const previewMedia: Array<{
+    id: string;
+    url: string;
+    fileName?: string;
+    mimeType?: string;
+    label: string;
+    kind: 'image' | 'video';
+    senderName: string;
+    senderAvatarUrl?: string;
+  }> = state.messages
+    .filter((message): message is typeof message & { fileUrl: string; type: 'image' | 'video' } =>
+      (message.type === 'image' || message.type === 'video') && !!message.fileUrl)
+    .map((message) => ({
+      id: message.id,
+      url: resolveFileUrl(message.fileUrl)!,
+      fileName: message.fileName,
+      mimeType: message.mimeType,
+      label: message.fileName || (message.type === 'video' ? 'Video' : 'Photo'),
+      kind: message.type,
+      senderName: message.senderId === state.currentUser?.id
+        ? 'You'
+        : message.sender?.fullName || message.sender?.username || state.chatName,
+      senderAvatarUrl: message.sender?.avatarUrl,
+    }));
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   const handledHighlightIdRef = useRef<string | null>(null);
 
