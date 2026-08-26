@@ -49,6 +49,7 @@ export default function ChatRoom() {
       senderAvatarUrl: message.sender?.avatarUrl,
     }));
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const [profileInfoUserId, setProfileInfoUserId] = useState<string | null>(null);
   const handledHighlightIdRef = useRef<string | null>(null);
 
   const queryClient = useQueryClient();
@@ -74,6 +75,7 @@ export default function ChatRoom() {
 
   useEffect(() => {
     handledHighlightIdRef.current = null;
+    setProfileInfoUserId(null);
   }, [state.chatId]);
 
   usePageVisibility(state.chatId);
@@ -402,7 +404,7 @@ export default function ChatRoom() {
           onReplyClick={handleReplyClick}
           onSenderClick={(userId) => {
             if (window.matchMedia('(min-width: 1024px)').matches) {
-              state.setProfileInfoUserId(userId);
+              setProfileInfoUserId(userId);
               state.setProfileInfoOpen(true);
             } else {
               navigate(`/profile/${userId}`);
@@ -468,13 +470,13 @@ export default function ChatRoom() {
         </aside>
       )}
 
-      {state.profileInfoOpen && (state.isDM ? state.otherUserId : state.profileInfoUserId) && (
+      {state.profileInfoOpen && (state.isDM ? state.otherUserId : profileInfoUserId) && (
         <aside className="fixed inset-0 z-40 h-full w-full shrink-0 animate-in slide-in-from-right-full duration-200 shadow-2xl lg:relative lg:inset-auto lg:z-auto lg:block lg:w-96 lg:shadow-none">
           <UserInfoPanel
-            userId={state.isDM ? state.otherUserId! : state.profileInfoUserId!}
+            userId={state.isDM ? state.otherUserId! : profileInfoUserId!}
             onClose={() => {
               state.setProfileInfoOpen(false);
-              if (!state.isDM) state.setProfileInfoUserId(null);
+              if (!state.isDM) setProfileInfoUserId(null);
             }}
             onClearChat={() => state.setClearConfirmOpen(true)}
           />

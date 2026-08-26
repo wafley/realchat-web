@@ -31,7 +31,6 @@ export function useChatState() {
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
-  const [profileInfoUserId, setProfileInfoUserId] = useState<string | null>(null);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [reportConfirmOpen, setReportConfirmOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -106,7 +105,6 @@ export function useChatState() {
     setPinnedMessages([]);
     setGroupInfoOpen(false);
     setProfileInfoOpen(false);
-    setProfileInfoUserId(null);
     setBlockConfirmOpen(false);
     setReportConfirmOpen(false);
     setClearConfirmOpen(false);
@@ -301,7 +299,6 @@ export function useChatState() {
     pinnedMessages, setPinnedMessages,
     groupInfoOpen, setGroupInfoOpen,
     profileInfoOpen, setProfileInfoOpen,
-    profileInfoUserId, setProfileInfoUserId,
     blockConfirmOpen, setBlockConfirmOpen,
     reportConfirmOpen, setReportConfirmOpen,
     clearConfirmOpen, setClearConfirmOpen,
