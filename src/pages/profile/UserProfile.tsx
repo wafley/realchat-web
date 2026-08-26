@@ -5,6 +5,7 @@ import { ArrowLeft, MessageSquareText, Ban, Loader2, AlertCircle, Users, UserPlu
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
 import { MediaThumb, isLinkContent, extractUrl, urlDomain } from '@/components/chat/MediaThumb';
+import SharedMediaLightbox from '@/components/chat/SharedMediaLightbox';
 
 import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
@@ -795,25 +796,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
         </div>
       )}
 
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setPreviewUrl(null)}
-        >
-          <button
-            onClick={() => setPreviewUrl(null)}
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
-          >
-            <X size={22} />
-          </button>
-          <img
-            src={resolveFileUrl(previewUrl)}
-            alt="Full size"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {previewUrl && <SharedMediaLightbox media={sharedMedia.filter((media) => media.type === 'image' || media.type === 'video')} url={previewUrl} onClose={() => setPreviewUrl(null)} onSelect={setPreviewUrl} />}
     </div>
   );
 }

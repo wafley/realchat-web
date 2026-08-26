@@ -54,10 +54,22 @@ export function MediaThumb({ media, onClickImage }: MediaThumbProps) {
       ) : media.type === 'video' ? (
         <div
           className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
-          onClick={() => toast.info('Video playback coming soon')}
+          onClick={() => {
+            if (media.fileUrl && media.fileUrl !== '#') {
+              onClickImage?.(media.fileUrl);
+            } else {
+              toast.error('Preview not available');
+            }
+          }}
         >
           {media.fileUrl && media.fileUrl !== '#' ? (
-            <img src={resolveFileUrl(media.fileUrl)} alt={media.fileName || 'Shared video'} loading="lazy" decoding="async" className="h-full w-full object-cover opacity-70" />
+            <video
+              src={resolveFileUrl(media.fileUrl)}
+              muted
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-cover opacity-70"
+            />
           ) : (
             <div className="flex flex-col items-center gap-1">
               <Play size={24} className="text-muted-foreground" fill="currentColor" />
