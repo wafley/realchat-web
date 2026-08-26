@@ -335,28 +335,36 @@ function MessageBubbleComp({
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className={`w-full min-w-[260px] max-w-[320px] overflow-hidden rounded-lg ${
-              isOwn ? 'bg-[#5a5bc8]' : 'bg-card/50'
-            }`}>
-              <div className="flex min-w-0 items-center gap-3 px-3 py-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#2b579a] text-white shadow-sm">
+            <div className="w-full min-w-[200px] max-w-[320px]">
+              {msg.content && (
+                <p className="mb-1.5 text-[length:var(--fs-bubble-md,14px)] [overflow-wrap:anywhere]">
+                  {msg.content}
+                </p>
+              )}
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
                   <FileText size={22} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-white/95">{msg.fileName || 'Document'}</p>
-                  <p className="mt-0.5 text-[11px] uppercase tracking-wide text-white/55">
+                  <p className="truncate text-[13px] font-semibold">{msg.fileName || 'Document'}</p>
+                  <p className="mt-0.5 text-[11px] uppercase tracking-wide opacity-60">
                     {msg.fileName?.split('.').pop() || 'FILE'}
                     {msg.fileSize ? ` · ${formatFileSize(msg.fileSize)}` : ''}
                   </p>
                 </div>
-                <span className="shrink-0 self-end text-[10px] text-white/55">{formatTime(msg.createdAt)}</span>
+                <span className="shrink-0 self-end inline-flex items-center gap-1 text-[10px]">
+                  {formatTime(msg.createdAt)}
+                  {renderTicks()}
+                </span>
               </div>
-              <div className={`flex items-center px-2 py-1.5 ${isOwn ? 'bg-[#4f50b5]' : 'bg-card/30'}`}>
+              <div className="mt-2 flex items-center border-t border-border/40 pt-2">
                 <a
                   href={resolveFileUrl(msg.fileUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-white/10"
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                    isOwn ? 'text-white/80 hover:bg-white/10' : 'text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ExternalLink size={13} />
@@ -364,12 +372,14 @@ function MessageBubbleComp({
                 </a>
                 <a
                   href={resolveFileUrl(msg.fileUrl)}
-                  download={msg.fileName || true}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-white/10"
+                  download={msg.fileName ?? ''}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+                    isOwn ? 'text-white/80 hover:bg-white/10' : 'text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Download size={13} />
-                  Save as...
+                  Save
                 </a>
               </div>
             </div>
