@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban, Play } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban, ExternalLink, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
 import type { Message } from '@/types';
@@ -26,7 +26,6 @@ interface MessageBubbleProps {
   onTouchMove: (e: TouchEvent) => void;
   onTouchEnd: () => void;
   onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
-  onReplyClick: (messageId: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -53,15 +52,6 @@ function getSenderColor(nameStr?: string) {
   return SENDER_COLORS[Math.abs(hash) % SENDER_COLORS.length];
 }
 
-function renderMessageContent(content: string, searchQuery: string, isOwn: boolean) {
-  const parts = content.split(/(@[A-Za-z0-9_]{3,30})/g);
-  return parts.map((part, index) =>
-    /^@[A-Za-z0-9_]{3,30}$/.test(part)
-      ? <mark key={`mention-${index}`} className={`rounded-md px-1 py-0.5 font-semibold leading-6 underline decoration-current/50 underline-offset-2 ${isOwn ? 'bg-white/15 text-white' : 'bg-accent/25 text-accent'}`}>{part}</mark>
-      : <span key={`text-${index}`}>{highlightText(part, searchQuery)}</span>,
-  );
-}
-
 function MessageBubbleComp({
   isHighlighted = false,
   msg,
@@ -83,7 +73,6 @@ function MessageBubbleComp({
   onTouchMove,
   onTouchEnd,
   onClickImage,
-  onReplyClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -117,8 +106,6 @@ function MessageBubbleComp({
   const displayedContent = showReadMore && !isExpanded
     ? (msg.content || '').slice(0, 500) + '...'
     : (msg.content || '');
-  const replyText = msg.replyTo?.content || '';
-  const displayedReplyText = replyText.length > 120 ? `${replyText.slice(0, 120)}...` : replyText;
 
   // WhatsApp-style ticks: rendered without the extra bubble/backdrop wrapper
   // since it now sits inline with the text, floated to the right.
@@ -225,43 +212,14 @@ function MessageBubbleComp({
             </div>
           )}
           {msg.replyTo && (
-            <button onClick={() => onReplyClick(msg.replyTo!.id)} className={`mb-1.5 block w-full min-w-0 max-w-full overflow-hidden rounded-lg border-l-4 px-2.5 py-1.5 text-left text-[length:var(--fs-bubble-sm,12px)] transition-colors hover:bg-black/30 ${
+            <div className={`mb-1.5 rounded-lg border-l-4 px-2.5 py-1.5 text-[length:var(--fs-bubble-sm,12px)] ${
               isOwn ? 'border-white/50 bg-black/20' : 'border-rose-500/80 bg-black/20 dark:bg-black/30'
             }`}>
-              <p className={`truncate text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
+              <p className={`text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
                 ~ {msg.replyTo.senderName}
               </p>
-              {msg.replyTo.fileUrl && (msg.replyTo.type === 'image' || msg.replyTo.type === 'video') ? (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClickImage(resolveFileUrl(msg.replyTo!.fileUrl)!, msg.replyTo!.fileName, msg.replyTo!.type === 'video' ? 'video/mp4' : 'image/*');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onClickImage(resolveFileUrl(msg.replyTo!.fileUrl)!, msg.replyTo!.fileName, msg.replyTo!.type === 'video' ? 'video/mp4' : 'image/*');
-                    }
-                  }}
-                  className="mt-1 flex w-full min-w-0 items-center gap-2 overflow-hidden rounded-md text-left transition-opacity hover:opacity-80"
-                >
-                  <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded bg-black/30">
-                    {msg.replyTo.type === 'video' ? (
-                      <video src={resolveFileUrl(msg.replyTo.fileUrl)} muted preload="metadata" className="h-full w-full object-cover" />
-                    ) : (
-                      <img src={resolveFileUrl(msg.replyTo.fileUrl)} alt="Replied photo" className="h-full w-full object-cover" />
-                    )}
-                    {msg.replyTo.type === 'video' && <Play size={15} fill="currentColor" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow" />}
-                  </span>
-                  <span className="min-w-0 break-words text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : '🎥 Video'}</span>
-                </span>
-              ) : (
-                <p className="min-w-0 max-w-full whitespace-normal break-all [overflow-wrap:anywhere] text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.type === 'video' ? '🎥 Video' : displayedReplyText}</p>
-              )}
-            </button>
+              <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
+            </div>
           )}
           {msg.type === 'image' && msg.fileUrl ? (
             <div className="flex flex-col">
@@ -279,7 +237,7 @@ function MessageBubbleComp({
                     />
                   </div>
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {renderMessageContent(displayedContent, searchQuery, isOwn)}
+                    {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -313,31 +271,15 @@ function MessageBubbleComp({
             <div className="flex flex-col">
               {msg.content ? (
                 <>
-                  <div className="group relative">
-                    <video
-                      src={msg.fileUrl}
-                      preload="metadata"
-                      className="block w-full cursor-pointer rounded-t-2xl"
-                      style={{ maxHeight: '400px' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
-                      }}
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
-                      }}
-                      className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-lg transition hover:bg-black/75"
-                      aria-label="Play video"
-                      title="Play video"
-                    >
-                      <Play size={25} fill="currentColor" className="ml-1" />
-                    </button>
-                  </div>
+                  <video
+                    src={msg.fileUrl}
+                    controls
+                    className="block w-full rounded-t-2xl"
+                    style={{ maxHeight: '400px' }}
+                    preload="metadata"
+                  />
                   <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
-                    {renderMessageContent(displayedContent, searchQuery, isOwn)}
+                    {highlightText(displayedContent, searchQuery)}
                     {showReadMore && (
                       <button
                         onClick={(e) => {
@@ -354,62 +296,55 @@ function MessageBubbleComp({
                 </>
               ) : (
                 <div className="relative">
-                  <div className="group relative">
-                    <video
-                      src={msg.fileUrl}
-                      preload="metadata"
-                      className="block w-full cursor-pointer rounded-xl"
-                      style={{ maxHeight: '400px' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
-                      }}
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType);
-                      }}
-                      className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-lg transition hover:bg-black/75"
-                      aria-label="Play video"
-                      title="Play video"
-                    >
-                      <Play size={25} fill="currentColor" className="ml-1" />
-                    </button>
-                  </div>
+                  <video
+                    src={msg.fileUrl}
+                    controls
+                    className="block w-full rounded-xl"
+                    style={{ maxHeight: '400px' }}
+                    preload="metadata"
+                  />
                   {renderMetaOverlay()}
                 </div>
               )}
             </div>
           ) : msg.fileUrl ? (
-            <div className="flex w-full min-w-[250px] max-w-[360px] flex-col gap-1">
-              <a
-                href={resolveFileUrl(msg.fileUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                download={msg.fileName || true}
-                className={`group flex min-w-0 items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
-                  isOwn
-                    ? 'border-white/10 bg-black/15 hover:bg-black/25'
-                    : 'border-white/5 bg-black/20 hover:bg-black/30'
-                }`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${
-                  isOwn ? 'bg-indigo-500/20' : 'bg-slate-700/70'
-                }`}>
-                  <FileText size={21} strokeWidth={1.8} className={isOwn ? 'text-indigo-300' : 'text-slate-300'} />
+            <div className={`w-full min-w-[260px] max-w-[320px] overflow-hidden rounded-lg ${
+              isOwn ? 'bg-[#5a5bc8]' : 'bg-card/50'
+            }`}>
+              <div className="flex min-w-0 items-center gap-3 px-3 py-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-[#2b579a] text-white shadow-sm">
+                  <FileText size={22} strokeWidth={1.8} />
                 </div>
-                <div className="min-w-0 flex-1 py-0.5">
-                  <p className="truncate text-[13px] font-medium leading-5 text-white">
-                    {msg.fileName || 'Document'}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-white/95">{msg.fileName || 'Document'}</p>
+                  <p className="mt-0.5 text-[11px] uppercase tracking-wide text-white/55">
+                    {msg.fileName?.split('.').pop() || 'FILE'}
+                    {msg.fileSize ? ` · ${formatFileSize(msg.fileSize)}` : ''}
                   </p>
-                  {msg.fileSize && (
-                    <p className="text-[11px] leading-4 text-white/55">{formatFileSize(msg.fileSize)}</p>
-                  )}
                 </div>
-              </a>
-              <div className="flex justify-end pr-1 leading-none">{renderMetaInline()}</div>
+                <span className="shrink-0 self-end text-[10px] text-white/55">{formatTime(msg.createdAt)}</span>
+              </div>
+              <div className={`flex items-center px-2 py-1.5 ${isOwn ? 'bg-[#4f50b5]' : 'bg-card/30'}`}>
+                <a
+                  href={resolveFileUrl(msg.fileUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-white/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink size={13} />
+                  Open
+                </a>
+                <a
+                  href={resolveFileUrl(msg.fileUrl)}
+                  download={msg.fileName || true}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-white/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Download size={13} />
+                  Save as...
+                </a>
+              </div>
             </div>
           ) : msg.isDeleted ? (
             <p className="[overflow-wrap:anywhere] text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
@@ -419,7 +354,7 @@ function MessageBubbleComp({
             </p>
           ) : (
             <p className="min-w-0 [overflow-wrap:anywhere]">
-              {renderMessageContent(displayedContent, searchQuery, isOwn)}
+              {highlightText(displayedContent, searchQuery)}
               {showReadMore && (
                 <button
                   onClick={(e) => {

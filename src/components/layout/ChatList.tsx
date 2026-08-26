@@ -478,6 +478,13 @@ export default function ChatList() {
               const linkTo = chat.type === 'dm' ? `/dm/${chat.id}` : `/chat/${chat.id}`;
               const isActive = chat.type === 'dm' ? userId === chat.id : groupId === chat.id;
               const isSelected = selectedChatIds.has(chat.id);
+              const hasUnreadMention = notifications.some(
+                (notification) =>
+                  notification.type === 'mention' &&
+                  notification.conversationId === chat.id &&
+                  !notification.read &&
+                  !notification.isRead,
+              );
               const { online, lastSeen } = presenceOf(chat);
               const ItemTag = (isSelectionMode ? 'div' : Link) as ElementType;
               return (
@@ -567,7 +574,7 @@ export default function ChatList() {
                       <div className="flex shrink-0 items-center gap-2">
                         {chat.type === 'group' && (chat.unread ?? 0) > 0 && !isSelectionMode && (
                           <span className="inline-flex items-center gap-1 text-accent" aria-label={`${chat.unread} unread group messages`} title="Unread group messages">
-                            <span className="text-base font-bold leading-none">@</span>
+                            {hasUnreadMention && <span className="text-base font-bold leading-none">@</span>}
                             <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium leading-none text-accent-foreground">
                               {chat.unread}
                             </span>
