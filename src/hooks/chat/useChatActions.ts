@@ -179,6 +179,7 @@ export function useChatActions(props: UseChatActionsProps) {
   const isInitialLoadRef = useRef(true);
   const ioCooldownRef = useRef(false);
   const typingActiveRef = useRef(false);
+  const typingKeepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const emittedReadIdsRef = useRef<Set<string>>(new Set());
 
   // --- Effects ---
@@ -227,6 +228,10 @@ export function useChatActions(props: UseChatActionsProps) {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
+    if (typingKeepaliveRef.current) {
+      clearInterval(typingKeepaliveRef.current);
+      typingKeepaliveRef.current = null;
+    }
     if (typingActiveRef.current) {
       typingActiveRef.current = false;
       emitTypingStop(chatId);
@@ -245,6 +250,10 @@ export function useChatActions(props: UseChatActionsProps) {
         typingTimerRef.current = null;
         typingActiveRef.current = true;
         emitTypingStart(chatId);
+        if (typingKeepaliveRef.current) clearInterval(typingKeepaliveRef.current);
+        typingKeepaliveRef.current = setInterval(() => {
+          if (typingActiveRef.current) emitTypingStart(chatId);
+        }, 8000);
       }, 300);
     }
     typingDoneTimerRef.current = setTimeout(stopTyping, 10000);
