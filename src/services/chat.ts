@@ -607,7 +607,7 @@ export async function getConversations(): Promise<ChatConversation[]> {
         avatarUrl: r.avatar ?? r.avatarUrl ?? undefined,
         type: isPrivate ? 'dm' : 'group',
         lastMessage: conversationPreview(r.lastMessage),
-        lastSenderName: isPrivate || String(r.lastMessage?.type ?? '').toLowerCase() === 'system'
+        lastSenderName: String(r.lastMessage?.type ?? '').toLowerCase() === 'system'
           ? undefined
           : messageSenderName({ senderId: r.lastMessage?.senderId ?? '', sender: r.lastMessage?.sender ?? null }),
         lastTime: r.lastMessage?.createdAt ?? r.createdAt,

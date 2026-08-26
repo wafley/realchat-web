@@ -35,7 +35,7 @@ function clampText(s?: string, max = 50): string {
 function ChatPreview({ chat }: { chat: ChatConversation }) {
   return (
     <>
-      {chat.type === 'group' && chat.lastSenderName && (
+      {chat.lastSenderName && (
         <span className="text-muted-foreground">{chat.lastSenderName}: </span>
       )}
       {clampText(chat.lastMessage)}

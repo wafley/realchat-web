@@ -31,6 +31,7 @@ import {
   simulateDevReceipts,
   refreshConversationPreview,
   messageSenderName,
+  messagePreview,
 } from '@/services/chat';
 import { leaveRoom } from '@/services/socket.service';
 import { useAuthStore } from '@/store/authStore';
@@ -88,7 +89,7 @@ export function useChatMutations({
 
   const updateConversationPreview = useCallback(
     (newMsg: Message) => {
-      const preview = newMsg.type === 'image' ? '📷 Photo' : newMsg.content;
+      const preview = messagePreview(newMsg);
       queryClient.setQueryData<{ id: string; lastMessage?: string; lastTime?: string; lastSenderName?: string }[]>(
         ['conversations'],
         (prev) => {
@@ -98,7 +99,7 @@ export function useChatMutations({
               ? {
                   ...c,
                   lastMessage: preview,
-                  lastSenderName: !isDM ? messageSenderName(newMsg) : undefined,
+                  lastSenderName: newMsg.type === 'system' ? undefined : messageSenderName(newMsg),
                   lastTime: new Date().toISOString(),
                 }
               : c,
