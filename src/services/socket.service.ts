@@ -356,6 +356,9 @@ async function fetchTypingName(userId: string): Promise<string> {
 }
 
 async function resolveTypingName(userId: string, conversationId: string): Promise<string> {
+  const contacts = queryClient.getQueryData<{ userId: string; customName?: string }[]>(['contacts']);
+  const customName = contacts?.find((c) => c.userId === userId)?.customName;
+  if (customName) return customName;
   const convs = queryClient.getQueryData<
     { id: string; type: string; name?: string; userId?: string }[]
   >(['conversations']);
