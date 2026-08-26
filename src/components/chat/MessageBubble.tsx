@@ -28,6 +28,7 @@ interface MessageBubbleProps {
   onTouchEnd: () => void;
   onClickImage: (url: string, fileName?: string, mimeType?: string) => void;
   onReplyClick: (messageId: string) => void;
+  onSenderClick: (userId: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
   selectedIds: string[];
@@ -76,6 +77,7 @@ function MessageBubbleComp({
   onTouchEnd,
   onClickImage,
   onReplyClick,
+  onSenderClick,
   onToggleReaction,
   onReactionPickerOpen,
   selectedIds,
@@ -206,9 +208,18 @@ function MessageBubbleComp({
         >
           {!isOwn && name && (
             <div className="mb-1 flex items-center justify-between gap-3 text-[length:var(--fs-bubble-sm,12px)] font-semibold">
-              <span className={`truncate ${getSenderColor(name)}`}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSenderClick(msg.senderId);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`truncate text-left hover:underline ${getSenderColor(name)}`}
+                aria-label={`Open ${name}'s profile`}
+              >
                 ~ {name}
-              </span>
+              </button>
               {msg.sender?.username && (
                 <span className="shrink-0 text-[10px] font-normal opacity-60">
                   @{msg.sender.username}

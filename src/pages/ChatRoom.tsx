@@ -400,6 +400,14 @@ export default function ChatRoom() {
             state.setLightboxUrl(`${url.split('#')[0]}#${metadata.toString()}`);
           }}
           onReplyClick={handleReplyClick}
+          onSenderClick={(userId) => {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+              state.setProfileInfoUserId(userId);
+              state.setProfileInfoOpen(true);
+            } else {
+              navigate(`/profile/${userId}`);
+            }
+          }}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
           selectedIds={state.selectedIds}
@@ -460,11 +468,14 @@ export default function ChatRoom() {
         </aside>
       )}
 
-      {state.isDM && state.profileInfoOpen && state.otherUserId && (
+      {state.profileInfoOpen && (state.isDM ? state.otherUserId : state.profileInfoUserId) && (
         <aside className="fixed inset-0 z-40 h-full w-full shrink-0 animate-in slide-in-from-right-full duration-200 shadow-2xl lg:relative lg:inset-auto lg:z-auto lg:block lg:w-96 lg:shadow-none">
           <UserInfoPanel
-            userId={state.otherUserId}
-            onClose={() => state.setProfileInfoOpen(false)}
+            userId={state.isDM ? state.otherUserId! : state.profileInfoUserId!}
+            onClose={() => {
+              state.setProfileInfoOpen(false);
+              if (!state.isDM) state.setProfileInfoUserId(null);
+            }}
             onClearChat={() => state.setClearConfirmOpen(true)}
           />
         </aside>
