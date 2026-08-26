@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   X, ArrowLeft, Users, User, UserPlus, UserMinus, Shield, Camera, 
   Pencil, Check, Search, Bell, BellOff, LogOut, Trash2, Loader2, 
-  MoreVertical, MessageSquare, Image as ImageIcon, ChevronRight, FileText
+  MoreVertical, MessageSquare, Image as ImageIcon, ChevronRight
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
@@ -13,7 +13,7 @@ import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/i
 import type { Group, GroupMember, User as UserType } from '@/types';
 import { uploadGroupAvatar, getSharedMedia } from '@/services/chat';
 import { MediaThumb, isLinkContent, extractUrl, urlDomain } from '@/components/chat/MediaThumb';
-import { formatTime, formatFileSize } from '@/lib/chatHelpers';
+import { formatTime } from '@/lib/chatHelpers';
 import { useCustomNames } from '@/hooks/useCustomNames';
 import { getUser } from '@/services/user';
 import { usePresenceStore } from '@/store/presenceStore';
@@ -268,7 +268,7 @@ export default function GroupInfoPanel({
   const customNameMap = useCustomNames();
 
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
-  const [mediaTab, setMediaTab] = useState<'media' | 'file' | 'link'>('media');
+  const [mediaTab, setMediaTab] = useState<'media' | 'link'>('media');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { data: sharedMedia = [] } = useQuery({
     queryKey: ['shared-media', group?.id],
@@ -945,7 +945,7 @@ export default function GroupInfoPanel({
       {mediaModalOpen && (
         <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl" hideClose>
           <div className="mb-4 flex items-center gap-0.5 rounded-xl bg-accent/10 p-1">
-            {(['media', 'file', 'link'] as const).map((tab) => (
+            {(['media', 'link'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setMediaTab(tab)}
@@ -955,7 +955,7 @@ export default function GroupInfoPanel({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {tab === 'media' ? 'Media' : tab === 'file' ? 'Docs' : 'Links'}
+                {tab === 'media' ? 'Media' : 'Links'}
               </button>
             ))}
             <button
@@ -966,56 +966,36 @@ export default function GroupInfoPanel({
             </button>
           </div>
           <div className="h-[420px] overflow-y-auto">
-            {mediaTab === 'link' || mediaTab === 'file' ? (
+            {mediaTab === 'link' ? (
               <div className="space-y-2">
-                {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').map((item) => {
-                  if (mediaTab === 'link') {
-                    const msg = item;
-                    const url = extractUrl(msg.content || '');
-                    const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
-                    if (!url) return null;
-                    return (
-                      <a
-                        key={msg.id}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
-                          {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
-                          <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-                            {formatTime(msg.createdAt)} &middot; {customNameMap.get(msg.senderId) || msg.sender?.fullName || 'Unknown'}
-                          </p>
-                        </div>
-                      </a>
-                    );
-                  }
+                {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).map((item) => {
                   const msg = item;
+                  const url = extractUrl(msg.content || '');
+                  const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
+                  if (!url) return null;
                   return (
-                    <div
+                    <a
                       key={msg.id}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                        <FileText size={16} className="text-muted-foreground" />
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{msg.fileName || 'File'}</p>
-                        {msg.content && <p className="mt-0.5 truncate text-xs text-muted-foreground">{msg.content}</p>}
+                        <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
+                        {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
                         <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-                          {msg.fileSize ? formatFileSize(msg.fileSize) : null}{msg.fileSize ? ' · ' : ''}{formatTime(msg.createdAt)} &middot; {customNameMap.get(msg.senderId) || msg.sender?.fullName || 'Unknown'}
+                          {formatTime(msg.createdAt)} &middot; {customNameMap.get(msg.senderId) || msg.sender?.fullName || 'Unknown'}
                         </p>
                       </div>
-                    </div>
+                    </a>
                   );
                 })}
-                {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').length === 0 && (
-                  <p className="py-10 text-center text-xs text-muted-foreground">{mediaTab === 'link' ? 'No links' : 'No documents'}</p>
+                {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).length === 0 && (
+                  <p className="py-10 text-center text-xs text-muted-foreground">No links</p>
                 )}
               </div>
             ) : (

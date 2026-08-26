@@ -17,7 +17,6 @@ import {
   starMessage,
   unstarMessage,
   getPinnedMessages,
-  sendFileMessage,
   getConversations,
   getGroup,
   toggleReaction,
@@ -223,17 +222,6 @@ export function useChatMutations({
     },
     onError: (_err) => {
       toast.error(getApiErrorMessage(_err, 'Failed to send image. Please try again.'));
-    },
-  });
-
-  const sendFileMutation = useMutation({
-    mutationFn: ({ file, caption, replyTo: rp }: { file: File; caption: string; replyTo?: ReplyTo }) =>
-      sendFileMessage(chatId, file, isDM, caption || undefined, rp),
-    onSuccess(r) {
-      onMessageSent(r);
-    },
-    onError: (_err) => {
-      toast.error(getApiErrorMessage(_err, 'Failed to send file. Please try again.'));
     },
   });
 
@@ -486,7 +474,6 @@ export function useChatMutations({
     unpinMutation,
     starMutation,
     unstarMutation,
-    sendFileMutation,
     toggleReactionMutation,
     updateGroupMutation,
     addMemberMutation,

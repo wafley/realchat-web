@@ -120,7 +120,7 @@ export function normalizeRemoteStatus(status?: string | null): MessageStatus | u
 export function mapMessage(row: RemoteMessage): Message {
   const t = (row.type ?? '').toLowerCase();
   const type: Message['type'] =
-    t === 'image' || t === 'file' || t === 'video' || t === 'system' ? t : 'text';
+    t === 'image' || t === 'video' || t === 'system' ? t : 'text';
   return {
     id: row.id,
     groupId: row.conversationId ?? '',
@@ -497,7 +497,6 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
   const content = lm.content ?? '';
   const t = (lm.type ?? '').toLowerCase();
   if (t === 'image') return content ? `📷 ${content}` : '📷 Photo';
-  if (t === 'file') return content ? `📎 ${content}` : `📎 ${lm.fileName || 'File'}`;
   if (t === 'video') return content ? `🎬 ${content}` : '🎬 Video';
   return content;
 }
@@ -505,7 +504,6 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
 export function messagePreview(m: Message): string {
   if (m.isDeleted) return 'Message deleted';
   if (m.type === 'image') return '📷 Photo';
-  if (m.type === 'file') return '📎 File';
   if (m.type === 'video') return '🎬 Video';
   return m.content;
 }
@@ -823,46 +821,6 @@ export async function getStarredMessages(cursor?: string, limit = 50): Promise<S
     });
   } catch (err) {
     throw toError(err, 'Failed to get starred messages');
-  }
-}
-
-export async function sendFileMessage(chatId: string, file: File, _isDM: boolean, caption?: string, replyTo?: ReplyTo): Promise<Message> {
-  try {
-    if (DEV_MODE) {
-      await delay(500);
-      msgCounter++;
-      const url = URL.createObjectURL(file);
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-      const isVideo = ['mp4', 'webm', 'mov', 'avi'].includes(ext);
-      const msg: Message = {
-        id: `msg-${msgCounter}`,
-        groupId: chatId,
-        senderId: DEV_USER_ID,
-        content: caption ?? '',
-        type: isVideo ? 'video' : 'file',
-        fileUrl: url,
-        fileName: file.name,
-        fileSize: file.size,
-        duration: isVideo ? 0 : undefined,
-        status: 'pending',
-        replyTo,
-        createdAt: new Date(),
-        sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },
-      };
-      if (!MOCK_MESSAGES[chatId]) MOCK_MESSAGES[chatId] = [];
-      MOCK_MESSAGES[chatId].push(msg);
-      const conv = MOCK_CONVERSATIONS.find((c) => c.id === chatId);
-      if (conv) {
-        conv.lastMessage = isVideo ? '🎬 Video' : `📎 ${file.name}`;
-        conv.lastTime = new Date().toISOString();
-      }
-      return msg;
-    }
-
-    const duration = file.type.startsWith('video/') ? await readVideoDuration(file) : undefined;
-    return await postAttachment(chatId, file, caption, replyTo, duration);
-  } catch (err) {
-    throw toError(err, 'Failed to send file');
   }
 }
 
@@ -1318,7 +1276,7 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
     await delay(200);
     const messages = MOCK_MESSAGES[conversationId] ?? [];
     return messages.filter((m) => {
-      if (m.type === 'image' || m.type === 'video' || m.type === 'file') return true;
+      if (m.type === 'image' || m.type === 'video') return true;
       if (m.type === 'text') return /https?:\/\/[^\s]+/.test(m.content);
       return false;
     });
@@ -1329,7 +1287,7 @@ export async function getSharedMedia(conversationId: string): Promise<Message[]>
     for (let page = 0; page < 5; page++) {
       const res = await getMessages(conversationId, true, cursor, 50);
       for (const m of res.data) {
-        if (m.type === 'image' || m.type === 'video' || m.type === 'file') media.push(m);
+        if (m.type === 'image' || m.type === 'video') media.push(m);
         else if (m.type === 'text' && /https?:\/\/[^\s]+/.test(m.content)) media.push(m);
       }
       cursor = res.nextCursor ?? undefined;

@@ -1,7 +1,6 @@
-import { FileText, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolveFileUrl } from '@/lib/url';
-import { formatFileSize } from '@/lib/chatHelpers';
 
 export function isLinkContent(content?: string): boolean {
   return !!content && /https?:\/\/[^\s]+/.test(content);
@@ -100,10 +99,8 @@ export function MediaThumb({ media, onClickImage }: MediaThumbProps) {
           <span className="max-w-full truncate text-[9px] text-muted-foreground">{linkUrl}</span>
         </a>
       ) : (
-        <div className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2 transition-colors hover:bg-accent/10">
-          <FileText size={20} className="text-muted-foreground" />
-          <span className="max-w-full truncate text-[10px] text-muted-foreground">{media.fileName}</span>
-          {media.fileSize && <span className="text-[10px] text-muted-foreground/60">{formatFileSize(media.fileSize)}</span>}
+        <div className="flex h-full w-full items-center justify-center p-2">
+          <span className="max-w-full truncate text-[10px] text-muted-foreground">No preview</span>
         </div>
       )}
     </div>

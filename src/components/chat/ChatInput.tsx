@@ -9,7 +9,6 @@ import {
   Send,
   ImagePlus,
   Smile,
-  FileText,
   X,
   Check,
 } from 'lucide-react';
@@ -22,14 +21,12 @@ import EmojiPicker, {
   Theme as EmojiTheme,
 } from 'emoji-picker-react';
 
-import { formatFileSize } from '@/lib/chatHelpers';
 import { resolveFileUrl } from '@/lib/url';
 import { useCustomNames } from '@/hooks/useCustomNames';
 
 import { IMAGE_ACCEPT } from '@/utils/imageValidation';
 
 const VIDEO_ACCEPT = 'video/mp4,video/webm,video/quicktime';
-const DOC_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.7z,.rar';
 
 interface ChatInputProps {
   input: string;
@@ -37,7 +34,6 @@ interface ChatInputProps {
   editingMsg: Message | null;
   imagePreview: string | null;
   selectedImage: File | null;
-  selectedFile: File | null;
   groupMembers?: GroupMember[];
   currentUserId?: string;
   showEmojiPicker: boolean;
@@ -51,10 +47,6 @@ interface ChatInputProps {
   onCancelEdit: () => void;
   onCancelImage: () => void;
 
-  onFileSelect: (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => void;
-
   onImageSelect: (
     e: React.ChangeEvent<HTMLInputElement>
   ) => void;
@@ -62,7 +54,6 @@ interface ChatInputProps {
   onEmojiClick: (emoji: string) => void;
   onEmojiToggle: () => void;
 
-  fileInputRef: RefObject<HTMLInputElement | null>;
   imageInputRef: RefObject<HTMLInputElement | null>;
   emojiPickerRef: RefObject<HTMLDivElement | null>;
   emojiToggleRef: RefObject<HTMLButtonElement | null>;
@@ -74,7 +65,6 @@ export default function ChatInput({
   editingMsg,
   imagePreview,
   selectedImage,
-  selectedFile,
   groupMembers = [],
   currentUserId,
   showEmojiPicker,
@@ -86,11 +76,9 @@ export default function ChatInput({
   onCancelReply,
   onCancelEdit,
   onCancelImage,
-  onFileSelect,
   onImageSelect,
   onEmojiClick,
   onEmojiToggle,
-  fileInputRef,
   imageInputRef,
   emojiPickerRef,
   emojiToggleRef,
@@ -208,8 +196,7 @@ export default function ChatInput({
 
   const canSend =
     input.trim().length > 0 ||
-    imagePreview !== null ||
-    selectedFile !== null;
+    imagePreview !== null;
 
   return (
     <div className="relative">
@@ -312,36 +299,6 @@ export default function ChatInput({
         </div>
       )}
 
-      {/* File preview */}
-      {selectedFile && !imagePreview && (
-        <div className="mx-3 mb-2 mt-3 flex items-center gap-3 rounded-2xl border border-border bg-card p-2 pr-1 shadow-sm lg:mx-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent/10 ring-1 ring-border lg:h-16 lg:w-16">
-            <FileText
-              size={24}
-              className="text-accent"
-            />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">
-              {selectedFile.name}
-            </p>
-
-            <p className="text-xs text-muted-foreground">
-              {formatFileSize(selectedFile.size)}
-            </p>
-          </div>
-
-          <button
-            onClick={onCancelImage}
-            type="button"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
       {/* Emoji picker */}
       {showEmojiPicker && (
         <div
@@ -406,26 +363,6 @@ export default function ChatInput({
               : 'rounded-full'
           }`}
         >
-          {/* File */}
-          <button
-            onClick={() =>
-              fileInputRef.current?.click()
-            }
-            disabled={disabled}
-            type="button"
-            className="mb-[1px] flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <FileText size={18} />
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={DOC_ACCEPT}
-            className="hidden"
-            onChange={onFileSelect}
-          />
-
           {/* Image */}
           <button
             onClick={() =>

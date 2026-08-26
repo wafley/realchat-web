@@ -159,7 +159,6 @@ export default function ChatRoom() {
     chatName: state.chatName,
     otherUserId: state.otherUserId,
     selectedImage: state.selectedImage,
-    selectedFile: state.selectedFile,
     imagePreview: state.imagePreview,
     replyingToForSend: state.replyingTo,
     setInput: state.setInput,
@@ -185,7 +184,6 @@ export default function ChatRoom() {
     setMuted: state.setMuted,
     setSelectedImage: state.setSelectedImage,
     setImagePreview: state.setImagePreview,
-    setSelectedFile: state.setSelectedFile,
     typingTimerRef: state.typingTimerRef,
     typingDoneTimerRef: state.typingDoneTimerRef,
     messagesEndRef: state.messagesEndRef,
@@ -198,7 +196,6 @@ export default function ChatRoom() {
     longPressStartPosRef: state.longPressStartPosRef,
     sendMutation: mutations.sendMutation,
     sendImageMutation: mutations.sendImageMutation,
-    sendFileMutation: mutations.sendFileMutation,
     editMutation: mutations.editMutation,
     deleteMutation: mutations.deleteMutation,
     pinMutation: mutations.pinMutation,
@@ -417,7 +414,6 @@ export default function ChatRoom() {
           editingMsg={state.editingMsg}
           imagePreview={state.imagePreview}
           selectedImage={state.selectedImage}
-          selectedFile={state.selectedFile}
           groupMembers={mutations.group?.members}
           currentUserId={state.currentUser?.id}
           showEmojiPicker={state.showEmojiPicker}
@@ -430,7 +426,6 @@ export default function ChatRoom() {
           onCancelEdit={actions.handleCancelEdit}
           onCancelImage={actions.handleCancelImage}
           onImageSelect={actions.handleImageSelect}
-          onFileSelect={actions.handleFileSelect}
           onEmojiToggle={() => state.setShowEmojiPicker((v) => !v)}
           onEmojiClick={actions.handleEmojiClick}
           emojiPickerRef={
@@ -438,9 +433,6 @@ export default function ChatRoom() {
           }
           emojiToggleRef={
             state.emojiToggleRef as React.RefObject<HTMLButtonElement>
-          }
-          fileInputRef={
-            state.fileInputRef as React.RefObject<HTMLInputElement>
           }
           imageInputRef={
             state.imageInputRef as React.RefObject<HTMLInputElement>

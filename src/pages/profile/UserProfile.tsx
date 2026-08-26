@@ -9,7 +9,7 @@ import SharedMediaLightbox from '@/components/chat/SharedMediaLightbox';
 
 import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
-import { formatTime, formatFileSize } from '@/lib/chatHelpers';
+import { formatTime } from '@/lib/chatHelpers';
 import { getUser } from '@/services/user';
 import { blockUser as blockUserService, unblockUser as unblockUserService, findOrCreateConversation, getSharedMedia, getMutualGroups, getBlockedUsers, getConversations, muteConversation, unmuteConversation } from '@/services/chat';
 import { addContact, removeContact, getContacts, updateContactCustomName } from '@/services/contacts';
@@ -116,7 +116,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
   });
 
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
-  const [mediaTab, setMediaTab] = useState<'media' | 'file' | 'link'>('media');
+  const [mediaTab, setMediaTab] = useState<'media' | 'link'>('media');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -560,7 +560,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                     <div className="mb-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <FileText size={20} className="shrink-0 text-muted-foreground" />
-                        <span className="text-sm font-semibold text-foreground">Media, links and docs</span>
+                        <span className="text-sm font-semibold text-foreground">Media and links</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-medium text-muted-foreground">{sharedMedia.length}</span>
@@ -696,7 +696,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
 
               <Modal open={mediaModalOpen} onClose={() => setMediaModalOpen(false)} className="max-w-4xl" hideClose>
                 <div className="mb-4 flex items-center gap-0.5 rounded-xl bg-accent/10 p-1">
-                  {(['media', 'file', 'link'] as const).map((tab) => (
+                  {(['media', 'link'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setMediaTab(tab)}
@@ -706,7 +706,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      {tab === 'media' ? 'Media' : tab === 'file' ? 'Docs' : 'Links'}
+                      {tab === 'media' ? 'Media' : 'Links'}
                     </button>
                   ))}
                   <button
@@ -717,56 +717,36 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                   </button>
                 </div>
                 <div className="h-[420px] overflow-y-auto">
-                  {mediaTab === 'link' || mediaTab === 'file' ? (
+                  {mediaTab === 'link' ? (
                     <div className="space-y-2">
-                      {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').map((item) => {
-                        if (mediaTab === 'link') {
-                          const msg = item;
-                          const url = extractUrl(msg.content || '');
-                          const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
-                          if (!url) return null;
-                          return (
-                            <a
-                              key={msg.id}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
-                                {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
-                                <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-                                  {formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
-                                </p>
-                              </div>
-                            </a>
-                          );
-                        }
+                      {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).map((item) => {
                         const msg = item;
+                        const url = extractUrl(msg.content || '');
+                        const caption = msg.content?.replace(/https?:\/\/[^\s]+/g, '').trim();
+                        if (!url) return null;
                         return (
-                          <div
+                          <a
                             key={msg.id}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-start gap-3 rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/5"
                           >
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                              <FileText size={16} className="text-muted-foreground" />
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-foreground">{msg.fileName || 'File'}</p>
-                              {msg.content && <p className="mt-0.5 truncate text-xs text-muted-foreground">{msg.content}</p>}
+                              <p className="truncate text-sm font-medium text-foreground">{urlDomain(url || '')}</p>
+                              {caption && <p className="mt-0.5 truncate text-xs text-muted-foreground">{caption}</p>}
                               <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-                                {msg.fileSize ? formatFileSize(msg.fileSize) : null}{msg.fileSize ? ' · ' : ''}{formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
+                                {formatTime(msg.createdAt)} &middot; {msg.sender?.fullName || 'Unknown'}
                               </p>
                             </div>
-                          </div>
+                          </a>
                         );
                       })}
-                      {sharedMedia.filter((m) => mediaTab === 'link' ? (m.type === 'text' && isLinkContent(m.content)) : m.type === 'file').length === 0 && (
-                        <p className="py-10 text-center text-xs text-muted-foreground">{mediaTab === 'link' ? 'No links' : 'No documents'}</p>
+                      {sharedMedia.filter((m) => m.type === 'text' && isLinkContent(m.content)).length === 0 && (
+                        <p className="py-10 text-center text-xs text-muted-foreground">No links</p>
                       )}
                     </div>
                   ) : (

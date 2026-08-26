@@ -29,7 +29,6 @@ export function useChatState() {
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
   const [forwardSearch, setForwardSearch] = useState('');
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
@@ -49,7 +48,6 @@ export function useChatState() {
   const typingDoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const scrollTriggerRef = useRef<HTMLDivElement>(null);
@@ -105,7 +103,6 @@ export function useChatState() {
     setForwardTarget(null);
     setForwardSearch('');
     setPinnedMessages([]);
-    setSelectedFile(null);
     setGroupInfoOpen(false);
     setProfileInfoOpen(false);
     setBlockConfirmOpen(false);
@@ -300,7 +297,6 @@ export function useChatState() {
     forwardTarget, setForwardTarget,
     forwardSearch, setForwardSearch,
     pinnedMessages, setPinnedMessages,
-    selectedFile, setSelectedFile,
     groupInfoOpen, setGroupInfoOpen,
     profileInfoOpen, setProfileInfoOpen,
     blockConfirmOpen, setBlockConfirmOpen,
@@ -319,7 +315,6 @@ export function useChatState() {
     typingDoneTimerRef,
     messagesEndRef,
     searchInputRef,
-    fileInputRef,
     emojiPickerRef,
     emojiToggleRef,
     scrollTriggerRef,

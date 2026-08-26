@@ -218,8 +218,7 @@ export default function Starred() {
                         <span className="min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">
                           {msg.content || (
                             msg.type === 'image' ? '📷 Photo' : 
-                            msg.type === 'video' ? '🎬 Video' : 
-                            msg.type === 'file' ? (msg.fileName ?? '📎 Document') : ''
+                            msg.type === 'video' ? '🎬 Video' : ''
                           )}
                         </span>
 
