@@ -487,6 +487,7 @@ interface RemoteConversation {
     isDeleted?: boolean | null;
     senderId?: string | null;
     sender?: { username?: string | null; fullName?: string | null } | null;
+    fileName?: string | null;
   } | null;
 }
 
@@ -494,9 +495,10 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
   if (!lm) return '';
   if (lm.isDeleted) return 'Message deleted';
   const content = lm.content ?? '';
-  if (lm.type === 'image') return content ? `📷 ${content}` : '📷 Photo';
-  if (lm.type === 'file') return content ? `📎 ${content}` : '📎 File';
-  if (lm.type === 'video') return content ? `🎬 ${content}` : '🎬 Video';
+  const t = (lm.type ?? '').toLowerCase();
+  if (t === 'image') return content ? `📷 ${content}` : '📷 Photo';
+  if (t === 'file') return content ? `📎 ${content}` : `📎 ${lm.fileName || 'File'}`;
+  if (t === 'video') return content ? `🎬 ${content}` : '🎬 Video';
   return content;
 }
 
