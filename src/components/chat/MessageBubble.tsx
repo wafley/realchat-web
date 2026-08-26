@@ -2,6 +2,7 @@ import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
 import { Pin, Star, Check, CheckCheck, Clock, FileText, SmilePlus, CheckSquare, Square, Ban, ExternalLink, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
+import { useCustomNames } from '@/hooks/useCustomNames';
 import type { Message } from '@/types';
 import { formatTime, formatFileSize, highlightText } from '@/lib/chatHelpers';
 
@@ -83,6 +84,8 @@ function MessageBubbleComp({
   const isSelected = selectedIds.includes(msg.id);
   const inSelectionMode = selectedIds.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
+  const customNames = useCustomNames();
+  const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
 
   if (msg.type === 'system') {
     return (
@@ -170,10 +173,10 @@ function MessageBubbleComp({
       ) : showAvatar ? (
         <Avatar className="mt-0.5 h-9 w-9 shrink-0">
           {msg.sender?.avatarUrl && (
-            <AvatarImage src={msg.sender.avatarUrl} alt={msg.sender.fullName || name || 'User avatar'} />
+            <AvatarImage src={msg.sender.avatarUrl} alt={senderName || name || 'User avatar'} />
           )}
           <AvatarFallback className="bg-muted text-[length:var(--fs-bubble-sm,12px)] font-semibold text-muted-foreground">
-            {(msg.sender?.fullName || msg.sender?.username || name || 'U').charAt(0).toUpperCase()}
+            {(senderName || msg.sender?.username || name || 'U').charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
       ) : showSpacer ? (
@@ -225,7 +228,7 @@ function MessageBubbleComp({
               }`}
             >
               <p className={`text-[length:var(--fs-bubble-sm,12px)] font-semibold ${isOwn ? 'text-white/90' : getSenderColor(msg.replyTo.senderName)}`}>
-                ~ {msg.replyTo.senderName}
+                ~ {customNames.get(msg.replyTo.senderId) || msg.replyTo.senderName}
               </p>
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
             </button>

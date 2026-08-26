@@ -5,7 +5,6 @@ import {
   type RefObject,
 } from 'react';
 
-import { useQuery } from '@tanstack/react-query';
 import {
   Send,
   ImagePlus,
@@ -25,7 +24,7 @@ import EmojiPicker, {
 
 import { formatFileSize } from '@/lib/chatHelpers';
 import { resolveFileUrl } from '@/lib/url';
-import { getContacts } from '@/services/contacts';
+import { useCustomNames } from '@/hooks/useCustomNames';
 
 import { IMAGE_ACCEPT } from '@/utils/imageValidation';
 
@@ -109,11 +108,7 @@ export default function ChatInput({
     useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: getContacts,
-  });
-  const customNameMap = new Map(contacts.map((c) => [c.userId, c.customName]).filter((pair): pair is [string, string] => !!pair[1]));
+  const customNameMap = useCustomNames();
 
   const mentionMatch = (() => {
     if (groupMembers.length === 0 || !textareaRef.current) return null;
@@ -252,8 +247,8 @@ export default function ChatInput({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-semibold text-foreground/90 lg:text-sm">
                   Replying to{' '}
-                  {replyingTo.sender?.fullName ??
-                    'Unknown'}
+                  {customNameMap.get(replyingTo.senderId) ||
+                    (replyingTo.sender?.fullName ?? 'Unknown')}
                 </p>
 
                 <p className="truncate text-xs text-foreground/70 lg:text-sm">

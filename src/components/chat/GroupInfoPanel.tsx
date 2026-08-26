@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import type { Group, GroupMember, User as UserType } from '@/types';
 import { uploadGroupAvatar } from '@/services/chat';
-import { getContacts } from '@/services/contacts';
+import { useCustomNames } from '@/hooks/useCustomNames';
 import { getUser } from '@/services/user';
 import { usePresenceStore } from '@/store/presenceStore';
 
@@ -262,11 +262,7 @@ export default function GroupInfoPanel({
   const isAdmin = group?.members?.some((m) => m.userId === currentUserId && m.role === 'admin');
   const isCreator = group?.creatorId === currentUserId;
 
-  const { data: contacts = [] } = useQuery({
-    queryKey: ['contacts'],
-    queryFn: getContacts,
-  });
-  const customNameMap = new Map(contacts.map((c) => [c.userId, c.customName]).filter((pair): pair is [string, string] => !!pair[1]));
+  const customNameMap = useCustomNames();
   // Sync state when group prop updates
   useEffect(() => {
     if (group) {

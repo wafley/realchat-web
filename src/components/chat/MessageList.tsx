@@ -6,6 +6,7 @@ import { MessageBubble } from './MessageBubble';
 import { formatDateSeparator, getDateKey } from '@/lib/chatHelpers';
 import { getGroup } from '@/services/chat';
 import { resolveFileUrl } from '@/lib/url';
+import { useCustomNames } from '@/hooks/useCustomNames';
 import { type TypingUser } from '@/store/typingStore';
 import { setChatViewport } from '@/lib/chatViewport';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -110,6 +111,8 @@ export default function MessageList({
     enabled: !isDM,
     staleTime: 60_000,
   });
+
+  const customNames = useCustomNames();
 
   const typingAvatars = useMemo(() => {
     const map = new Map<string, string>();
@@ -250,7 +253,9 @@ export default function MessageList({
               previousMessage.type === 'system' ||
               previousMessage.senderId !== msg.senderId ||
               showDateSeparator;
-            const name = isOwn || isDM || !isFirstInRun ? undefined : (msg.sender?.fullName ?? 'Unknown');
+            const name = isOwn || isDM || !isFirstInRun
+              ? undefined
+              : (customNames.get(msg.senderId) || msg.sender?.fullName || 'Unknown');
             const showAvatar = !isOwn && !isDM && isFirstInRun;
             const showSpacer = !isOwn && !isDM && !showAvatar;
             return (
