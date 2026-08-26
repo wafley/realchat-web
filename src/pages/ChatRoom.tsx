@@ -241,9 +241,9 @@ export default function ChatRoom() {
     return () => window.removeEventListener('chat:forced-leave', handler);
   }, [state.chatId, navigate]);
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full min-h-0 w-full min-w-0 overflow-hidden">
       {/* Main Chat Area */}
-      <div className="flex flex-1 flex-col h-full min-w-0">
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col">
         <ChatHeader
           chatName={!state.isDM && mutations.group?.name ? mutations.group.name : state.chatName}
           typingLabel={state.typingLabel}

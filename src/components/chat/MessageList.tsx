@@ -202,11 +202,11 @@ export default function MessageList({
   }, [maybeClearNewMessages]);
 
   return (
-    <div className="relative flex-1 overflow-hidden">
+    <div className="relative flex min-h-0 min-w-0 w-full flex-1 overflow-hidden">
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="chat-scroll flex h-full flex-col overflow-y-auto bg-chat-tile-overlay px-4 py-4"
+        className="chat-scroll flex h-full min-w-0 w-full flex-col overflow-x-hidden overflow-y-auto bg-chat-tile-overlay px-4 py-4"
       >
       {isPending ? (
         <div className="flex h-full items-center justify-center">
@@ -236,7 +236,7 @@ export default function MessageList({
           </p>
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="w-full space-y-1">
           {hasNextPage && (
             <div ref={scrollTriggerRef} className="flex justify-center py-2">
               {isFetchingNextPage && <Loader2 size={16} className="animate-spin text-muted-foreground" />}

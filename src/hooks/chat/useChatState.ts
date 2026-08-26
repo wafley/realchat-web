@@ -61,7 +61,7 @@ export function useChatState() {
   const keyboardHeight = useKeyboardHeight();
   const isDM = location.pathname.startsWith('/dm/');
   const chatId = (isDM ? userId : groupId) || '';
-  const { data: conversations = [] } = useQuery({
+  const { data: conversations = [], isPending: isConversationsPending } = useQuery({
     queryKey: ['conversations'],
     queryFn: getConversations,
   });
@@ -188,7 +188,7 @@ export function useChatState() {
       if (lastPage.nextCursor) return lastPage.nextCursor;
       return undefined;
     },
-    enabled: !!chatId,
+    enabled: !!chatId && (!isDM || !isConversationsPending),
   });
 
   const messages = useMemo(() => {

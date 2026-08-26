@@ -182,7 +182,7 @@ function MessageBubbleComp({
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col min-w-0`}>
+      <div className={`w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -197,7 +197,7 @@ function MessageBubbleComp({
           onTouchEnd={onTouchEnd}
           onTouchCancel={onTouchEnd}
           id={`msg-${msg.id}`}
-          className={`chat-bubble cursor-pointer relative transition-all duration-700 ${
+          className={`chat-bubble relative max-w-full cursor-pointer transition-all duration-700 ${
             msg.type === 'image' || msg.type === 'video' ? 'overflow-hidden rounded-xl' : 'rounded-xl px-[9px] py-[6px] text-[length:var(--fs-bubble,16px)]'
           } ${isOwn
             ? `bg-chat-outgoing-bg text-chat-outgoing-foreground border border-white/10 ${isFirstInRun ? 'chat-bubble-tail-own rounded-tr-xs' : ''}`
@@ -395,7 +395,7 @@ function MessageBubbleComp({
               {renderMetaInline()}
             </p>
           ) : (
-            <p className="min-w-0 [overflow-wrap:anywhere]">
+            <p className="min-w-0 max-w-full [overflow-wrap:anywhere]">
               {highlightText(displayedContent, searchQuery, isOwn)}
               {showReadMore && (
                 <button
