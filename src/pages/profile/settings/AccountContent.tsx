@@ -179,14 +179,20 @@ export default function AccountContent() {
       )}
 
       <hr className="border-border" />
-      <p className="text-xs font-medium text-destructive">Delete Account</p>
-      <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
-      <button
-        onClick={() => setDeleteOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/5"
-      >
-        <Trash2 size={14} />Delete Account
-      </button>
+      {needsPassword ? (
+        <p className="text-xs text-muted-foreground">Set a password first to delete your account.</p>
+      ) : (
+        <>
+          <p className="text-xs font-medium text-destructive">Delete Account</p>
+          <p className="text-xs text-muted-foreground">Permanently delete your account and all data</p>
+          <button
+            onClick={() => setDeleteOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/5"
+          >
+            <Trash2 size={14} />Delete Account
+          </button>
+        </>
+      )}
       <Modal open={deleteOpen} onClose={() => { setDeleteOpen(false); setDeleteInput(''); setDeletePassword(''); }} hideClose>
         <div className="p-6">
           <h3 className="mb-2 text-lg font-bold text-foreground">Delete Account</h3>

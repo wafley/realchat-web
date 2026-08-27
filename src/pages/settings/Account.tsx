@@ -208,24 +208,30 @@ export default function SettingsAccount() {
             </div>
           )}
 
-          <div className="rounded-xl border border-destructive/20 bg-card p-4">
-            <div className="flex items-center gap-3">
-              <Ban size={18} className="text-destructive" />
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Danger Zone</h3>
-                <p className="text-xs text-muted-foreground">
-                  Irreversible actions for your account
-                </p>
-              </div>
+          {needsPassword ? (
+            <div className="rounded-xl border border-border/50 bg-card/50 p-4">
+              <p className="text-xs text-muted-foreground">Set a password first to delete your account.</p>
             </div>
-            <button
-              onClick={() => setDeleteConfirmOpen(true)}
-              className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <Trash2 size={16} />
-              Delete Account
-            </button>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-destructive/20 bg-card p-4">
+              <div className="flex items-center gap-3">
+                <Ban size={18} className="text-destructive" />
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Danger Zone</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Irreversible actions for your account
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <Trash2 size={16} />
+                Delete Account
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
