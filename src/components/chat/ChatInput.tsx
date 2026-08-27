@@ -423,7 +423,7 @@ export default function ChatInput({
                 }
               }
             }}
-            className="block min-h-9 max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-[7px] text-[16px] leading-[22px] text-foreground placeholder:text-muted-foreground transition-[height] duration-200 ease-out focus:outline-none disabled:cursor-not-allowed"
+            className="block min-h-9 max-h-40 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-[7px] text-[length:var(--fs-bubble,16px)] leading-[22px] text-foreground placeholder:text-muted-foreground transition-[height] duration-200 ease-out focus:outline-none disabled:cursor-not-allowed"
           />
 
           {/* Emoji */}

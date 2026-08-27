@@ -8,7 +8,7 @@ export default function AuthLayout() {
   const isForgot = pathname === '/forgot-password';
 
   return (
-    <div className="auth-page-bg relative min-h-screen flex flex-col justify-between items-center p-6 sm:p-10 font-sans overflow-hidden">
+    <div className="auth-page-bg relative min-h-screen flex flex-col justify-between items-center p-6 pt-10 sm:p-10 font-sans overflow-hidden">
       {/* Background Image (mica silver, grayscale) */}
       <img
         src="/wallpaper-auth.jpg"
@@ -37,7 +37,7 @@ export default function AuthLayout() {
                 : 'Reset password'}
         </h1>
 
-        <p className="text-sm text-neutral-400 mb-8">
+        <p className="text-sm text-neutral-400 mb-6 sm:mb-8">
           {isLogin ? (
             <>
               First time here?{' '}
