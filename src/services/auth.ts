@@ -16,6 +16,8 @@ export interface AuthUserRaw {
   isOnline?: boolean;
   lastSeenAt?: string | null;
   isVerified?: boolean;
+  provider?: string;
+  hasPassword?: boolean;
   createdAt?: string | null;
 }
 
@@ -31,6 +33,8 @@ export function mapUser(raw: AuthUserRaw): User {
     status: raw.isOnline ? 'online' : 'offline',
     lastSeen: raw.lastSeenAt ? new Date(raw.lastSeenAt) : undefined,
     createdAt: raw.createdAt ? new Date(raw.createdAt) : new Date(),
+    provider: raw.provider,
+    hasPassword: raw.hasPassword,
   };
 }
 
@@ -110,6 +114,10 @@ export async function changePassword(currentPassword: string, newPassword: strin
     return;
   }
   await api.put('/users/me/password', { oldPassword: currentPassword, newPassword });
+}
+
+export async function setPassword(password: string): Promise<void> {
+  await api.put('/users/me/set-password', { password });
 }
 
 export async function deleteAccount(password: string): Promise<void> {

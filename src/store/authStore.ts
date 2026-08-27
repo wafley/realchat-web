@@ -25,6 +25,7 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 function devLogin(set: (partial: Partial<AuthState>) => void) {
@@ -113,5 +114,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     const updated = await authService.updateProfile(payload);
     set({ user: updated });
+  },
+  refreshUser: async () => {
+    if (DEV_MODE) return;
+    const user = await authService.getMe();
+    set({ user });
   },
 }));
