@@ -261,7 +261,7 @@ function MessageBubbleComp({
                       decoding="async"
                     />
                   </div>
-                  <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
+                  <p className="whitespace-pre-wrap px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
@@ -313,7 +313,7 @@ function MessageBubbleComp({
                       </div>
                     </div>
                   </div>
-                  <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
+                  <p className="whitespace-pre-wrap px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
@@ -357,7 +357,7 @@ function MessageBubbleComp({
               {renderMetaInline()}
             </p>
           ) : (
-            <p className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+            <p className="whitespace-pre-wrap min-w-0 max-w-full [overflow-wrap:anywhere]">
               {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
               {showReadMore && (
                 <button
