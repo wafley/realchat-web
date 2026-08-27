@@ -9,6 +9,8 @@ export interface User {
   status: 'online' | 'offline' | 'away';
   lastSeen?: Date;
   createdAt: Date;
+  provider?: string;
+  hasPassword?: boolean;
 }
 
 export interface Reaction {
