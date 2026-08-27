@@ -262,7 +262,6 @@ export default function ChatRoom() {
           chatOnline={state.chatOnline}
           isDM={state.isDM}
           muted={state.muted}
-          userId={state.otherUserId}
           lastSeen={state.chatLastSeen}
           memberCount={mutations.group?.members?.length ?? state.memberCount}
           avatarUrl={state.isDM ? state.chatAvatarUrl : mutations.group?.avatarUrl}
