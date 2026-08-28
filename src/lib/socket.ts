@@ -176,6 +176,32 @@ class SocketClient {
     });
   }
 
+  // --- Reactions ---
+
+  reactionAddAck(messageId: string, emoji: string): Promise<{ data?: any; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket?.connected) {
+        resolve({ error: 'Realtime connection unavailable' });
+        return;
+      }
+      this.socket.emit('message:reaction:add', { messageId, emoji }, (res?: { data?: any; error?: string }) => {
+        resolve(res ?? { error: 'No response from server' });
+      });
+    });
+  }
+
+  reactionRemoveAck(messageId: string): Promise<{ data?: any; error?: string }> {
+    return new Promise((resolve) => {
+      if (!this.socket?.connected) {
+        resolve({ error: 'Realtime connection unavailable' });
+        return;
+      }
+      this.socket.emit('message:reaction:remove', { messageId }, (res?: { data?: any; error?: string }) => {
+        resolve(res ?? { error: 'No response from server' });
+      });
+    });
+  }
+
   // --- Read receipts ---
 
   emitMessageSeen(conversationId: string, lastSeenMessageId: string): void {

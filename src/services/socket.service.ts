@@ -6,12 +6,12 @@ import { useAuthStore } from '@/store/authStore';
 import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, flattenReactions, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, PaginatedResponse, User, Contact } from '@/types';
+import type { Message, PaginatedResponse, User, Contact, Reaction, ReactionGroup } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -311,31 +311,42 @@ function onMessageStarUpdated(data: { messageId: string; isStarred: boolean }) {
   }
 }
 
-function onMessageReactionUpdated(data: { messageId?: string; reactions?: Message['reactions'] }) {
+function setMessageReactionsCache(conversationId: string, isDM: boolean, messageId: string, reactions: Reaction[]) {
+  queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+    ['messages', conversationId, isDM],
+    (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          data: page.data.map((m) =>
+            m.id === messageId ? { ...m, reactions } : m,
+          ),
+        })),
+      };
+    },
+  );
+}
+
+function onMessageReactionUpdated(data: { conversationId?: string; messageId?: string; reactions?: ReactionGroup[] }) {
   if (DEV_MODE) return;
   if (!data?.messageId) return;
-  const reactions = data.reactions ?? [];
+  const reactions = flattenReactions(data.reactions);
+  const messageId = data.messageId;
+
+  if (data.conversationId) {
+    setMessageReactionsCache(data.conversationId, true, messageId, reactions);
+    setMessageReactionsCache(data.conversationId, false, messageId, reactions);
+    return;
+  }
 
   const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
   if (!conversations) return;
 
   for (const conv of conversations) {
     const isDM = conv?.type === 'dm';
-    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
-      ['messages', conv.id, isDM],
-      (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page) => ({
-            ...page,
-            data: page.data.map((m) =>
-              m.id === data.messageId ? { ...m, reactions } : m,
-            ),
-          })),
-        };
-      },
-    );
+    setMessageReactionsCache(conv.id, isDM, messageId, reactions);
   }
 }
 

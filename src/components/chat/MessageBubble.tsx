@@ -164,7 +164,7 @@ function MessageBubbleComp({
 
   return (
     <div
-      className={`flex items-start gap-2 transition-all duration-700 rounded-xl ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''} ${isHighlighted ? 'bg-accent/15 py-1 px-1.5' : ''}`}
+      className={`group flex items-start gap-2 transition-all duration-700 rounded-xl ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''} ${isHighlighted ? 'bg-accent/15 py-1 px-1.5' : ''}`}
       onClick={() => { if (inSelectionMode) toggleSelect(msg.id); }}
     >
       {inSelectionMode ? (
@@ -186,7 +186,7 @@ function MessageBubbleComp({
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col`}>
+      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -405,6 +405,20 @@ function MessageBubbleComp({
               <SmilePlus size={12} />
             </button>
           </div>
+        )}
+        {reactionMap.size === 0 && !inSelectionMode && (
+          <button
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              onReactionPickerOpen(msg.id, rect);
+            }}
+            aria-label="Add reaction"
+            className={`pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 absolute -bottom-2 z-[1] flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border bg-card/80 text-muted-foreground opacity-100 transition-opacity hover:bg-accent/5 ${
+              isOwn ? 'right-0' : 'left-0'
+            }`}
+          >
+            <SmilePlus size={12} />
+          </button>
         )}
       </div>
     </div>

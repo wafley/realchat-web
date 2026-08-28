@@ -19,6 +19,16 @@ export interface Reaction {
   userName: string;
 }
 
+export interface ReactionGroup {
+  emoji: string;
+  users?: Array<{
+    userId: string;
+    username?: string | null;
+    fullName?: string | null;
+    avatarUrl?: string | null;
+  }>;
+}
+
 export interface ReplyTo {
   id: string;
   senderId: string;
