@@ -1,8 +1,9 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MoreVertical, Play, Pause } from 'lucide-react';
+import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MoreVertical, Play, Pause, Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
+import ReactionInfoModal from './ReactionInfoModal';
 import type { Message } from '@/types';
 import { senderName, getMessageReaders } from '@/services/chat';
 import { resolveFileUrl } from '@/lib/url';
@@ -125,6 +126,12 @@ interface ChatOverlaysProps {
   onCloseReadReceipts: () => void;
   isGroupChat?: boolean;
   chatId?: string | null;
+  reactionInfoMsg?: Message | null;
+  reactionInfoRect?: DOMRect | null;
+  onCloseReactionInfo?: () => void;
+  onToggleReaction?: (msgId: string, emoji: string) => void;
+  onReactionPickerOpen?: (msgId: string, rect: DOMRect, initialFull?: boolean) => void;
+  onSenderClick?: (userId: string) => void;
 }
 
 export default function ChatOverlays({
@@ -164,6 +171,12 @@ export default function ChatOverlays({
   onCloseReadReceipts,
   isGroupChat = false,
   chatId,
+  reactionInfoMsg,
+  reactionInfoRect,
+  onCloseReactionInfo,
+  onToggleReaction,
+  onReactionPickerOpen,
+  onSenderClick,
 }: ChatOverlaysProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -233,12 +246,42 @@ export default function ChatOverlays({
         <div className="fixed inset-0 z-[90]" onClick={onCloseContextMenu}>
           <div
             ref={contextMenuRef}
-            className="absolute w-48 origin-top-left animate-scale-in max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-2xl"
+            className="absolute w-72 max-w-[calc(100vw-24px)] origin-top-left animate-scale-in max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-2xl border border-border bg-card/95 backdrop-blur-md dark:bg-[#202c33] dark:border-white/10 py-1.5 shadow-2xl"
             style={{ left: menuPos?.x ?? contextMenu.x, top: menuPos?.y ?? contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
             role="menu"
             aria-label="Message actions"
           >
+            {/* WhatsApp-style Reaction Strip on Long-Press / Right-Click */}
+            {!contextMenu.msg.isDeleted && (
+              <div className="flex items-center justify-between gap-1 border-b border-border/60 px-2.5 pb-2 pt-1 dark:border-white/10">
+                {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      onToggleReaction?.(contextMenu.msg.id, emoji);
+                      onCloseContextMenu();
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition-transform hover:scale-125 hover:bg-accent/15 active:scale-95 cursor-pointer"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    onCloseContextMenu();
+                    onReactionPickerOpen?.(contextMenu.msg.id, rect, true);
+                  }}
+                  title="More reactions"
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-border/80 text-muted-foreground hover:bg-accent/15 hover:text-foreground dark:border-white/15 dark:bg-white/5 cursor-pointer"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            )}
             <button
               onClick={() => onContextMenuAction('reply')}
               className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-accent/10"
@@ -632,6 +675,18 @@ export default function ChatOverlays({
             </button>
           </div>
         </Modal>
+      )}
+      {reactionInfoMsg && (
+        <ReactionInfoModal
+          open={Boolean(reactionInfoMsg)}
+          onClose={onCloseReactionInfo ?? (() => {})}
+          msg={reactionInfoMsg}
+          anchorRect={reactionInfoRect}
+          currentUserId={currentUserId}
+          onRemoveMyReaction={onToggleReaction ?? (() => {})}
+          onOpenReactionPicker={onReactionPickerOpen}
+          onUserClick={onSenderClick}
+        />
       )}
     </>
   );

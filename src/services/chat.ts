@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { markChatCleared } from '@/lib/chatCleared';
 import { hideChats, isChatDeleted } from '@/lib/chatDeleted';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, User, SearchMessageResult } from '@/types';
+import type { Message, MessageStatus, PaginatedResponse, ReplyTo, Group, GroupMember, Reaction, ReactionGroup, User, SearchMessageResult } from '@/types';
 import { toError } from '@/utils/errors';
 import { DEV_USER_ID, MOCK_USERS } from '@/mocks/users';
 import { MOCK_CONTACTS } from '@/mocks/contacts';
@@ -90,6 +90,7 @@ export interface RemoteMessage {
   editedAt?: string | null;
   sender?: { id: string; username?: string | null; fullName?: string | null; avatarUrl?: string | null };
   conversation?: { id: string; type?: string; name?: string | null; avatarUrl?: string | null };
+  reactions?: ReactionGroup[];
 }
 
 export interface StarredMessage extends Message {
@@ -117,6 +118,20 @@ export function normalizeRemoteStatus(status?: string | null): MessageStatus | u
   return normalizeStatus(status);
 }
 
+export function flattenReactions(groups?: ReactionGroup[] | null): Reaction[] {
+  if (!groups) return [];
+  return groups.flatMap((group) =>
+    (group.users ?? []).map((u) => ({
+      emoji: group.emoji,
+      userId: u.userId,
+      userName: u.fullName || u.username || '',
+      username: u.username ?? null,
+      fullName: u.fullName ?? null,
+      avatarUrl: u.avatarUrl ?? null,
+    })),
+  );
+}
+
 export function mapMessage(row: RemoteMessage): Message {
   const t = (row.type ?? '').toLowerCase();
   const type: Message['type'] =
@@ -139,6 +154,7 @@ export function mapMessage(row: RemoteMessage): Message {
     status: normalizeStatus(row.status) ?? (row.senderId === useAuthStore.getState().user?.id ? 'sent' : undefined),
     lastReadAt: row.seenAt ? new Date(row.seenAt) : undefined,
     edited: row.isEdited ?? false,
+    reactions: flattenReactions(row.reactions),
     replyTo: row.replyToId
       ? { id: row.replyToId, senderId: '', senderName: '', content: '', type: 'text' }
       : undefined,
@@ -1190,6 +1206,20 @@ export async function uploadGroupAvatar(groupId: string, file: File): Promise<st
   }
 }
 
+const lastReactionToggleAt: Record<string, number> = {};
+
+function findMessageReactionsFromCache(chatId: string, messageId: string): Reaction[] | undefined {
+  for (const isDM of [true, false]) {
+    const data = queryClient.getQueryData<InfiniteData<PaginatedResponse<Message>>>(['messages', chatId, isDM]);
+    if (!data) continue;
+    for (const page of data.pages) {
+      const msg = page.data.find((m) => m.id === messageId);
+      if (msg) return msg.reactions;
+    }
+  }
+  return undefined;
+}
+
 export async function toggleReaction(chatId: string, messageId: string, emoji: string): Promise<Reaction[]> {
   try {
     if (DEV_MODE) {
@@ -1209,9 +1239,39 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
       return [...current];
     }
 
-    throw new Error('Reaksi belum tersedia di backend');
+    const now = Date.now();
+    if (now - (lastReactionToggleAt[messageId] ?? 0) < 500) {
+      return findMessageReactionsFromCache(chatId, messageId) ?? [];
+    }
+    lastReactionToggleAt[messageId] = now;
+
+    const me = useAuthStore.getState().user?.id;
+    const current = findMessageReactionsFromCache(chatId, messageId) ?? [];
+    const hasMine = me !== undefined && current.some((r) => r.userId === me && r.emoji === emoji);
+
+    const res = hasMine
+      ? await socketClient.reactionRemoveAck(messageId)
+      : await socketClient.reactionAddAck(messageId, emoji);
+
+    if (res?.error) {
+      delete lastReactionToggleAt[messageId];
+      throw new Error(res.error);
+    }
+    return flattenReactions(res?.data?.reactions);
   } catch (err) {
     throw toError(err, 'Failed to toggle reaction');
+  }
+}
+
+export async function getMessageReactions(chatId: string, messageId: string): Promise<ReactionGroup[]> {
+  try {
+    if (DEV_MODE) {
+      return [];
+    }
+    const { data } = await api.get<{ reactions: ReactionGroup[] }>(`/conversations/${chatId}/messages/${messageId}/reactions`);
+    return data.reactions ?? [];
+  } catch (err) {
+    throw toError(err, 'Failed to fetch message reactions');
   }
 }
 

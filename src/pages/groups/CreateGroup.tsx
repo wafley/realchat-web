@@ -2,21 +2,23 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Plus, Search, X, Loader2, Camera, UserIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Search, X, Check, Loader2, Camera, UserIcon } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { createGroup, searchUsers } from '@/services/chat';
+import { resolveFileUrl } from '@/lib/url';
 import { toast } from 'sonner';
 import type { User } from '@/types';
 import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import { getApiErrorMessage } from '@/utils/errors';
 import ImageCropModal from '@/components/common/ImageCropModal';
+import { useAuthStore } from '@/store/authStore';
 
 export default function CreateGroup() {
   const navigate = useNavigate();
   const [userSearch, setUserSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [croppedFile, setCroppedFile] = useState<File | null>(null);
@@ -35,14 +37,21 @@ export default function CreateGroup() {
 
   const groupName = watch('name');
 
+  const currentUser = useAuthStore((s) => s.user);
+
   const searchMutation = useMutation({
     mutationFn: (q: string) => searchUsers(q),
-    onSuccess: (data) => setSearchResults(data.filter((u) => u.id !== 'dev-user-1')),
+    onSuccess: (data) => setSearchResults(data.filter((u) => u.id !== currentUser?.id)),
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CreateGroupSchema) =>
-      createGroup(data.name, data.description || '', selectedIds, croppedFile ?? undefined),
+      createGroup(
+        data.name,
+        data.description || '',
+        selectedUsers.map((u) => u.id),
+        croppedFile ?? undefined,
+      ),
     onSuccess: (group) => navigate(`/chat/${group.id}`),
     onError: (err) => toast.error(getApiErrorMessage(err)),
   });
@@ -53,9 +62,11 @@ export default function CreateGroup() {
     else setSearchResults([]);
   };
 
-  const toggleUser = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+  const toggleUser = (user: User) => {
+    setSelectedUsers((prev) =>
+      prev.some((u) => u.id === user.id)
+        ? prev.filter((u) => u.id !== user.id)
+        : [...prev, user],
     );
   };
 
@@ -167,26 +178,29 @@ export default function CreateGroup() {
             {searchResults.length > 0 && (
               <div className="mt-2 space-y-1 rounded-xl border border-border p-2">
                 {searchResults.map((u) => {
-                  const isSelected = selectedIds.includes(u.id);
+                  const isSelected = selectedUsers.some((x) => x.id === u.id);
                   return (
                     <button
                       key={u.id}
                       type="button"
-                      onClick={() => toggleUser(u.id)}
+                      onClick={() => toggleUser(u)}
                       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
                         isSelected ? 'bg-accent/10' : 'hover:bg-accent/5'
                       }`}
                     >
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs"><UserIcon size={14} /></AvatarFallback>
+                        {u.avatarUrl && <AvatarImage src={resolveFileUrl(u.avatarUrl)} alt={u.fullName} />}
+                        <AvatarFallback className="text-xs font-semibold">
+                          {u.fullName?.charAt(0).toUpperCase() || <UserIcon size={14} />}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground">{u.fullName}</p>
                         <p className="text-xs text-muted-foreground">@{u.username}</p>
                       </div>
                       {isSelected && (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent">
-                          <X size={10} className="text-accent-foreground" />
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                          <Check size={12} strokeWidth={2.5} />
                         </span>
                       )}
                     </button>
@@ -195,34 +209,42 @@ export default function CreateGroup() {
               </div>
             )}
 
-            {selectedIds.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {selectedIds.map((id) => {
-                  const u = searchResults.find((r) => r.id === id);
-                  if (!u) return null;
-                  return (
-                    <span
-                      key={id}
-                      className="flex items-center gap-1 rounded-full bg-accent/10 px-2.5 py-1 text-xs text-accent"
+            {selectedUsers.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {selectedUsers.map((u) => (
+                  <span
+                    key={u.id}
+                    className="flex items-center gap-1.5 rounded-full bg-accent/15 border border-accent/30 px-2.5 py-1 text-xs font-medium text-foreground transition-all"
+                  >
+                    <Avatar className="h-4 w-4 shrink-0">
+                      {u.avatarUrl && <AvatarImage src={resolveFileUrl(u.avatarUrl)} alt={u.fullName} />}
+                      <AvatarFallback className="text-[9px] bg-accent text-accent-foreground font-bold">
+                        {u.fullName?.charAt(0).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate max-w-[140px]">{u.fullName || u.username}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleUser(u)}
+                      title="Remove member"
+                      className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-black/10 hover:text-foreground dark:hover:bg-white/10"
                     >
-                      {u.fullName}
-                      <button type="button" onClick={() => toggleUser(id)} className="ml-0.5 hover:text-foreground">
-                        <X size={12} />
-                      </button>
-                    </span>
-                  );
-                })}
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
-          {selectedIds.length > 0 && selectedIds.length < 2 && (
-            <p className="mt-2 text-xs text-destructive">Select at least 2 members to create a group</p>
-          )}
+
+            {selectedUsers.length > 0 && selectedUsers.length < 2 && (
+              <p className="mt-2 text-xs text-destructive">Select at least 2 members to create a group</p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={!groupName?.trim() || selectedIds.length < 2 || createMutation.isPending}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50"
+            disabled={!groupName?.trim() || selectedUsers.length < 2 || createMutation.isPending}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
             {createMutation.isPending ? (
               <Loader2 size={18} className="animate-spin" />

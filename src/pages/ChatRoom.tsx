@@ -193,6 +193,7 @@ export default function ChatRoom() {
     setReadReceiptTarget: state.setReadReceiptTarget,
     setReactingMsgId: state.setReactingMsgId,
     setReactionPickerRect: state.setReactionPickerRect,
+    setReactionPickerInitialFull: state.setReactionPickerInitialFull,
     setSelectedIds: state.setSelectedIds,
     setSearchMatches: state.setSearchMatches,
     setActiveMatchIndex: state.setActiveMatchIndex,
@@ -425,6 +426,10 @@ export default function ChatRoom() {
           onMentionClick={handleMentionClick}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
+          onOpenReactionInfo={(msg, rect) => {
+            state.setReactionInfoMsg(msg);
+            state.setReactionInfoRect(rect);
+          }}
           selectedIds={state.selectedIds}
           toggleSelect={actions.toggleSelect}
           newMessageAnchorId={state.newMessagesAnchorId}
@@ -501,6 +506,7 @@ export default function ChatRoom() {
           onReact={actions.handleReactionPickerSelect}
           onClose={actions.handleReactionPickerClose}
           anchorRect={state.reactionPickerRect}
+          initialFull={state.reactionPickerInitialFull}
         />
       )}
 
@@ -554,6 +560,26 @@ export default function ChatRoom() {
         onCloseMute={() => state.setMuteDialogOpen(false)}
         onMute={actions.handleMute}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
+        reactionInfoMsg={
+          state.reactionInfoMsg
+            ? state.messages.find((m) => m.id === state.reactionInfoMsg?.id) || state.reactionInfoMsg
+            : null
+        }
+        reactionInfoRect={state.reactionInfoRect}
+        onCloseReactionInfo={() => {
+          state.setReactionInfoMsg(null);
+          state.setReactionInfoRect(null);
+        }}
+        onToggleReaction={actions.handleToggleReaction}
+        onReactionPickerOpen={actions.handleReactionPickerOpen}
+        onSenderClick={(userId) => {
+          if (window.matchMedia('(min-width: 1024px)').matches) {
+            setProfileInfoUserId(userId);
+            state.setProfileInfoOpen(true);
+          } else {
+            navigate(`/profile/${userId}`, { state: { from: location.pathname } });
+          }
+        }}
       />
     </div>
   );

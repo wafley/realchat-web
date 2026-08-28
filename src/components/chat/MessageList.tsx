@@ -44,6 +44,7 @@ interface MessageListProps {
   onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
+  onOpenReactionInfo?: (msg: Message, rect: DOMRect) => void;
   selectedIds: string[];
   toggleSelect: (msgId: string) => void;
   newMessageAnchorId?: string | null;
@@ -83,6 +84,7 @@ export default function MessageList({
   onMentionClick,
   onToggleReaction,
   onReactionPickerOpen,
+  onOpenReactionInfo,
   selectedIds,
   toggleSelect,
   newMessageAnchorId,
@@ -304,6 +306,7 @@ export default function MessageList({
                   currentUserId={currentUserId}
                   onToggleReaction={onToggleReaction}
                   onReactionPickerOpen={onReactionPickerOpen}
+                  onOpenReactionInfo={onOpenReactionInfo}
                   selectedIds={selectedIds}
                   toggleSelect={toggleSelect}
                 />

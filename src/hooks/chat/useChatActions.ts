@@ -64,6 +64,7 @@ interface UseChatActionsProps {
   setReadReceiptTarget: (msg: Message | null) => void;
   setReactingMsgId: (id: string | null) => void;
   setReactionPickerRect: (rect: DOMRect | null) => void;
+  setReactionPickerInitialFull?: (v: boolean) => void;
   setSelectedIds: (ids: string[] | ((prev: string[]) => string[])) => void;
   setSearchMatches: (matches: string[]) => void;
   setActiveMatchIndex: (i: number) => void;
@@ -143,6 +144,7 @@ export function useChatActions(props: UseChatActionsProps) {
     setReadReceiptTarget,
     setReactingMsgId,
     setReactionPickerRect,
+    setReactionPickerInitialFull,
     setSelectedIds,
     setSearchMatches,
     setActiveMatchIndex,
@@ -677,10 +679,11 @@ export function useChatActions(props: UseChatActionsProps) {
     [toggleReactionMutation],
   );
 
-  const handleReactionPickerOpen = useCallback((msgId: string, rect: DOMRect) => {
+  const handleReactionPickerOpen = useCallback((msgId: string, rect: DOMRect, initialFull = false) => {
     setReactingMsgId(msgId);
     setReactionPickerRect(rect);
-  }, []);
+    setReactionPickerInitialFull?.(initialFull);
+  }, [setReactingMsgId, setReactionPickerRect, setReactionPickerInitialFull]);
 
   const handleReactionPickerClose = useCallback(() => {
     setReactingMsgId(null);

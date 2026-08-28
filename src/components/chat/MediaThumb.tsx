@@ -1,4 +1,5 @@
-import { Play } from 'lucide-react';
+import { useState } from 'react';
+import { Play, ImageOff, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolveFileUrl } from '@/lib/url';
 
@@ -30,61 +31,72 @@ interface MediaThumbProps {
 }
 
 export function MediaThumb({ media, onClickImage }: MediaThumbProps) {
+  const [error, setError] = useState(false);
   const isLink = media.type === 'text';
   const linkUrl = isLink ? extractUrl(media.content || '') : null;
 
   return (
     <div className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
       {media.type === 'image' ? (
-        <img
-          src={resolveFileUrl(media.fileUrl)}
-          alt={media.fileName || 'Shared image'}
-          loading="lazy"
-          decoding="async"
-          className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
-          onClick={() => {
-            if (media.fileUrl && media.fileUrl !== '#') {
-              onClickImage?.(media.fileUrl);
-            } else {
-              toast.error('Preview not available');
-            }
-          }}
-        />
+        error || !media.fileUrl || media.fileUrl === '#' ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted/80 p-2 text-center">
+            <ImageOff size={20} className="text-muted-foreground/60" />
+            <span className="max-w-full truncate text-[10px] text-muted-foreground">Unavailable</span>
+          </div>
+        ) : (
+          <img
+            src={resolveFileUrl(media.fileUrl)}
+            alt={media.fileName || 'Shared image'}
+            loading="lazy"
+            decoding="async"
+            onError={() => setError(true)}
+            className="h-full w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
+            onClick={() => {
+              if (media.fileUrl && media.fileUrl !== '#') {
+                onClickImage?.(media.fileUrl);
+              } else {
+                toast.error('Preview not available');
+              }
+            }}
+          />
+        )
       ) : media.type === 'video' ? (
-        <div
-          className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
-          onClick={() => {
-            if (media.fileUrl && media.fileUrl !== '#') {
-              onClickImage?.(media.fileUrl);
-            } else {
-              toast.error('Preview not available');
-            }
-          }}
-        >
-          {media.fileUrl && media.fileUrl !== '#' ? (
+        error || !media.fileUrl || media.fileUrl === '#' ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted/80 p-2 text-center">
+            <VideoOff size={20} className="text-muted-foreground/60" />
+            <span className="max-w-full truncate text-[10px] text-muted-foreground">Unavailable</span>
+          </div>
+        ) : (
+          <div
+            className="relative flex h-full w-full cursor-pointer items-center justify-center bg-black/10"
+            onClick={() => {
+              if (media.fileUrl && media.fileUrl !== '#') {
+                onClickImage?.(media.fileUrl);
+              } else {
+                toast.error('Preview not available');
+              }
+            }}
+          >
             <video
               src={resolveFileUrl(media.fileUrl)}
               muted
               playsInline
               preload="metadata"
+              onError={() => setError(true)}
               className="h-full w-full object-cover opacity-70"
             />
-          ) : (
-            <div className="flex flex-col items-center gap-1">
-              <Play size={24} className="text-muted-foreground" fill="currentColor" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
+                <Play size={14} className="text-white" fill="white" />
+              </div>
             </div>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50">
-              <Play size={14} className="text-white" fill="white" />
-            </div>
+            {media.duration && (
+              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
+              </span>
+            )}
           </div>
-          {media.duration && (
-            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-              {media.duration < 60 ? `${media.duration}s` : `${Math.floor(media.duration / 60)}m`}
-            </span>
-          )}
-        </div>
+        )
       ) : isLink && linkUrl ? (
         <a
           href={linkUrl}

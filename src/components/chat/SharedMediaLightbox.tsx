@@ -14,6 +14,7 @@ export default function SharedMediaLightbox({ media, url, onClose, onSelect }: S
   const [zoom, setZoom] = useState(1);
   const [moreOpen, setMoreOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [mediaError, setMediaError] = useState(false);
   const activeIndex = Math.max(0, media.findIndex((item) => item.fileUrl === url));
   const active = media[activeIndex];
   const mediaUrl = resolveFileUrl(active?.fileUrl || url) || url;
@@ -22,6 +23,7 @@ export default function SharedMediaLightbox({ media, url, onClose, onSelect }: S
     setZoom(1);
     setMoreOpen(false);
     setPlaying(false);
+    setMediaError(false);
   }, [url]);
 
   const select = (index: number) => {
@@ -63,13 +65,18 @@ export default function SharedMediaLightbox({ media, url, onClose, onSelect }: S
       </div>
       <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black/60 p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
         <button onClick={() => select((activeIndex - 1 + media.length) % media.length)} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous media" disabled={media.length < 2}><ChevronLeft size={24} /></button>
-        {active?.type === 'video' ? (
+        {mediaError ? (
+          <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <X size={44} className="text-white/40" />
+            <p className="text-sm font-medium text-white/70">Media could not be loaded</p>
+          </div>
+        ) : active?.type === 'video' ? (
           <div className="group relative flex items-center justify-center" style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)' }}>
-            <video src={mediaUrl} controls autoPlay playsInline onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} className="h-full w-full rounded-sm object-contain shadow-2xl" style={{ transform: `scale(${zoom})` }} />
+            <video src={mediaUrl} controls autoPlay playsInline onError={() => setMediaError(true)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} className="h-full w-full rounded-sm object-contain shadow-2xl" style={{ transform: `scale(${zoom})` }} />
             <button onClick={(e) => { e.stopPropagation(); const video = e.currentTarget.previousElementSibling as HTMLVideoElement; void (video.paused ? video.play() : video.pause()); }} className={`absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white shadow-lg transition-opacity hover:bg-black/75 ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`} aria-label={playing ? 'Pause video' : 'Play video'} title={playing ? 'Pause video' : 'Play video'}>{playing ? <Pause size={27} fill="currentColor" /> : <Play size={27} fill="currentColor" className="ml-1" />}</button>
           </div>
         ) : (
-          <img src={mediaUrl} alt={active?.fileName || 'Full size'} className="rounded-sm object-contain shadow-2xl" style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${zoom})` }} />
+          <img src={mediaUrl} alt={active?.fileName || 'Full size'} onError={() => setMediaError(true)} className="rounded-sm object-contain shadow-2xl" style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${zoom})` }} />
         )}
         <button onClick={() => select((activeIndex + 1) % media.length)} className="absolute right-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Next media" disabled={media.length < 2}><ChevronRight size={24} /></button>
       </div>
