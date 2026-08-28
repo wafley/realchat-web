@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban, ImageOff, VideoOff } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
 import { useCustomNames } from '@/hooks/useCustomNames';
@@ -90,6 +90,7 @@ function MessageBubbleComp({
   const isSelected = selectedIds.includes(msg.id);
   const inSelectionMode = selectedIds.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
+  const [mediaError, setMediaError] = useState(false);
   const customNames = useCustomNames();
   const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
 
@@ -267,15 +268,23 @@ function MessageBubbleComp({
               {msg.content ? (
                 <>
                   <div className="overflow-hidden">
-                    <img
-                      src={resolveFileUrl(msg.fileUrl)}
-                      alt={msg.content || 'Image'}
-                      className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                      style={{ maxHeight: '300px' }}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    {mediaError ? (
+                      <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                        <ImageOff size={28} className="text-muted-foreground/70" />
+                        <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={resolveFileUrl(msg.fileUrl)}
+                        alt={msg.content || 'Image'}
+                        className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                        style={{ maxHeight: '300px' }}
+                        onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                        onError={() => setMediaError(true)}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
                   </div>
                   <p className="whitespace-pre-wrap px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
@@ -295,15 +304,23 @@ function MessageBubbleComp({
                 </>
               ) : (
                 <div className="relative overflow-hidden">
-                  <img
-                    src={resolveFileUrl(msg.fileUrl)}
-                    alt="Image"
-                    className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                    style={{ maxHeight: '300px' }}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  {mediaError ? (
+                    <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                      <ImageOff size={28} className="text-muted-foreground/70" />
+                      <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={resolveFileUrl(msg.fileUrl)}
+                      alt="Image"
+                      className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                      style={{ maxHeight: '300px' }}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                      onError={() => setMediaError(true)}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
                   {renderMetaOverlay()}
                 </div>
               )}
@@ -313,21 +330,31 @@ function MessageBubbleComp({
               {msg.content ? (
                 <>
                   <div className="relative overflow-hidden rounded-t-2xl">
-                    <video
-                      src={resolveFileUrl(msg.fileUrl)}
-                      playsInline
-                      controls={false}
-                      onPlay={(e) => e.currentTarget.pause()}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                      className="block w-full cursor-pointer"
-                      style={{ maxHeight: '400px' }}
-                      preload="metadata"
-                    />
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
-                        <span className="ml-1 text-2xl text-white">▶</span>
+                    {mediaError ? (
+                      <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                        <VideoOff size={28} className="text-muted-foreground/70" />
+                        <span className="text-xs text-muted-foreground">Video unavailable</span>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <video
+                          src={resolveFileUrl(msg.fileUrl)}
+                          playsInline
+                          controls={false}
+                          onPlay={(e) => e.currentTarget.pause()}
+                          onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                          onError={() => setMediaError(true)}
+                          className="block w-full cursor-pointer"
+                          style={{ maxHeight: '400px' }}
+                          preload="metadata"
+                        />
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                            <span className="ml-1 text-2xl text-white">▶</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <p className="whitespace-pre-wrap px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
@@ -347,21 +374,31 @@ function MessageBubbleComp({
                 </>
               ) : (
                 <div className="relative overflow-hidden rounded-xl">
-                  <video
-                    src={resolveFileUrl(msg.fileUrl)}
-                    playsInline
-                    controls={false}
-                    onPlay={(e) => e.currentTarget.pause()}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                    className="block w-full cursor-pointer"
-                    style={{ maxHeight: '400px' }}
-                    preload="metadata"
-                  />
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
-                      <span className="ml-1 text-2xl text-white">▶</span>
+                  {mediaError ? (
+                    <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                      <VideoOff size={28} className="text-muted-foreground/70" />
+                      <span className="text-xs text-muted-foreground">Video unavailable</span>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <video
+                        src={resolveFileUrl(msg.fileUrl)}
+                        playsInline
+                        controls={false}
+                        onPlay={(e) => e.currentTarget.pause()}
+                        onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                        onError={() => setMediaError(true)}
+                        className="block w-full cursor-pointer"
+                        style={{ maxHeight: '400px' }}
+                        preload="metadata"
+                      />
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                          <span className="ml-1 text-2xl text-white">▶</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {renderMetaOverlay()}
                 </div>
               )}
