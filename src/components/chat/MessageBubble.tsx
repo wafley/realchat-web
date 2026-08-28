@@ -202,7 +202,7 @@ function MessageBubbleComp({
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col ${totalReactions > 0 ? 'mb-3.5' : ''}`}>
+      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col ${totalReactions > 0 ? 'mb-5' : ''}`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -408,8 +408,8 @@ function MessageBubbleComp({
               }
             }}
             title="View reactions"
-            className={`absolute -bottom-3 z-10 flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs shadow-md transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
-              isOwn ? 'right-2' : 'left-2'
+            className={`absolute -bottom-[18px] z-10 flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs shadow-md transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
+              isOwn ? 'right-1' : 'left-1'
             } ${
               hasMine
                 ? 'border border-accent/40 bg-card text-accent dark:bg-[#1f2c34] dark:border-accent/50 shadow-accent/10'
@@ -444,10 +444,10 @@ function MessageBubbleComp({
           >
             <SmilePlus size={12} />
           </button>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-export const MessageBubble = memo(MessageBubbleComp);
+  export const MessageBubble = memo(MessageBubbleComp);
