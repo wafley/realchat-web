@@ -13,6 +13,7 @@ import { createGroupSchema, type CreateGroupSchema } from '@/lib/validations';
 import { isSupportedImage, SUPPORTED_IMAGE_LABEL, IMAGE_ACCEPT } from '@/utils/imageValidation';
 import { getApiErrorMessage } from '@/utils/errors';
 import ImageCropModal from '@/components/common/ImageCropModal';
+import { useAuthStore } from '@/store/authStore';
 
 export default function CreateGroup() {
   const navigate = useNavigate();
@@ -36,9 +37,11 @@ export default function CreateGroup() {
 
   const groupName = watch('name');
 
+  const currentUser = useAuthStore((s) => s.user);
+
   const searchMutation = useMutation({
     mutationFn: (q: string) => searchUsers(q),
-    onSuccess: (data) => setSearchResults(data.filter((u) => u.id !== 'dev-user-1')),
+    onSuccess: (data) => setSearchResults(data.filter((u) => u.id !== currentUser?.id)),
   });
 
   const createMutation = useMutation({
