@@ -81,7 +81,6 @@ function MessageBubbleComp({
   onReplyClick,
   onSenderClick,
   onMentionClick,
-  onToggleReaction,
   onReactionPickerOpen,
   onOpenReactionInfo,
   selectedIds,
