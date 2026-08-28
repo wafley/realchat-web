@@ -272,6 +272,7 @@ export function useChatMutations({
                             fileName: undefined,
                             replyTo: undefined,
                             isDeleted: true,
+                            deletedBy: { id: useAuthStore.getState().user?.id ?? '' },
                           }
                         : m,
                     ),

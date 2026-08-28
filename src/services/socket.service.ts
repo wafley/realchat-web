@@ -248,6 +248,7 @@ function onMessageDeleted(data: { messageId: string; conversationId: string; del
                   fileUrl: undefined,
                   fileName: undefined,
                   isDeleted: true,
+                  deletedBy: deletedByUserId ? { id: deletedByUserId } : m.deletedBy,
                 }
               : m,
           ),
