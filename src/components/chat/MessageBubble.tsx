@@ -202,7 +202,7 @@ function MessageBubbleComp({
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col ${totalReactions > 0 ? 'mb-2.5' : ''}`}>
+      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col ${totalReactions > 0 ? 'mb-3.5' : ''}`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -408,23 +408,23 @@ function MessageBubbleComp({
               }
             }}
             title="View reactions"
-            className={`absolute -bottom-2.5 z-10 flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-xs shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
+            className={`absolute -bottom-3 z-10 flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs shadow-md transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
               isOwn ? 'right-2' : 'left-2'
             } ${
               hasMine
                 ? 'border border-accent/40 bg-card text-accent dark:bg-[#1f2c34] dark:border-accent/50 shadow-accent/10'
-                : 'border border-border/70 bg-card text-muted-foreground dark:bg-[#1f2c34] dark:border-white/10'
+                : 'border border-border/80 bg-card text-muted-foreground dark:bg-[#1f2c34] dark:border-white/15'
             }`}
           >
-            <span className="flex items-center -space-x-0.5">
+            <span className="flex items-center -space-x-1">
               {topEmojis.map((emoji) => (
-                <span key={emoji} className="text-xs leading-none">
+                <span key={emoji} className="text-sm sm:text-[15px] leading-none">
                   {emoji}
                 </span>
               ))}
             </span>
             {totalReactions > 1 && (
-              <span className={`text-[11px] font-medium leading-none ${hasMine ? 'text-accent font-semibold' : 'text-muted-foreground'}`}>
+              <span className={`text-xs font-semibold leading-none pl-0.5 ${hasMine ? 'text-accent' : 'text-muted-foreground'}`}>
                 {totalReactions}
               </span>
             )}
