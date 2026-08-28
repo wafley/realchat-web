@@ -150,6 +150,11 @@ export default function ChatRoom() {
     setGroupInfoOpen: state.setGroupInfoOpen,
   });
 
+  const isGroupAdmin = !state.isDM &&
+    mutations.group?.members?.some(
+      (m) => m.userId === state.currentUser?.id && m.role === 'admin',
+    ) === true;
+
   const actions = useChatActions({
     chatId: state.chatId,
     input: state.input,
@@ -524,6 +529,7 @@ export default function ChatRoom() {
         clearConfirmOpen={state.clearConfirmOpen}
         readReceiptTarget={state.readReceiptTarget}
         isGroupChat={!state.isDM}
+        isGroupAdmin={isGroupAdmin}
         chatId={state.chatId}
         chatName={state.chatName}
         currentUserId={state.currentUser?.id}

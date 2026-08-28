@@ -125,6 +125,7 @@ interface ChatOverlaysProps {
   onMute: (option: 'unmute' | 'forever' | string) => Promise<void> | void;
   onCloseReadReceipts: () => void;
   isGroupChat?: boolean;
+  isGroupAdmin?: boolean;
   chatId?: string | null;
   reactionInfoMsg?: Message | null;
   reactionInfoRect?: DOMRect | null;
@@ -170,6 +171,7 @@ export default function ChatOverlays({
   onMute,
   onCloseReadReceipts,
   isGroupChat = false,
+  isGroupAdmin = false,
   chatId,
   reactionInfoMsg,
   reactionInfoRect,
@@ -228,7 +230,7 @@ export default function ChatOverlays({
               {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} className="text-muted-foreground" />}
               Delete for me
             </button>
-            {deleteTarget.senderId === currentUserId && (
+            {(deleteTarget.senderId === currentUserId || (isGroupChat && isGroupAdmin)) && (
               <button
                 onClick={() => onDeleteMessage(true)}
                 disabled={deleteLoading}

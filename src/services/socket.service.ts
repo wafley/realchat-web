@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, flattenReactions, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, flattenReactions, deletedMessageContentLabel, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
@@ -222,12 +222,14 @@ function onMessageEdited(event: RemoteMessage) {
   );
 }
 
-function onMessageDeleted(data: { messageId: string; conversationId: string }) {
+function onMessageDeleted(data: { messageId: string; conversationId: string; deletedBy?: string | { id?: string; userId?: string; fullName?: string; username?: string } }) {
   if (DEV_MODE) return;
 
   const conversations = queryClient.getQueryData<{ id: string; type: string }[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === data.conversationId);
   const isDM = conv?.type === 'dm';
+  const deletedByUserId =
+    typeof data.deletedBy === 'string' ? data.deletedBy : data.deletedBy?.id ?? data.deletedBy?.userId;
 
   queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
     ['messages', data.conversationId, isDM],
@@ -239,7 +241,14 @@ function onMessageDeleted(data: { messageId: string; conversationId: string }) {
           ...page,
           data: page.data.map((m) =>
             m.id === data.messageId
-              ? { ...m, content: 'Message deleted', type: 'text' as const, fileUrl: undefined, fileName: undefined, isDeleted: true }
+              ? {
+                  ...m,
+                  content: deletedMessageContentLabel(data.conversationId, deletedByUserId, m.senderId),
+                  type: 'text' as const,
+                  fileUrl: undefined,
+                  fileName: undefined,
+                  isDeleted: true,
+                }
               : m,
           ),
         })),
