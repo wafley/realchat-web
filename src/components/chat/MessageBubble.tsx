@@ -102,14 +102,28 @@ function MessageBubbleComp({
   }
 
   const reactionMap = new Map<string, { count: number; hasMine: boolean }>();
+  let totalReactions = 0;
+  let myReactionEmoji: string | null = null;
+
   if (msg.reactions) {
     for (const r of msg.reactions) {
       const entry = reactionMap.get(r.emoji) ?? { count: 0, hasMine: false };
       entry.count++;
-      if (r.userId === currentUserId) entry.hasMine = true;
+      totalReactions++;
+      if (r.userId === currentUserId) {
+        entry.hasMine = true;
+        myReactionEmoji = r.emoji;
+      }
       reactionMap.set(r.emoji, entry);
     }
   }
+
+  const topEmojis = Array.from(reactionMap.entries())
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 3)
+    .map(([emoji]) => emoji);
+
+  const hasMine = myReactionEmoji !== null;
 
   const showReadMore = (msg.content || '').length > 500;
   const displayedContent = showReadMore && !isExpanded
@@ -186,7 +200,7 @@ function MessageBubbleComp({
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col`}>
+      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col ${totalReactions > 0 ? 'mb-2.5' : ''}`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -379,36 +393,45 @@ function MessageBubbleComp({
             edited
           </span>
         )}
-        {reactionMap.size > 0 && (
-          <div className={`-mb-1 mt-1 flex flex-wrap gap-1 ${isOwn ? 'justify-end' : ''}`}>
-            {Array.from(reactionMap.entries()).map(([emoji, { count, hasMine }]) => (
-              <button
-                key={emoji}
-                onClick={() => onToggleReaction(msg.id, emoji)}
-                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
-                  hasMine
-                    ? 'border-accent/40 bg-accent/10 text-accent'
-                    : 'border-border bg-card/50 text-muted-foreground hover:bg-accent/5'
-                }`}
-              >
-                <span className="text-sm">{emoji}</span>
-                <span>{count}</span>
-              </button>
-            ))}
-            <button
-              onClick={(e) => {
+        {totalReactions > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasMine && myReactionEmoji) {
+                onToggleReaction(msg.id, myReactionEmoji);
+              } else {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 onReactionPickerOpen(msg.id, rect);
-              }}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:bg-accent/5"
-            >
-              <SmilePlus size={12} />
-            </button>
-          </div>
+              }
+            }}
+            title={hasMine ? 'Click to remove reaction' : 'Click to react'}
+            className={`absolute -bottom-2.5 z-10 flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-xs shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
+              isOwn ? 'right-2' : 'left-2'
+            } ${
+              hasMine
+                ? 'border border-accent/40 bg-card text-accent dark:bg-[#1f2c34] dark:border-accent/50 shadow-accent/10'
+                : 'border border-border/70 bg-card text-muted-foreground dark:bg-[#1f2c34] dark:border-white/10'
+            }`}
+          >
+            <span className="flex items-center -space-x-0.5">
+              {topEmojis.map((emoji) => (
+                <span key={emoji} className="text-xs leading-none">
+                  {emoji}
+                </span>
+              ))}
+            </span>
+            {totalReactions > 1 && (
+              <span className={`text-[11px] font-medium leading-none ${hasMine ? 'text-accent font-semibold' : 'text-muted-foreground'}`}>
+                {totalReactions}
+              </span>
+            )}
+          </button>
         )}
-        {reactionMap.size === 0 && !inSelectionMode && (
+        {!inSelectionMode && (
           <button
             onClick={(e) => {
+              e.stopPropagation();
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
               onReactionPickerOpen(msg.id, rect);
             }}
