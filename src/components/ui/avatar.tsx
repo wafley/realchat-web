@@ -29,16 +29,25 @@ function Avatar({ className, children, ...props }: HTMLAttributes<HTMLDivElement
 const AvatarImage = forwardRef<
   HTMLImageElement,
   React.ImgHTMLAttributes<HTMLImageElement>
->(({ className, onLoad, src, ...props }, ref) => {
+>(({ className, onLoad, onError, src, ...props }, ref) => {
   const { setLoaded } = useContext(AvatarContext);
+  const [error, setError] = useState(false);
+
+  if (!src || error) return null;
+
   return (
     <img
       ref={ref}
       src={resolveFileUrl(src)}
-      className={cn('aspect-square h-full w-full', className)}
+      className={cn('aspect-square h-full w-full object-cover', className)}
       onLoad={(e) => {
         setLoaded(true);
         onLoad?.(e);
+      }}
+      onError={(e) => {
+        setError(true);
+        setLoaded(false);
+        onError?.(e);
       }}
       {...props}
     />

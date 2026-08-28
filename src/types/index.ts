@@ -16,7 +16,10 @@ export interface User {
 export interface Reaction {
   emoji: string;
   userId: string;
-  userName: string;
+  userName?: string;
+  username?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface ReactionGroup {

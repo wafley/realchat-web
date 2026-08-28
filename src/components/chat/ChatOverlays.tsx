@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, Reply, Clipboard, Forward, Pin, PinOff, Star, StarOff, CheckCheck, Check, Trash2, Loader2, CheckSquare, Edit3, Users, User, BellOff, Clock, Save, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MoreVertical, Play, Pause } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Modal from '@/components/ui/modal';
+import ReactionInfoModal from './ReactionInfoModal';
 import type { Message } from '@/types';
 import { senderName, getMessageReaders } from '@/services/chat';
 import { resolveFileUrl } from '@/lib/url';
@@ -125,6 +126,12 @@ interface ChatOverlaysProps {
   onCloseReadReceipts: () => void;
   isGroupChat?: boolean;
   chatId?: string | null;
+  reactionInfoMsg?: Message | null;
+  reactionInfoRect?: DOMRect | null;
+  onCloseReactionInfo?: () => void;
+  onToggleReaction?: (msgId: string, emoji: string) => void;
+  onReactionPickerOpen?: (msgId: string, rect: DOMRect) => void;
+  onSenderClick?: (userId: string) => void;
 }
 
 export default function ChatOverlays({
@@ -164,6 +171,12 @@ export default function ChatOverlays({
   onCloseReadReceipts,
   isGroupChat = false,
   chatId,
+  reactionInfoMsg,
+  reactionInfoRect,
+  onCloseReactionInfo,
+  onToggleReaction,
+  onReactionPickerOpen,
+  onSenderClick,
 }: ChatOverlaysProps) {
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -632,6 +645,18 @@ export default function ChatOverlays({
             </button>
           </div>
         </Modal>
+      )}
+      {reactionInfoMsg && (
+        <ReactionInfoModal
+          open={Boolean(reactionInfoMsg)}
+          onClose={onCloseReactionInfo ?? (() => {})}
+          msg={reactionInfoMsg}
+          anchorRect={reactionInfoRect}
+          currentUserId={currentUserId}
+          onRemoveMyReaction={onToggleReaction ?? (() => {})}
+          onOpenReactionPicker={onReactionPickerOpen}
+          onUserClick={onSenderClick}
+        />
       )}
     </>
   );

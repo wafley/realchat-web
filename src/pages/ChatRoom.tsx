@@ -425,6 +425,10 @@ export default function ChatRoom() {
           onMentionClick={handleMentionClick}
           onToggleReaction={actions.handleToggleReaction}
           onReactionPickerOpen={actions.handleReactionPickerOpen}
+          onOpenReactionInfo={(msg, rect) => {
+            state.setReactionInfoMsg(msg);
+            state.setReactionInfoRect(rect);
+          }}
           selectedIds={state.selectedIds}
           toggleSelect={actions.toggleSelect}
           newMessageAnchorId={state.newMessagesAnchorId}
@@ -554,6 +558,26 @@ export default function ChatRoom() {
         onCloseMute={() => state.setMuteDialogOpen(false)}
         onMute={actions.handleMute}
         onCloseReadReceipts={() => state.setReadReceiptTarget(null)}
+        reactionInfoMsg={
+          state.reactionInfoMsg
+            ? state.messages.find((m) => m.id === state.reactionInfoMsg?.id) || state.reactionInfoMsg
+            : null
+        }
+        reactionInfoRect={state.reactionInfoRect}
+        onCloseReactionInfo={() => {
+          state.setReactionInfoMsg(null);
+          state.setReactionInfoRect(null);
+        }}
+        onToggleReaction={actions.handleToggleReaction}
+        onReactionPickerOpen={actions.handleReactionPickerOpen}
+        onSenderClick={(userId) => {
+          if (window.matchMedia('(min-width: 1024px)').matches) {
+            setProfileInfoUserId(userId);
+            state.setProfileInfoOpen(true);
+          } else {
+            navigate(`/profile/${userId}`, { state: { from: location.pathname } });
+          }
+        }}
       />
     </div>
   );

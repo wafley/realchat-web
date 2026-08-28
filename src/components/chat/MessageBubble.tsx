@@ -32,6 +32,7 @@ interface MessageBubbleProps {
   onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
+  onOpenReactionInfo?: (msg: Message, rect: DOMRect) => void;
   selectedIds: string[];
   toggleSelect: (msgId: string) => void;
 }
@@ -82,6 +83,7 @@ function MessageBubbleComp({
   onMentionClick,
   onToggleReaction,
   onReactionPickerOpen,
+  onOpenReactionInfo,
   selectedIds,
   toggleSelect,
 }: MessageBubbleProps) {
@@ -398,14 +400,14 @@ function MessageBubbleComp({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (hasMine && myReactionEmoji) {
-                onToggleReaction(msg.id, myReactionEmoji);
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              if (onOpenReactionInfo) {
+                onOpenReactionInfo(msg, rect);
               } else {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 onReactionPickerOpen(msg.id, rect);
               }
             }}
-            title={hasMine ? 'Click to remove reaction' : 'Click to react'}
+            title="View reactions"
             className={`absolute -bottom-2.5 z-10 flex cursor-pointer items-center gap-1 rounded-full px-1.5 py-0.5 text-xs shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
               isOwn ? 'right-2' : 'left-2'
             } ${

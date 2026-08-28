@@ -125,6 +125,9 @@ export function flattenReactions(groups?: ReactionGroup[] | null): Reaction[] {
       emoji: group.emoji,
       userId: u.userId,
       userName: u.fullName || u.username || '',
+      username: u.username ?? null,
+      fullName: u.fullName ?? null,
+      avatarUrl: u.avatarUrl ?? null,
     })),
   );
 }
@@ -1257,6 +1260,18 @@ export async function toggleReaction(chatId: string, messageId: string, emoji: s
     return flattenReactions(res?.data?.reactions);
   } catch (err) {
     throw toError(err, 'Failed to toggle reaction');
+  }
+}
+
+export async function getMessageReactions(chatId: string, messageId: string): Promise<ReactionGroup[]> {
+  try {
+    if (DEV_MODE) {
+      return [];
+    }
+    const { data } = await api.get<{ reactions: ReactionGroup[] }>(`/conversations/${chatId}/messages/${messageId}/reactions`);
+    return data.reactions ?? [];
+  } catch (err) {
+    throw toError(err, 'Failed to fetch message reactions');
   }
 }
 
