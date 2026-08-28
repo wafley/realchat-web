@@ -431,7 +431,7 @@ function MessageBubbleComp({
             edited
           </span>
         )}
-        {totalReactions > 0 && (
+        {totalReactions > 0 && !msg.isDeleted && (
           <button
             type="button"
             onClick={(e) => {
@@ -466,7 +466,7 @@ function MessageBubbleComp({
             )}
           </button>
         )}
-        {!inSelectionMode && (
+        {!inSelectionMode && !msg.isDeleted && (
           <button
             onClick={(e) => {
               e.stopPropagation();

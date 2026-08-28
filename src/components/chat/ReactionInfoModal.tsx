@@ -27,7 +27,7 @@ export default function ReactionInfoModal({
   onUserClick,
 }: ReactionInfoModalProps) {
   const customNames = useCustomNames();
-  const [selectedEmoji, setSelectedEmoji] = useState<string>('ALL');
+  const [selectedEmoji] = useState<string>('ALL');
   const popoverRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
