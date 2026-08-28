@@ -24,13 +24,33 @@ export function getDateKey(date: Date | string | number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
+const URL_TOKEN = 'https?:\\/\\/[^\\s]+';
+const TRAILING_PUNCT = '.,;:!?]}\'"';
+const urlPattern = /^https?:\/\/[^\s]+$/i;
+
+function cleanUrl(raw: string): string {
+  let url = raw;
+  while (url.length > 4) {
+    const last = url[url.length - 1];
+    if (last === ')') {
+      const opens = (url.match(/\(/g) || []).length;
+      const closes = (url.match(/\)/g) || []).length;
+      if (opens >= closes) break;
+    } else if (!TRAILING_PUNCT.includes(last)) {
+      break;
+    }
+    url = url.slice(0, -1);
+  }
+  return url;
+}
+
 export function highlightText(text: string, query: string, isOwn = false, onMentionClick?: (username: string) => void): string | ReactNode[] {
   if (!text) return text;
 
   const escapedQuery = query.trim() ? query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
   const pattern = escapedQuery
-    ? new RegExp(`(${escapedQuery}|@[A-Za-z0-9_.-]+)`, 'gi')
-    : /@[A-Za-z0-9_.-]+/g;
+    ? new RegExp(`(${URL_TOKEN}|${escapedQuery}|@[A-Za-z0-9_.-]+)`, 'gi')
+    : new RegExp(`(${URL_TOKEN}|@[A-Za-z0-9_.-]+)`, 'gi');
 
   const matches: ReactNode[] = [];
   let lastIndex = 0;
@@ -57,6 +77,24 @@ export function highlightText(text: string, query: string, isOwn = false, onMent
           {matchedText}
         </button>,
       );
+    } else if (urlPattern.test(matchedText)) {
+      const url = cleanUrl(matchedText);
+      matches.push(
+        <a
+          key={`url-${start}-${url}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`break-all underline decoration-2 underline-offset-2 transition-opacity hover:opacity-80 ${isOwn ? 'text-white' : 'text-accent'}`}
+        >
+          {url}
+        </a>,
+      );
+      if (url.length < matchedText.length) {
+        matches.push(matchedText.slice(url.length));
+      }
     } else {
       matches.push(
         <mark
