@@ -413,8 +413,8 @@ function MessageBubbleComp({
               onReactionPickerOpen(msg.id, rect);
             }}
             aria-label="Add reaction"
-            className={`pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 absolute -bottom-2 z-[1] flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border bg-card/80 text-muted-foreground opacity-100 transition-opacity hover:bg-accent/5 ${
-              isOwn ? 'right-0' : 'left-0'
+            className={`pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 absolute z-[1] flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border bg-card/80 text-muted-foreground opacity-100 transition-opacity hover:bg-accent/5 ${
+              isOwn ? 'right-full top-1/2 mr-2 -translate-y-1/2' : 'left-full top-1/2 ml-2 -translate-y-1/2'
             }`}
           >
             <SmilePlus size={12} />
