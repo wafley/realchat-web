@@ -193,6 +193,7 @@ export default function ChatRoom() {
     setReadReceiptTarget: state.setReadReceiptTarget,
     setReactingMsgId: state.setReactingMsgId,
     setReactionPickerRect: state.setReactionPickerRect,
+    setReactionPickerInitialFull: state.setReactionPickerInitialFull,
     setSelectedIds: state.setSelectedIds,
     setSearchMatches: state.setSearchMatches,
     setActiveMatchIndex: state.setActiveMatchIndex,
@@ -505,6 +506,7 @@ export default function ChatRoom() {
           onReact={actions.handleReactionPickerSelect}
           onClose={actions.handleReactionPickerClose}
           anchorRect={state.reactionPickerRect}
+          initialFull={state.reactionPickerInitialFull}
         />
       )}
 

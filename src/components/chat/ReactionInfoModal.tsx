@@ -12,7 +12,7 @@ interface ReactionInfoModalProps {
   anchorRect?: DOMRect | null;
   currentUserId?: string;
   onRemoveMyReaction: (msgId: string, emoji: string) => void;
-  onOpenReactionPicker?: (msgId: string, rect: DOMRect) => void;
+  onOpenReactionPicker?: (msgId: string, rect: DOMRect, initialFull?: boolean) => void;
   onUserClick?: (userId: string) => void;
 }
 
@@ -141,7 +141,7 @@ export default function ReactionInfoModal({
           onClick={(e) => {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             if (onOpenReactionPicker) {
-              onOpenReactionPicker(msg.id, rect);
+              onOpenReactionPicker(msg.id, rect, true);
             }
           }}
           title="Add reaction"

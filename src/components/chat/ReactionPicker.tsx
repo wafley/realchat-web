@@ -9,12 +9,17 @@ interface ReactionPickerProps {
   onReact: (emoji: string) => void;
   onClose: () => void;
   anchorRect: DOMRect;
+  initialFull?: boolean;
 }
 
-export default function ReactionPicker({ onReact, onClose, anchorRect }: ReactionPickerProps) {
+export default function ReactionPicker({ onReact, onClose, anchorRect, initialFull = false }: ReactionPickerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const theme = useThemeStore((s) => s.theme);
-  const [showFullPicker, setShowFullPicker] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(initialFull);
+
+  useEffect(() => {
+    setShowFullPicker(initialFull);
+  }, [initialFull]);
   const [position, setPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   useEffect(() => {
