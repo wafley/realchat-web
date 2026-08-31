@@ -278,7 +278,7 @@ function MessageBubbleComp({
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
             </button>
           )}
-          {msg.type === 'image' && msg.fileUrl ? (
+          {msg.type === 'image' && msg.fileUrl && !msg.isDeleted ? (
             <div className="flex flex-col">
               {msg.content ? (
                 <>
@@ -340,7 +340,7 @@ function MessageBubbleComp({
                 </div>
               )}
             </div>
-          ) : msg.type === 'video' && msg.fileUrl ? (
+          ) : msg.type === 'video' && msg.fileUrl && !msg.isDeleted ? (
             <div className="flex flex-col">
               {msg.content ? (
                 <>

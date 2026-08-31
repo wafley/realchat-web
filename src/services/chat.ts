@@ -179,9 +179,9 @@ export function mapMessage(row: RemoteMessage): Message {
           row.senderId,
         )
       : (row.content ?? ''),
-    type,
-    fileUrl: row.fileUrl ?? undefined,
-    fileName: row.fileName ?? undefined,
+    type: row.isDeleted ? 'text' : type,
+    fileUrl: row.isDeleted ? undefined : (row.fileUrl ?? undefined),
+    fileName: row.isDeleted ? undefined : (row.fileName ?? undefined),
     fileSize: row.fileSize ?? undefined,
     mimeType: row.mimeType ?? undefined,
     duration: row.duration ?? undefined,
