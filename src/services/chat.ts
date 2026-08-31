@@ -80,6 +80,8 @@ export interface RemoteMessage {
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
   deletedBy?: string | { id?: string; userId?: string; fullName?: string; username?: string } | null;
+  isForwarded?: boolean | null;
+  forwardCount?: number | null;
   fileUrl?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
@@ -190,6 +192,8 @@ export function mapMessage(row: RemoteMessage): Message {
     starredAt: row.starredAt ? new Date(row.starredAt) : null,
     isDeleted: row.isDeleted ?? false,
     deletedBy: mapDeletedBy(row.deletedBy),
+    isForwarded: row.isForwarded ?? false,
+    forwardCount: row.forwardCount ?? 0,
     status: normalizeStatus(row.status) ?? (row.senderId === useAuthStore.getState().user?.id ? 'sent' : undefined),
     lastReadAt: row.seenAt ? new Date(row.seenAt) : undefined,
     edited: row.isEdited ?? false,
@@ -558,9 +562,11 @@ function conversationPreview(lm?: RemoteConversation['lastMessage']): string {
 
 export function messagePreview(m: Message): string {
   if (m.isDeleted) return 'Message deleted';
-  if (m.type === 'image') return '📷 Photo';
-  if (m.type === 'video') return '🎬 Video';
-  return m.content;
+  const text =
+    m.type === 'image' ? '📷 Photo'
+    : m.type === 'video' ? '🎬 Video'
+    : m.content;
+  return m.isForwarded ? `↗ ${text}` : text;
 }
 
 export function messageSenderName(m: { senderId: string; sender?: { username?: string | null; fullName?: string | null } | null }): string | undefined {
@@ -715,6 +721,8 @@ export async function forwardMessage(targetChatId: string, msg: Message, sourceC
         type: msg.type,
         fileUrl: msg.fileUrl,
         fileName: msg.fileName,
+        isForwarded: true,
+        forwardCount: 1,
         status: targetConv?.online ? 'delivered' as const : 'sent' as const,
         createdAt: new Date(),
         sender: { id: DEV_USER_ID, username: 'devuser', fullName: 'You', email: 'dev@hallowok.com', status: 'online', createdAt: new Date() },

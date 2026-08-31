@@ -1,5 +1,5 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban, ImageOff, VideoOff } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban, ImageOff, VideoOff, CornerUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
 import { useCustomNames } from '@/hooks/useCustomNames';
@@ -259,6 +259,12 @@ function MessageBubbleComp({
                   @{msg.sender.username}
                 </span>
               )}
+            </div>
+          )}
+          {msg.isForwarded && !msg.isDeleted && (
+            <div className={`mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide ${isOwn ? 'text-chat-outgoing-foreground/60' : 'text-muted-foreground/70'}`}>
+              <CornerUpRight size={12} strokeWidth={2.5} className="shrink-0" />
+              Forwarded
             </div>
           )}
           {msg.replyTo && (
