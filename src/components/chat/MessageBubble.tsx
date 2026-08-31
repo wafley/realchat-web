@@ -261,6 +261,11 @@ function MessageBubbleComp({
               )}
             </div>
           )}
+          {msg.isForwarded && !msg.isDeleted && (
+            <div className={`mb-1 text-[10px] font-bold uppercase tracking-wide ${isOwn ? 'text-chat-outgoing-foreground/60' : 'text-muted-foreground/70'}`}>
+              Forwarded
+            </div>
+          )}
           {msg.replyTo && (
             <button
               type="button"
