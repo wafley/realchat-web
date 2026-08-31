@@ -19,26 +19,12 @@ export default function OAuthCallback() {
       return;
     }
 
-    const storeTokens = (accessToken: string, rt: string | null) => {
-      localStorage.setItem('accessToken', accessToken);
-      if (rt) localStorage.setItem('refreshToken', rt);
-    };
-
-    try {
-      const userRaw = params.get('user');
-      if (userRaw) {
-        const user = JSON.parse(decodeURIComponent(userRaw));
-        storeTokens(token, refreshToken);
-        useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
-        navigate('/', { replace: true });
-        return;
-      }
-    } catch {}
+    localStorage.setItem('accessToken', token);
+    if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
     authService
       .getMe()
       .then((user) => {
-        storeTokens(token, refreshToken);
         useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
         navigate('/', { replace: true });
       })
