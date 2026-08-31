@@ -65,6 +65,8 @@ export interface Message {
     fullName?: string;
     username?: string;
   };
+  isForwarded?: boolean;
+  forwardCount?: number;
   readBy?: string[];
   lastReadAt?: Date;
   edited?: boolean;
