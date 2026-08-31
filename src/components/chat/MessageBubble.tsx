@@ -5,6 +5,10 @@ import { resolveFileUrl } from '@/lib/url';
 import { useCustomNames } from '@/hooks/useCustomNames';
 import type { Message } from '@/types';
 import { formatTime, highlightText } from '@/lib/chatHelpers';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getGroup, deletedMessageContentLabel } from '@/services/chat';
+
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 interface MessageBubbleProps {
   isHighlighted?: boolean;
@@ -92,6 +96,18 @@ function MessageBubbleComp({
   const [mediaError, setMediaError] = useState(false);
   const customNames = useCustomNames();
   const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
+
+  const queryClient = useQueryClient();
+  const convType = queryClient
+    .getQueryData<{ id: string; type?: string }[]>(['conversations'])
+    ?.find((c) => c.id === msg.groupId)?.type;
+  useQuery({
+    queryKey: ['group', msg.groupId],
+    queryFn: () => getGroup(msg.groupId),
+    enabled: !!msg.isDeleted && !DEV_MODE && convType !== 'dm',
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (msg.type === 'system') {
     return (
@@ -262,7 +278,7 @@ function MessageBubbleComp({
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
             </button>
           )}
-          {msg.type === 'image' && msg.fileUrl ? (
+          {msg.type === 'image' && msg.fileUrl && !msg.isDeleted ? (
             <div className="flex flex-col">
               {msg.content ? (
                 <>
@@ -324,7 +340,7 @@ function MessageBubbleComp({
                 </div>
               )}
             </div>
-          ) : msg.type === 'video' && msg.fileUrl ? (
+          ) : msg.type === 'video' && msg.fileUrl && !msg.isDeleted ? (
             <div className="flex flex-col">
               {msg.content ? (
                 <>
@@ -405,7 +421,13 @@ function MessageBubbleComp({
           ) : msg.isDeleted ? (
             <p className="[overflow-wrap:anywhere] text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
               <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
-              <span>{msg.content}</span>
+              <span>
+                {!DEV_MODE && msg.deletedBy?.id && msg.deletedBy.id === currentUserId
+                  ? 'You deleted this message'
+                  : DEV_MODE
+                    ? msg.content
+                    : deletedMessageContentLabel(msg.groupId, msg.deletedBy?.id, msg.senderId)}
+              </span>
               {renderMetaInline()}
             </p>
           ) : (

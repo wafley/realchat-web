@@ -264,12 +264,15 @@ export function useChatMutations({
                       m.id === msgId
                         ? {
                             ...m,
-                            content: 'You deleted this message',
+                            content: m.senderId === useAuthStore.getState().user?.id
+                              ? 'You deleted this message'
+                              : 'Message deleted by admin',
                             type: 'text' as const,
                             fileUrl: undefined,
                             fileName: undefined,
                             replyTo: undefined,
                             isDeleted: true,
+                            deletedBy: { id: useAuthStore.getState().user?.id ?? '' },
                           }
                         : m,
                     ),
@@ -285,7 +288,7 @@ export function useChatMutations({
       if (context?.prev) {
         queryClient.setQueryData(['messages', chatId, isDM], context.prev);
       }
-      toast.error('Failed to delete message. Please try again.');
+      toast.error(getApiErrorMessage(_err, 'Failed to delete message. Please try again.'));
     },
     onSuccess: () => {
       refreshConversationPreview(chatId, isDM);

@@ -79,6 +79,7 @@ export interface RemoteMessage {
   starredAt?: string | null;
   isEdited?: boolean | null;
   isDeleted?: boolean | null;
+  deletedBy?: string | { id?: string; userId?: string; fullName?: string; username?: string } | null;
   fileUrl?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
@@ -132,6 +133,37 @@ export function flattenReactions(groups?: ReactionGroup[] | null): Reaction[] {
   );
 }
 
+export function normalizeDeletedByUserId(
+  deletedBy?: RemoteMessage['deletedBy'],
+): string | undefined {
+  if (typeof deletedBy === 'string') return deletedBy;
+  return deletedBy?.id ?? deletedBy?.userId;
+}
+
+export function deletedMessageContentLabel(
+  conversationId: string | undefined,
+  deletedByUserId: string | undefined,
+  senderId?: string,
+): string {
+  if (!conversationId || !deletedByUserId) return 'Message deleted';
+  if (senderId && senderId === deletedByUserId) return 'Message deleted';
+  const group = queryClient.getQueryData<Group | null>(['group', conversationId]);
+  const isAdmin = group?.members?.some(
+    (m) => m.userId === deletedByUserId && m.role === 'admin',
+  );
+  return isAdmin ? 'Message deleted by admin' : 'Message deleted';
+}
+
+function mapDeletedBy(deletedBy?: RemoteMessage['deletedBy']): Message['deletedBy'] {
+  if (typeof deletedBy === 'string') return { id: deletedBy };
+  if (!deletedBy) return undefined;
+  return {
+    id: deletedBy.id ?? deletedBy.userId ?? '',
+    fullName: deletedBy.fullName,
+    username: deletedBy.username,
+  };
+}
+
 export function mapMessage(row: RemoteMessage): Message {
   const t = (row.type ?? '').toLowerCase();
   const type: Message['type'] =
@@ -140,10 +172,16 @@ export function mapMessage(row: RemoteMessage): Message {
     id: row.id,
     groupId: row.conversationId ?? '',
     senderId: row.senderId,
-    content: row.isDeleted ? 'Message deleted' : (row.content ?? ''),
-    type,
-    fileUrl: row.fileUrl ?? undefined,
-    fileName: row.fileName ?? undefined,
+    content: row.isDeleted
+      ? deletedMessageContentLabel(
+          row.conversationId,
+          normalizeDeletedByUserId(row.deletedBy),
+          row.senderId,
+        )
+      : (row.content ?? ''),
+    type: row.isDeleted ? 'text' : type,
+    fileUrl: row.isDeleted ? undefined : (row.fileUrl ?? undefined),
+    fileName: row.isDeleted ? undefined : (row.fileName ?? undefined),
     fileSize: row.fileSize ?? undefined,
     mimeType: row.mimeType ?? undefined,
     duration: row.duration ?? undefined,
@@ -151,6 +189,7 @@ export function mapMessage(row: RemoteMessage): Message {
     isStarred: row.isStarred ?? false,
     starredAt: row.starredAt ? new Date(row.starredAt) : null,
     isDeleted: row.isDeleted ?? false,
+    deletedBy: mapDeletedBy(row.deletedBy),
     status: normalizeStatus(row.status) ?? (row.senderId === useAuthStore.getState().user?.id ? 'sent' : undefined),
     lastReadAt: row.seenAt ? new Date(row.seenAt) : undefined,
     edited: row.isEdited ?? false,
@@ -378,7 +417,7 @@ export async function deleteMessage(chatId: string, messageId: string, deleteFor
       if (deleteForAll) {
         msgs[idx] = {
           ...msgs[idx],
-          content: 'You deleted this message',
+          content: msgs[idx].senderId === DEV_USER_ID ? 'You deleted this message' : 'Message deleted by admin',
           type: 'text',
           fileUrl: undefined,
           fileName: undefined,

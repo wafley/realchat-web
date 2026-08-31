@@ -60,6 +60,11 @@ export interface Message {
   isStarred?: boolean;
   starredAt?: Date | null;
   isDeleted?: boolean;
+  deletedBy?: {
+    id: string;
+    fullName?: string;
+    username?: string;
+  };
   readBy?: string[];
   lastReadAt?: Date;
   edited?: boolean;
