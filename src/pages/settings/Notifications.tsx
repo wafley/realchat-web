@@ -5,18 +5,47 @@ import { cn } from '@/lib/utils';
 import { loadPrefs, savePrefs, getPermission, requestPermission, isNotificationSupported } from '@/services/notification';
 import type { NotificationPrefs } from '@/services/notification';
 import { requestNotificationPermission, registerPushDevice, isOneSignalSupported } from '@/services/onesignal';
+import { getNotificationPreferences, updateNotificationPreferences } from '@/services/user';
 
 export default function SettingsNotifications() {
   const navigate = useNavigate();
   const [prefs, setPrefs] = useState<NotificationPrefs>(loadPrefs);
+  const [loading, setLoading] = useState(true);
   const [desktopGranted, setDesktopGranted] = useState(getPermission() === 'granted');
+
+  useEffect(() => {
+    let cancelled = false;
+    getNotificationPreferences()
+      .then((server) => {
+        if (cancelled) return;
+        setPrefs((p) => ({ ...p, messages: server.notifyNewMessages, groups: server.notifyGroupInvites }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     savePrefs(prefs);
   }, [prefs]);
 
   const toggle = (key: keyof NotificationPrefs) => {
-    setPrefs((p) => ({ ...p, [key]: !p[key] }));
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+
+    if (key === 'messages') {
+      void updateNotificationPreferences({ notifyNewMessages: next.messages }).catch(() => {
+        setPrefs((p) => ({ ...p, messages: !next.messages }));
+      });
+    } else if (key === 'groups') {
+      void updateNotificationPreferences({ notifyGroupInvites: next.groups }).catch(() => {
+        setPrefs((p) => ({ ...p, groups: !next.groups }));
+      });
+    }
   };
 
   const handleDesktopToggle = async () => {
@@ -63,7 +92,7 @@ export default function SettingsNotifications() {
             </div>
           </div>
 
-          <div className="mb-4 overflow-hidden rounded-xl bg-card">
+          <div className={cn('mb-4 overflow-hidden rounded-xl bg-card', loading && 'opacity-50')}>
             {items.map((item, i) => (
               <div
                 key={item.label}
@@ -78,9 +107,11 @@ export default function SettingsNotifications() {
                 </div>
                 <button
                   onClick={() => toggle(item.key)}
+                  disabled={loading}
                   className={cn(
                     'relative h-6 w-10 shrink-0 rounded-full transition-colors',
                     prefs[item.key] ? 'bg-accent' : 'bg-muted',
+                    loading && 'cursor-not-allowed',
                   )}
                 >
                   <span

@@ -3,12 +3,44 @@ import { Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { loadPrefs, savePrefs, getPermission, isNotificationSupported } from '@/services/notification';
 import { requestNotificationPermission, registerPushDevice, isOneSignalSupported } from '@/services/onesignal';
+import { getNotificationPreferences, updateNotificationPreferences } from '@/services/user';
 
 export default function NotificationsContent() {
   const [prefs, setPrefs] = useState(loadPrefs);
+  const [loading, setLoading] = useState(true);
   const [desktopGranted, setDesktopGranted] = useState(getPermission() === 'granted');
+
+  useEffect(() => {
+    let cancelled = false;
+    getNotificationPreferences()
+      .then((server) => {
+        if (cancelled) return;
+        setPrefs((p) => ({ ...p, messages: server.notifyNewMessages, groups: server.notifyGroupInvites }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => { savePrefs(prefs); }, [prefs]);
-  const toggle = (key: 'messages' | 'groups' | 'sound') => setPrefs((p) => ({ ...p, [key]: !p[key] }));
+
+  const toggle = (key: 'messages' | 'groups' | 'sound') => {
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    if (key === 'messages') {
+      void updateNotificationPreferences({ notifyNewMessages: next.messages }).catch(() => {
+        setPrefs((p) => ({ ...p, messages: !next.messages }));
+      });
+    } else if (key === 'groups') {
+      void updateNotificationPreferences({ notifyGroupInvites: next.groups }).catch(() => {
+        setPrefs((p) => ({ ...p, groups: !next.groups }));
+      });
+    }
+  };
 
   const handleDesktopToggle = async () => {
     if (desktopGranted) return;
@@ -39,9 +71,11 @@ export default function NotificationsContent() {
           <span className="text-sm text-foreground">{label}</span>
           <button
             onClick={() => toggle(key)}
+            disabled={loading}
             className={cn(
               'relative h-5 w-9 rounded-full transition-colors',
               prefs[key] ? 'bg-accent' : 'bg-muted-foreground/30',
+              loading && 'cursor-not-allowed opacity-50',
             )}
           >
             <span className={cn(
