@@ -1,4 +1,4 @@
-const SW_PATH = '/sw.js';
+const SW_PATH = '/OneSignalSDKWorker.js';
 
 export function isNotificationSupported(): boolean {
   return 'Notification' in window && 'serviceWorker' in navigator;
