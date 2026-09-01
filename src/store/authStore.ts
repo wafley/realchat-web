@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import type { User, LoginPayload, RegisterPayload, UpdateProfilePayload } from '@/types';
 import * as authService from '@/services/auth';
 import { queryClient } from '@/lib/queryClient';
-import { registerPushNotifications, unregisterPushNotifications } from '@/services/push';
+import {
+  registerPushDevice,
+  unregisterPushDevice,
+  setExternalUserId,
+  removeExternalUserId,
+} from '@/services/onesignal';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -41,7 +46,8 @@ window.addEventListener('auth:force-logout', () => {
   if (state.isAuthenticated) {
     queryClient.clear();
     useAuthStore.setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-    void unregisterPushNotifications();
+    void removeExternalUserId();
+    void unregisterPushDevice();
   }
 });
 
@@ -56,7 +62,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('accessToken', res.accessToken);
     localStorage.setItem('refreshToken', res.refreshToken);
     set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
-    void registerPushNotifications();
+    void setExternalUserId(res.user.id);
+    void registerPushDevice();
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
@@ -76,7 +83,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem('refreshToken');
       queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
-      void unregisterPushNotifications();
+      void removeExternalUserId();
+      void unregisterPushDevice();
     }
   },
   checkAuth: async () => {
@@ -92,7 +100,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await authService.getMe();
       set({ user, token, isAuthenticated: true, isLoading: false });
-      void registerPushNotifications();
+      void setExternalUserId(user.id);
+      void registerPushDevice();
     } catch (error: any) {
       const status = error.response?.status;
       if (status === 401 || status === 403) {

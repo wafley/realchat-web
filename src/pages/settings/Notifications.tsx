@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bell, Monitor, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { loadPrefs, savePrefs, requestPermission, getPermission, isNotificationSupported } from '@/services/notification';
+import { loadPrefs, savePrefs, getPermission, requestPermission, isNotificationSupported } from '@/services/notification';
 import type { NotificationPrefs } from '@/services/notification';
+import { requestNotificationPermission, registerPushDevice, isOneSignalSupported } from '@/services/onesignal';
 
 export default function SettingsNotifications() {
   const navigate = useNavigate();
@@ -20,7 +21,16 @@ export default function SettingsNotifications() {
 
   const handleDesktopToggle = async () => {
     if (desktopGranted) return;
-    const permission = await requestPermission();
+    let permission = 'denied';
+    if (isOneSignalSupported()) {
+      const ok = await requestNotificationPermission();
+      permission = ok ? 'granted' : 'denied';
+      if (ok) {
+        await registerPushDevice();
+      }
+    } else {
+      permission = await requestPermission();
+    }
     setDesktopGranted(permission === 'granted');
   };
 

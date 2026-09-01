@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { loadPrefs, savePrefs, requestPermission, getPermission, isNotificationSupported } from '@/services/notification';
+import { loadPrefs, savePrefs, getPermission, isNotificationSupported } from '@/services/notification';
+import { requestNotificationPermission, registerPushDevice, isOneSignalSupported } from '@/services/onesignal';
 
 export default function NotificationsContent() {
   const [prefs, setPrefs] = useState(loadPrefs);
@@ -11,7 +12,19 @@ export default function NotificationsContent() {
 
   const handleDesktopToggle = async () => {
     if (desktopGranted) return;
-    const permission = await requestPermission();
+    // Prioritaskan OneSignal (membuat subscription push web yang dapat ditarget),
+    // fallback ke requestPermission native bila OneSignal tidak tersedia.
+    let permission = 'denied';
+    if (isOneSignalSupported()) {
+      const ok = await requestNotificationPermission();
+      permission = ok ? 'granted' : 'denied';
+      if (ok) {
+        await registerPushDevice();
+      }
+    } else {
+      const { requestPermission } = await import('@/services/notification');
+      permission = await requestPermission();
+    }
     setDesktopGranted(permission === 'granted');
   };
 
