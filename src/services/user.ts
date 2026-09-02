@@ -70,3 +70,28 @@ export async function updatePrivacy(payload: Partial<PrivacyApi>): Promise<Priva
   return data;
 }
 
+export interface NotificationPreferences {
+  notifyNewMessages: boolean;
+  notifyGroupInvites: boolean;
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  if (DEV_MODE) {
+    await delay(150);
+    return { notifyNewMessages: true, notifyGroupInvites: true };
+  }
+  const { data } = await api.get<NotificationPreferences>('/users/me/notification-preferences');
+  return data;
+}
+
+export async function updateNotificationPreferences(
+  payload: Partial<NotificationPreferences>,
+): Promise<NotificationPreferences> {
+  if (DEV_MODE) {
+    await delay(150);
+    return { notifyNewMessages: true, notifyGroupInvites: true, ...payload };
+  }
+  const { data } = await api.put<NotificationPreferences>('/users/me/notification-preferences', payload);
+  return data;
+}
+

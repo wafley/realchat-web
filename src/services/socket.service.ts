@@ -91,7 +91,7 @@ function onMessageNew(raw: RemoteMessage) {
   const msg = mapMessage(raw);
   const chatId = raw.conversationId ?? '';
   if (isChatDeleted(chatId)) unhideChat(chatId);
-  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  const conversations = queryClient.getQueryData<ChatConversation[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
 
@@ -170,6 +170,36 @@ function onMessageNew(raw: RemoteMessage) {
       window.dispatchEvent(
         new CustomEvent('chat:new-messages', { detail: { chatId, messageId: msg.id } }),
       );
+    }
+  }
+
+  // Notifikasi lokal untuk pengguna online yang tidak sedang membuka chat:
+  // hanya tampil saat tab/window tak aktif, lewati pesan sendiri, pesan
+  // sistem, chat yang di-mute, dan saat pref notifikasi mati. Format sama
+  // dengan push offline (DM: nama -> pesan; grup: nama grup -> pengirim: pesan).
+  if (
+    msg.senderId !== currentUserId &&
+    msg.type !== 'system' &&
+    currentChatId !== chatId &&
+    !isDocumentActive() &&
+    !conv?.muted
+  ) {
+    const prefs = loadPrefs();
+    const enabled = isDM ? prefs.messages : prefs.groups;
+    if (enabled) {
+      const sender = messageSenderName(msg);
+      const title = isDM ? sender ?? 'New message' : conv?.name || 'Group';
+      const body = isDM
+        ? preview
+        : `${sender || 'Message'}: ${preview}`.trim();
+      showLocalNotification(title, { body });
+      if (prefs.sound) {
+        try {
+          const audio = new Audio('/notification.mp3');
+          audio.volume = 0.5;
+          void audio.play();
+        } catch {}
+      }
     }
   }
 }
