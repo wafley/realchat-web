@@ -175,9 +175,8 @@ function onMessageNew(raw: RemoteMessage) {
   }
 
   // Nama pengirim untuk notifikasi: prioritaskan customName dari contact,
-  // lalu fullName (asli dari contact server, bukan payload socket yang
-  // sering hanya berisi username), terakhir username. Kontak di-fetch bila
-  // belum ada di cache agar customName/fullName selalu tersedia.
+  // lalu fullName, terakhir username. Kontak di-fetch bila belum ada di
+  // cache agar customName/fullName selalu tersedia.
   async function resolveNotificationSenderName(msg: {
     senderId: string;
     sender?: { username?: string | null; fullName?: string | null } | null;
