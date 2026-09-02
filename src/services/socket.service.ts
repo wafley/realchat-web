@@ -8,6 +8,7 @@ import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
 import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, flattenReactions, deletedMessageContentLabel, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
+import { getContacts } from '@/services/contacts';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
@@ -173,6 +174,27 @@ function onMessageNew(raw: RemoteMessage) {
     }
   }
 
+  // Nama pengirim untuk notifikasi: prioritaskan customName dari contact,
+  // lalu fullName, terakhir username. Kontak di-fetch bila belum ada di
+  // cache agar customName/fullName selalu tersedia.
+  async function resolveNotificationSenderName(msg: {
+    senderId: string;
+    sender?: { username?: string | null; fullName?: string | null } | null;
+  }): Promise<string | undefined> {
+    let contacts = queryClient.getQueryData<Contact[]>(['contacts']);
+    if (!contacts) {
+      try {
+        contacts = await getContacts();
+        queryClient.setQueryData(['contacts'], contacts);
+      } catch {}
+    }
+    const known = contacts?.find((c) => c.userId === msg.senderId);
+    if (known?.customName) return known.customName;
+    if (known?.user?.fullName) return known.user.fullName;
+    if (msg.sender?.fullName) return msg.sender.fullName;
+    return msg.sender?.username || undefined;
+  }
+
   // Notifikasi lokal untuk pengguna online yang tidak sedang membuka chat:
   // hanya tampil saat tab/window tak aktif, lewati pesan sendiri, pesan
   // sistem, chat yang di-mute, dan saat pref notifikasi mati. Format sama
@@ -187,19 +209,20 @@ function onMessageNew(raw: RemoteMessage) {
     const prefs = loadPrefs();
     const enabled = isDM ? prefs.messages : prefs.groups;
     if (enabled) {
-      const sender = messageSenderName(msg);
-      const title = isDM ? sender ?? 'New message' : conv?.name || 'Group';
-      const body = isDM
-        ? preview
-        : `${sender || 'Message'}: ${preview}`.trim();
-      showLocalNotification(title, { body });
-      if (prefs.sound) {
-        try {
-          const audio = new Audio('/notification.mp3');
-          audio.volume = 0.5;
-          void audio.play();
-        } catch {}
-      }
+      void resolveNotificationSenderName(msg).then((sender) => {
+        const title = isDM ? sender ?? conv?.name ?? 'New message' : conv?.name || 'Group';
+        const body = isDM
+          ? preview
+          : `${sender || 'Message'}: ${preview}`.trim();
+        showLocalNotification(title, { body });
+        if (prefs.sound) {
+          try {
+            const audio = new Audio('/notification.mp3');
+            audio.volume = 0.5;
+            void audio.play();
+          } catch {}
+        }
+      });
     }
   }
 }
