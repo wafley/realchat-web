@@ -122,11 +122,32 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
     const updated = await authService.updateProfile(payload);
-    set({ user: updated });
+    // BE PUT /users/me kadang tidak return hasPassword/provider — merge agar Set Password (google && !hasPassword) tidak hilang setelah pindah page
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            ...updated,
+            hasPassword: updated.hasPassword ?? state.user.hasPassword,
+            provider: updated.provider ?? state.user.provider,
+            avatarUrl: updated.avatarUrl ?? state.user.avatarUrl,
+            bannerUrl: updated.bannerUrl ?? state.user.bannerUrl,
+          }
+        : updated,
+    }));
   },
   refreshUser: async () => {
     if (DEV_MODE) return;
     const user = await authService.getMe();
-    set({ user });
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            ...user,
+            hasPassword: user.hasPassword ?? state.user.hasPassword,
+            provider: user.provider ?? state.user.provider,
+          }
+        : user,
+    }));
   },
 }));
