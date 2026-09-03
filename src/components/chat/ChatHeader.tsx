@@ -11,7 +11,6 @@ interface ChatHeaderProps {
   typingLabel?: string | null;
   isDM: boolean;
   muted: boolean;
-  userId?: string;
   lastSeen?: Date | null;
   memberCount?: number | null;
   avatarUrl?: string;
@@ -32,7 +31,6 @@ export default function ChatHeader({
   typingLabel,
   isDM,
   muted,
-  userId,
   lastSeen,
   memberCount,
   avatarUrl,
@@ -77,11 +75,7 @@ export default function ChatHeader({
         </AvatarFallback>
       </Avatar>
       <div className="flex-1">
-        {isDM && userId ? (
-          <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
-        ) : (
-          <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
-        )}
+        <button onClick={onGroupInfoClick} className="truncate text-sm font-semibold text-foreground hover:text-accent lg:text-base">{chatName}</button>
         {typingLabel ? (
           <p className="flex items-center gap-1 text-xs text-accent">
             <span className="flex gap-0.5">

@@ -1,10 +1,14 @@
 import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
-import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban } from 'lucide-react';
+import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban, ImageOff, VideoOff, CornerUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
 import { useCustomNames } from '@/hooks/useCustomNames';
 import type { Message } from '@/types';
 import { formatTime, highlightText } from '@/lib/chatHelpers';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getGroup, deletedMessageContentLabel } from '@/services/chat';
+
+const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
 interface MessageBubbleProps {
   isHighlighted?: boolean;
@@ -32,6 +36,7 @@ interface MessageBubbleProps {
   onMentionClick?: (username: string) => void;
   onToggleReaction: (msgId: string, emoji: string) => void;
   onReactionPickerOpen: (msgId: string, rect: DOMRect) => void;
+  onOpenReactionInfo?: (msg: Message, rect: DOMRect) => void;
   selectedIds: string[];
   toggleSelect: (msgId: string) => void;
 }
@@ -80,16 +85,29 @@ function MessageBubbleComp({
   onReplyClick,
   onSenderClick,
   onMentionClick,
-  onToggleReaction,
   onReactionPickerOpen,
+  onOpenReactionInfo,
   selectedIds,
   toggleSelect,
 }: MessageBubbleProps) {
   const isSelected = selectedIds.includes(msg.id);
   const inSelectionMode = selectedIds.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
+  const [mediaError, setMediaError] = useState(false);
   const customNames = useCustomNames();
   const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
+
+  const queryClient = useQueryClient();
+  const convType = queryClient
+    .getQueryData<{ id: string; type?: string }[]>(['conversations'])
+    ?.find((c) => c.id === msg.groupId)?.type;
+  useQuery({
+    queryKey: ['group', msg.groupId],
+    queryFn: () => getGroup(msg.groupId),
+    enabled: !!msg.isDeleted && !DEV_MODE && convType !== 'dm',
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (msg.type === 'system') {
     return (
@@ -102,14 +120,28 @@ function MessageBubbleComp({
   }
 
   const reactionMap = new Map<string, { count: number; hasMine: boolean }>();
+  let totalReactions = 0;
+  let myReactionEmoji: string | null = null;
+
   if (msg.reactions) {
     for (const r of msg.reactions) {
       const entry = reactionMap.get(r.emoji) ?? { count: 0, hasMine: false };
       entry.count++;
-      if (r.userId === currentUserId) entry.hasMine = true;
+      totalReactions++;
+      if (r.userId === currentUserId) {
+        entry.hasMine = true;
+        myReactionEmoji = r.emoji;
+      }
       reactionMap.set(r.emoji, entry);
     }
   }
+
+  const topEmojis = Array.from(reactionMap.entries())
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 3)
+    .map(([emoji]) => emoji);
+
+  const hasMine = myReactionEmoji !== null;
 
   const showReadMore = (msg.content || '').length > 500;
   const displayedContent = showReadMore && !isExpanded
@@ -164,7 +196,7 @@ function MessageBubbleComp({
 
   return (
     <div
-      className={`flex items-start gap-2 transition-all duration-700 rounded-xl ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''} ${isHighlighted ? 'bg-accent/15 py-1 px-1.5' : ''}`}
+      className={`group flex items-start gap-2 transition-all duration-700 rounded-xl ${isOwn ? 'flex-row-reverse' : ''} ${inSelectionMode && !isSelected ? 'opacity-50' : ''} ${isHighlighted ? 'bg-accent/15 py-1 px-1.5' : ''}`}
       onClick={() => { if (inSelectionMode) toggleSelect(msg.id); }}
     >
       {inSelectionMode ? (
@@ -186,7 +218,7 @@ function MessageBubbleComp({
       ) : showSpacer ? (
         <div className="mt-0.5 h-9 w-9 shrink-0" aria-hidden="true" />
       ) : null}
-      <div className={`w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col`}>
+      <div className={`relative w-fit max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex min-w-0 flex-col ${totalReactions > 0 ? 'mb-5' : ''}`}>
         <div
           onContextMenu={(e) => {
             e.preventDefault();
@@ -229,6 +261,12 @@ function MessageBubbleComp({
               )}
             </div>
           )}
+          {msg.isForwarded && !msg.isDeleted && (
+            <div className={`mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide ${isOwn ? 'text-chat-outgoing-foreground/60' : 'text-muted-foreground/70'}`}>
+              <CornerUpRight size={12} strokeWidth={2.5} className="shrink-0" />
+              Forwarded
+            </div>
+          )}
           {msg.replyTo && (
             <button
               type="button"
@@ -246,22 +284,30 @@ function MessageBubbleComp({
               <p className="truncate text-foreground/80">{msg.replyTo.type === 'image' ? '📷 Photo' : msg.replyTo.content}</p>
             </button>
           )}
-          {msg.type === 'image' && msg.fileUrl ? (
+          {msg.type === 'image' && msg.fileUrl && !msg.isDeleted ? (
             <div className="flex flex-col">
               {msg.content ? (
                 <>
                   <div className="overflow-hidden">
-                    <img
-                      src={resolveFileUrl(msg.fileUrl)}
-                      alt={msg.content || 'Image'}
-                      className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                      style={{ maxHeight: '300px' }}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    {mediaError ? (
+                      <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                        <ImageOff size={28} className="text-muted-foreground/70" />
+                        <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                      </div>
+                    ) : (
+                      <img
+                        src={resolveFileUrl(msg.fileUrl)}
+                        alt={msg.content || 'Image'}
+                        className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                        style={{ maxHeight: '300px' }}
+                        onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                        onError={() => setMediaError(true)}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
                   </div>
-                  <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
+                  <p className="whitespace-pre-wrap px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
@@ -279,41 +325,59 @@ function MessageBubbleComp({
                 </>
               ) : (
                 <div className="relative overflow-hidden">
-                  <img
-                    src={resolveFileUrl(msg.fileUrl)}
-                    alt="Image"
-                    className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
-                    style={{ maxHeight: '300px' }}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  {mediaError ? (
+                    <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                      <ImageOff size={28} className="text-muted-foreground/70" />
+                      <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={resolveFileUrl(msg.fileUrl)}
+                      alt="Image"
+                      className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
+                      style={{ maxHeight: '300px' }}
+                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                      onError={() => setMediaError(true)}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
                   {renderMetaOverlay()}
                 </div>
               )}
             </div>
-          ) : msg.type === 'video' && msg.fileUrl ? (
+          ) : msg.type === 'video' && msg.fileUrl && !msg.isDeleted ? (
             <div className="flex flex-col">
               {msg.content ? (
                 <>
                   <div className="relative overflow-hidden rounded-t-2xl">
-                    <video
-                      src={resolveFileUrl(msg.fileUrl)}
-                      playsInline
-                      controls={false}
-                      onPlay={(e) => e.currentTarget.pause()}
-                      onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                      className="block w-full cursor-pointer"
-                      style={{ maxHeight: '400px' }}
-                      preload="metadata"
-                    />
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
-                        <span className="ml-1 text-2xl text-white">▶</span>
+                    {mediaError ? (
+                      <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                        <VideoOff size={28} className="text-muted-foreground/70" />
+                        <span className="text-xs text-muted-foreground">Video unavailable</span>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <video
+                          src={resolveFileUrl(msg.fileUrl)}
+                          playsInline
+                          controls={false}
+                          onPlay={(e) => e.currentTarget.pause()}
+                          onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                          onError={() => setMediaError(true)}
+                          className="block w-full cursor-pointer"
+                          style={{ maxHeight: '400px' }}
+                          preload="metadata"
+                        />
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                            <span className="ml-1 text-2xl text-white">▶</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <p className="px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
+                  <p className="whitespace-pre-wrap px-[9px] pb-[6px] pt-[6px] text-[length:var(--fs-bubble,16px)] [overflow-wrap:anywhere]">
                     {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
                     {showReadMore && (
                       <button
@@ -331,21 +395,31 @@ function MessageBubbleComp({
                 </>
               ) : (
                 <div className="relative overflow-hidden rounded-xl">
-                  <video
-                    src={resolveFileUrl(msg.fileUrl)}
-                    playsInline
-                    controls={false}
-                    onPlay={(e) => e.currentTarget.pause()}
-                    onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                    className="block w-full cursor-pointer"
-                    style={{ maxHeight: '400px' }}
-                    preload="metadata"
-                  />
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
-                      <span className="ml-1 text-2xl text-white">▶</span>
+                  {mediaError ? (
+                    <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                      <VideoOff size={28} className="text-muted-foreground/70" />
+                      <span className="text-xs text-muted-foreground">Video unavailable</span>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <video
+                        src={resolveFileUrl(msg.fileUrl)}
+                        playsInline
+                        controls={false}
+                        onPlay={(e) => e.currentTarget.pause()}
+                        onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
+                        onError={() => setMediaError(true)}
+                        className="block w-full cursor-pointer"
+                        style={{ maxHeight: '400px' }}
+                        preload="metadata"
+                      />
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 shadow-lg backdrop-blur-sm">
+                          <span className="ml-1 text-2xl text-white">▶</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {renderMetaOverlay()}
                 </div>
               )}
@@ -353,11 +427,17 @@ function MessageBubbleComp({
           ) : msg.isDeleted ? (
             <p className="[overflow-wrap:anywhere] text-[length:var(--fs-bubble-md,14px)] italic opacity-50">
               <Ban size={13} className="mr-1 inline-block shrink-0 align-[-2px]" />
-              <span>{msg.content}</span>
+              <span>
+                {!DEV_MODE && msg.deletedBy?.id && msg.deletedBy.id === currentUserId
+                  ? 'You deleted this message'
+                  : DEV_MODE
+                    ? msg.content
+                    : deletedMessageContentLabel(msg.groupId, msg.deletedBy?.id, msg.senderId)}
+              </span>
               {renderMetaInline()}
             </p>
           ) : (
-            <p className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+            <p className="whitespace-pre-wrap min-w-0 max-w-full [overflow-wrap:anywhere]">
               {highlightText(displayedContent, searchQuery, isOwn, onMentionClick)}
               {showReadMore && (
                 <button
@@ -379,36 +459,59 @@ function MessageBubbleComp({
             edited
           </span>
         )}
-        {reactionMap.size > 0 && (
-          <div className={`-mb-1 mt-1 flex flex-wrap gap-1 ${isOwn ? 'justify-end' : ''}`}>
-            {Array.from(reactionMap.entries()).map(([emoji, { count, hasMine }]) => (
-              <button
-                key={emoji}
-                onClick={() => onToggleReaction(msg.id, emoji)}
-                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors ${
-                  hasMine
-                    ? 'border-accent/40 bg-accent/10 text-accent'
-                    : 'border-border bg-card/50 text-muted-foreground hover:bg-accent/5'
-                }`}
-              >
-                <span className="text-sm">{emoji}</span>
-                <span>{count}</span>
-              </button>
-            ))}
-            <button
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        {totalReactions > 0 && !msg.isDeleted && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              if (onOpenReactionInfo) {
+                onOpenReactionInfo(msg, rect);
+              } else {
                 onReactionPickerOpen(msg.id, rect);
-              }}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:bg-accent/5"
-            >
-              <SmilePlus size={12} />
-            </button>
-          </div>
+              }
+            }}
+            title="View reactions"
+            className={`absolute -bottom-[18px] z-10 flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-xs shadow-md transition-all duration-200 hover:scale-105 active:scale-95 select-none ${
+              isOwn ? 'right-1' : 'left-1'
+            } ${
+              hasMine
+                ? 'border border-accent/40 bg-card text-accent dark:bg-[#1f2c34] dark:border-accent/50 shadow-accent/10'
+                : 'border border-border/80 bg-card text-muted-foreground dark:bg-[#1f2c34] dark:border-white/15'
+            }`}
+          >
+            <span className="flex items-center -space-x-1">
+              {topEmojis.map((emoji) => (
+                <span key={emoji} className="text-sm sm:text-[15px] leading-none">
+                  {emoji}
+                </span>
+              ))}
+            </span>
+            {totalReactions > 1 && (
+              <span className={`text-xs font-semibold leading-none pl-0.5 ${hasMine ? 'text-accent' : 'text-muted-foreground'}`}>
+                {totalReactions}
+              </span>
+            )}
+          </button>
         )}
+        {!inSelectionMode && !msg.isDeleted && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              onReactionPickerOpen(msg.id, rect);
+            }}
+            aria-label="Add reaction"
+            className={`hidden pointer-fine:flex pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 absolute z-[1] h-6 w-6 items-center justify-center rounded-full border border-dashed border-border bg-card/80 text-muted-foreground opacity-0 transition-opacity hover:bg-accent/5 ${
+              isOwn ? 'right-full top-1/2 mr-2 -translate-y-1/2' : 'left-full top-1/2 ml-2 -translate-y-1/2'
+            }`}
+          >
+            <SmilePlus size={12} />
+          </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-export const MessageBubble = memo(MessageBubbleComp);
+  export const MessageBubble = memo(MessageBubbleComp);

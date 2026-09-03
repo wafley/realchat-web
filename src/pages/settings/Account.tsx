@@ -5,14 +5,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Ban, Trash2, Key, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { changePassword, deleteAccount, parseAuthError } from '@/services/auth';
+import { changePassword, deleteAccount, parseAuthError, setPassword } from '@/services/auth';
 import { useAuthStore } from '@/store/authStore';
 import { destroySocket } from '@/services/socket.service';
 import Modal from '@/components/ui/modal';
-import { changePasswordSchema, type ChangePasswordSchema } from '@/lib/validations';
+import { changePasswordSchema, type ChangePasswordSchema, setPasswordSchema, type SetPasswordSchema } from '@/lib/validations';
 
 export default function SettingsAccount() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
 
   const [showPw, setShowPw] = useState(false);
 
@@ -20,20 +21,39 @@ export default function SettingsAccount() {
   const [deleteInput, setDeleteInput] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
 
+  const needsPassword = user?.provider === 'google' && !user?.hasPassword;
+
   const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
+    register: registerChange,
+    handleSubmit: handleSubmitChange,
+    reset: resetChange,
+    formState: { errors: errorsChange },
   } = useForm<ChangePasswordSchema>({
     resolver: zodResolver(changePasswordSchema),
+  });
+
+  const {
+    register: registerSet,
+    handleSubmit: handleSubmitSet,
+    formState: { errors: errorsSet },
+  } = useForm<SetPasswordSchema>({
+    resolver: zodResolver(setPasswordSchema),
   });
 
   const changePwMutation = useMutation({
     mutationFn: (data: ChangePasswordSchema) => changePassword(data.currentPassword, data.newPassword),
     onSuccess: () => {
       toast.success('Password changed successfully');
-      reset();
+      resetChange();
+    },
+    onError: (err) => toast.error(parseAuthError(err)),
+  });
+
+  const setPwMutation = useMutation({
+    mutationFn: (data: SetPasswordSchema) => setPassword(data.password),
+    onSuccess: async () => {
+      toast.success('Password set successfully');
+      await useAuthStore.getState().refreshUser();
     },
     onError: (err) => toast.error(parseAuthError(err)),
   });
@@ -69,86 +89,149 @@ export default function SettingsAccount() {
             </div>
           </div>
 
-          <div className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
-            <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
-              <Key size={18} className="text-muted-foreground" />
-              <span className="text-sm font-semibold text-foreground">Change Password</span>
-            </div>
-            <form onSubmit={handleSubmit((data) => changePwMutation.mutate(data))} className="space-y-3 p-4">
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Current Password</label>
-                <div className="relative">
-                  <input
-                    type={showPw ? 'text' : 'password'}
-                    {...register('currentPassword')}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-9 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    placeholder="Enter current password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(!showPw)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
-                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {errors.currentPassword && (
-                  <p className="mt-1 text-xs text-destructive">{errors.currentPassword.message}</p>
-                )}
+          {needsPassword ? (
+            <div className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
+              <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+                <Key size={18} className="text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Set Password</span>
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">New Password</label>
-                <input
-                  type="password"
-                  {...register('newPassword')}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  placeholder="Enter new password"
-                />
-                {errors.newPassword && (
-                  <p className="mt-1 text-xs text-destructive">{errors.newPassword.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-muted-foreground">Confirm New Password</label>
-                <input
-                  type="password"
-                  {...register('confirmPassword')}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  placeholder="Confirm new password"
-                />
-                {errors.confirmPassword && (
-                  <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
-                )}
-              </div>
-              <button
-                type="submit"
-                disabled={changePwMutation.isPending}
-                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {changePwMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-                Change Password
-              </button>
-            </form>
-          </div>
-
-          <div className="rounded-xl border border-destructive/20 bg-card p-4">
-            <div className="flex items-center gap-3">
-              <Ban size={18} className="text-destructive" />
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Danger Zone</h3>
+              <div className="px-4 pt-3">
                 <p className="text-xs text-muted-foreground">
-                  Irreversible actions for your account
+                  You signed up with Google. Set a password to manage your account settings.
                 </p>
               </div>
+              <form onSubmit={handleSubmitSet((data) => setPwMutation.mutate(data))} className="space-y-3 p-4">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      {...registerSet('password')}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-9 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      placeholder="Enter new password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(!showPw)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errorsSet.password && (
+                    <p className="mt-1 text-xs text-destructive">{errorsSet.password.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Confirm New Password</label>
+                  <input
+                    type="password"
+                    {...registerSet('confirmPassword')}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="Confirm new password"
+                  />
+                  {errorsSet.confirmPassword && (
+                    <p className="mt-1 text-xs text-destructive">{errorsSet.confirmPassword.message}</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={setPwMutation.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {setPwMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                  Set Password
+                </button>
+              </form>
             </div>
-            <button
-              onClick={() => setDeleteConfirmOpen(true)}
-              className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-            >
-              <Trash2 size={16} />
-              Delete Account
-            </button>
-          </div>
+          ) : (
+            <div className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
+              <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+                <Key size={18} className="text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Change Password</span>
+              </div>
+              <form onSubmit={handleSubmitChange((data) => changePwMutation.mutate(data))} className="space-y-3 p-4">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Current Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      {...registerChange('currentPassword')}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-9 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      placeholder="Enter current password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(!showPw)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errorsChange.currentPassword && (
+                    <p className="mt-1 text-xs text-destructive">{errorsChange.currentPassword.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">New Password</label>
+                  <input
+                    type="password"
+                    {...registerChange('newPassword')}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="Enter new password"
+                  />
+                  {errorsChange.newPassword && (
+                    <p className="mt-1 text-xs text-destructive">{errorsChange.newPassword.message}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Confirm New Password</label>
+                  <input
+                    type="password"
+                    {...registerChange('confirmPassword')}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    placeholder="Confirm new password"
+                  />
+                  {errorsChange.confirmPassword && (
+                    <p className="mt-1 text-xs text-destructive">{errorsChange.confirmPassword.message}</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={changePwMutation.isPending}
+                  className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {changePwMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                  Change Password
+                </button>
+              </form>
+            </div>
+          )}
+
+          {needsPassword ? (
+            <div className="rounded-xl border border-border/50 bg-card/50 p-4">
+              <p className="text-xs text-muted-foreground">Set a password first to delete your account.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-destructive/20 bg-card p-4">
+              <div className="flex items-center gap-3">
+                <Ban size={18} className="text-destructive" />
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Danger Zone</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Irreversible actions for your account
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <Trash2 size={16} />
+                Delete Account
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

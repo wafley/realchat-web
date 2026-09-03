@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import type { User, LoginPayload, RegisterPayload, UpdateProfilePayload } from '@/types';
 import * as authService from '@/services/auth';
 import { queryClient } from '@/lib/queryClient';
-import { registerPushNotifications, unregisterPushNotifications } from '@/services/push';
+import {
+  registerPushDevice,
+  unregisterPushDevice,
+  setExternalUserId,
+  removeExternalUserId,
+} from '@/services/onesignal';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -25,6 +30,7 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 function devLogin(set: (partial: Partial<AuthState>) => void) {
@@ -40,7 +46,8 @@ window.addEventListener('auth:force-logout', () => {
   if (state.isAuthenticated) {
     queryClient.clear();
     useAuthStore.setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-    void unregisterPushNotifications();
+    void removeExternalUserId();
+    void unregisterPushDevice();
   }
 });
 
@@ -55,7 +62,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('accessToken', res.accessToken);
     localStorage.setItem('refreshToken', res.refreshToken);
     set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
-    void registerPushNotifications();
+    void setExternalUserId(res.user.id);
+    void registerPushDevice();
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
@@ -75,7 +83,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem('refreshToken');
       queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
-      void unregisterPushNotifications();
+      void removeExternalUserId();
+      void unregisterPushDevice();
     }
   },
   checkAuth: async () => {
@@ -91,7 +100,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const user = await authService.getMe();
       set({ user, token, isAuthenticated: true, isLoading: false });
-      void registerPushNotifications();
+      void setExternalUserId(user.id);
+      void registerPushDevice();
     } catch (error: any) {
       const status = error.response?.status;
       if (status === 401 || status === 403) {
@@ -112,6 +122,32 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
     const updated = await authService.updateProfile(payload);
-    set({ user: updated });
+    // BE PUT /users/me kadang tidak return hasPassword/provider — merge agar Set Password (google && !hasPassword) tidak hilang setelah pindah page
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            ...updated,
+            hasPassword: updated.hasPassword ?? state.user.hasPassword,
+            provider: updated.provider ?? state.user.provider,
+            avatarUrl: updated.avatarUrl ?? state.user.avatarUrl,
+            bannerUrl: updated.bannerUrl ?? state.user.bannerUrl,
+          }
+        : updated,
+    }));
+  },
+  refreshUser: async () => {
+    if (DEV_MODE) return;
+    const user = await authService.getMe();
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            ...user,
+            hasPassword: user.hasPassword ?? state.user.hasPassword,
+            provider: user.provider ?? state.user.provider,
+          }
+        : user,
+    }));
   },
 }));

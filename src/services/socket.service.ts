@@ -6,12 +6,13 @@ import { useAuthStore } from '@/store/authStore';
 import { usePrivacyStore } from '@/store/privacyStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { loadPrefs, showLocalNotification } from '@/services/notification';
-import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
+import { mapMessage, messagePreview, messageSenderName, saveLocalUnread, statusIsAtLeast, normalizeRemoteStatus, refreshConversationPreview, getPinnedMessages, flattenReactions, deletedMessageContentLabel, type RemoteMessage, type ChatConversation, DM_USER_MAP } from '@/services/chat';
 import { getUser } from '@/services/user';
+import { getContacts } from '@/services/contacts';
 import { isChatDeleted, unhideChat } from '@/lib/chatDeleted';
 import { isChatViewportAtBottom, isDocumentActive } from '@/lib/chatViewport';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { Message, PaginatedResponse, User, Contact } from '@/types';
+import type { Message, PaginatedResponse, User, Contact, Reaction, ReactionGroup } from '@/types';
 import type { Conversation } from '@/types';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
@@ -91,7 +92,7 @@ function onMessageNew(raw: RemoteMessage) {
   const msg = mapMessage(raw);
   const chatId = raw.conversationId ?? '';
   if (isChatDeleted(chatId)) unhideChat(chatId);
-  const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
+  const conversations = queryClient.getQueryData<ChatConversation[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === chatId);
   const isDM = conv?.type === 'dm';
 
@@ -172,6 +173,58 @@ function onMessageNew(raw: RemoteMessage) {
       );
     }
   }
+
+  // Nama pengirim untuk notifikasi: prioritaskan customName dari contact,
+  // lalu fullName, terakhir username. Kontak di-fetch bila belum ada di
+  // cache agar customName/fullName selalu tersedia.
+  async function resolveNotificationSenderName(msg: {
+    senderId: string;
+    sender?: { username?: string | null; fullName?: string | null } | null;
+  }): Promise<string | undefined> {
+    let contacts = queryClient.getQueryData<Contact[]>(['contacts']);
+    if (!contacts) {
+      try {
+        contacts = await getContacts();
+        queryClient.setQueryData(['contacts'], contacts);
+      } catch {}
+    }
+    const known = contacts?.find((c) => c.userId === msg.senderId);
+    if (known?.customName) return known.customName;
+    if (known?.user?.fullName) return known.user.fullName;
+    if (msg.sender?.fullName) return msg.sender.fullName;
+    return msg.sender?.username || undefined;
+  }
+
+  // Notifikasi lokal untuk pengguna online yang tidak sedang membuka chat:
+  // hanya tampil saat tab/window tak aktif, lewati pesan sendiri, pesan
+  // sistem, chat yang di-mute, dan saat pref notifikasi mati. Format sama
+  // dengan push offline (DM: nama -> pesan; grup: nama grup -> pengirim: pesan).
+  if (
+    msg.senderId !== currentUserId &&
+    msg.type !== 'system' &&
+    currentChatId !== chatId &&
+    !isDocumentActive() &&
+    !conv?.muted
+  ) {
+    const prefs = loadPrefs();
+    const enabled = isDM ? prefs.messages : prefs.groups;
+    if (enabled) {
+      void resolveNotificationSenderName(msg).then((sender) => {
+        const title = isDM ? sender ?? conv?.name ?? 'New message' : conv?.name || 'Group';
+        const body = isDM
+          ? preview
+          : `${sender || 'Message'}: ${preview}`.trim();
+        showLocalNotification(title, { body });
+        if (prefs.sound) {
+          try {
+            const audio = new Audio('/notification.mp3');
+            audio.volume = 0.5;
+            void audio.play();
+          } catch {}
+        }
+      });
+    }
+  }
 }
 
 // --- Read receipts (kirim message:seen ke server) ---
@@ -222,12 +275,14 @@ function onMessageEdited(event: RemoteMessage) {
   );
 }
 
-function onMessageDeleted(data: { messageId: string; conversationId: string }) {
+function onMessageDeleted(data: { messageId: string; conversationId: string; deletedBy?: string | { id?: string; userId?: string; fullName?: string; username?: string } }) {
   if (DEV_MODE) return;
 
   const conversations = queryClient.getQueryData<{ id: string; type: string }[]>(['conversations']);
   const conv = conversations?.find((c) => c.id === data.conversationId);
   const isDM = conv?.type === 'dm';
+  const deletedByUserId =
+    typeof data.deletedBy === 'string' ? data.deletedBy : data.deletedBy?.id ?? data.deletedBy?.userId;
 
   queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
     ['messages', data.conversationId, isDM],
@@ -239,7 +294,15 @@ function onMessageDeleted(data: { messageId: string; conversationId: string }) {
           ...page,
           data: page.data.map((m) =>
             m.id === data.messageId
-              ? { ...m, content: 'Message deleted', type: 'text' as const, fileUrl: undefined, fileName: undefined, isDeleted: true }
+              ? {
+                  ...m,
+                  content: deletedMessageContentLabel(data.conversationId, deletedByUserId, m.senderId),
+                  type: 'text' as const,
+                  fileUrl: undefined,
+                  fileName: undefined,
+                  isDeleted: true,
+                  deletedBy: deletedByUserId ? { id: deletedByUserId } : m.deletedBy,
+                }
               : m,
           ),
         })),
@@ -311,31 +374,42 @@ function onMessageStarUpdated(data: { messageId: string; isStarred: boolean }) {
   }
 }
 
-function onMessageReactionUpdated(data: { messageId?: string; reactions?: Message['reactions'] }) {
+function setMessageReactionsCache(conversationId: string, isDM: boolean, messageId: string, reactions: Reaction[]) {
+  queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
+    ['messages', conversationId, isDM],
+    (prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pages: prev.pages.map((page) => ({
+          ...page,
+          data: page.data.map((m) =>
+            m.id === messageId ? { ...m, reactions } : m,
+          ),
+        })),
+      };
+    },
+  );
+}
+
+function onMessageReactionUpdated(data: { conversationId?: string; messageId?: string; reactions?: ReactionGroup[] }) {
   if (DEV_MODE) return;
   if (!data?.messageId) return;
-  const reactions = data.reactions ?? [];
+  const reactions = flattenReactions(data.reactions);
+  const messageId = data.messageId;
+
+  if (data.conversationId) {
+    setMessageReactionsCache(data.conversationId, true, messageId, reactions);
+    setMessageReactionsCache(data.conversationId, false, messageId, reactions);
+    return;
+  }
 
   const conversations = queryClient.getQueryData<{ id: string; type?: string }[]>(['conversations']);
   if (!conversations) return;
 
   for (const conv of conversations) {
     const isDM = conv?.type === 'dm';
-    queryClient.setQueryData<InfiniteData<PaginatedResponse<Message>>>(
-      ['messages', conv.id, isDM],
-      (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          pages: prev.pages.map((page) => ({
-            ...page,
-            data: page.data.map((m) =>
-              m.id === data.messageId ? { ...m, reactions } : m,
-            ),
-          })),
-        };
-      },
-    );
+    setMessageReactionsCache(conv.id, isDM, messageId, reactions);
   }
 }
 

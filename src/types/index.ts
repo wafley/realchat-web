@@ -9,12 +9,27 @@ export interface User {
   status: 'online' | 'offline' | 'away';
   lastSeen?: Date;
   createdAt: Date;
+  provider?: string;
+  hasPassword?: boolean;
 }
 
 export interface Reaction {
   emoji: string;
   userId: string;
-  userName: string;
+  userName?: string;
+  username?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface ReactionGroup {
+  emoji: string;
+  users?: Array<{
+    userId: string;
+    username?: string | null;
+    fullName?: string | null;
+    avatarUrl?: string | null;
+  }>;
 }
 
 export interface ReplyTo {
@@ -45,6 +60,13 @@ export interface Message {
   isStarred?: boolean;
   starredAt?: Date | null;
   isDeleted?: boolean;
+  deletedBy?: {
+    id: string;
+    fullName?: string;
+    username?: string;
+  };
+  isForwarded?: boolean;
+  forwardCount?: number;
   readBy?: string[];
   lastReadAt?: Date;
   edited?: boolean;

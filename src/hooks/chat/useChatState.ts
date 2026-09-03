@@ -38,6 +38,9 @@ export function useChatState() {
   const [readReceiptTarget, setReadReceiptTarget] = useState<Message | null>(null);
   const [reactingMsgId, setReactingMsgId] = useState<string | null>(null);
   const [reactionPickerRect, setReactionPickerRect] = useState<DOMRect | null>(null);
+  const [reactionPickerInitialFull, setReactionPickerInitialFull] = useState(false);
+  const [reactionInfoMsg, setReactionInfoMsg] = useState<Message | null>(null);
+  const [reactionInfoRect, setReactionInfoRect] = useState<DOMRect | null>(null);
   const [muted, setMuted] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchMatches, setSearchMatches] = useState<string[]>([]);
@@ -111,6 +114,9 @@ export function useChatState() {
     setReadReceiptTarget(null);
     setReactingMsgId(null);
     setReactionPickerRect(null);
+    setReactionPickerInitialFull(false);
+    setReactionInfoMsg(null);
+    setReactionInfoRect(null);
     setSelectedIds([]);
     setSearchMatches([]);
     setActiveMatchIndex(0);
@@ -238,7 +244,7 @@ export function useChatState() {
         },
       };
     });
-  }, [data, resolveSenderName]);
+  }, [data, resolveSenderName, chatId]);
 
   // Mengirim pesan sendiri berarti semua pesan sudah dilihat → pill hilang.
   useEffect(() => {
@@ -306,6 +312,9 @@ export function useChatState() {
     readReceiptTarget, setReadReceiptTarget,
     reactingMsgId, setReactingMsgId,
     reactionPickerRect, setReactionPickerRect,
+    reactionPickerInitialFull, setReactionPickerInitialFull,
+    reactionInfoMsg, setReactionInfoMsg,
+    reactionInfoRect, setReactionInfoRect,
     muted, setMuted,
     selectedIds, setSelectedIds,
     searchMatches, setSearchMatches,

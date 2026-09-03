@@ -1,4 +1,4 @@
-import { forwardRef, useState, createContext, useContext, type HTMLAttributes } from 'react';
+import { forwardRef, useState, useEffect, createContext, useContext, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
 
@@ -29,16 +29,30 @@ function Avatar({ className, children, ...props }: HTMLAttributes<HTMLDivElement
 const AvatarImage = forwardRef<
   HTMLImageElement,
   React.ImgHTMLAttributes<HTMLImageElement>
->(({ className, onLoad, src, ...props }, ref) => {
+>(({ className, onLoad, onError, src, ...props }, ref) => {
   const { setLoaded } = useContext(AvatarContext);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setError(false);
+    setLoaded(false);
+  }, [src, setLoaded]);
+
+  if (!src || error) return null;
+
   return (
     <img
       ref={ref}
       src={resolveFileUrl(src)}
-      className={cn('aspect-square h-full w-full', className)}
+      className={cn('aspect-square h-full w-full object-cover', className)}
       onLoad={(e) => {
         setLoaded(true);
         onLoad?.(e);
+      }}
+      onError={(e) => {
+        setError(true);
+        setLoaded(false);
+        onError?.(e);
       }}
       {...props}
     />
