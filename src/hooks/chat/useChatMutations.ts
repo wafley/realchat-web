@@ -109,7 +109,7 @@ export function useChatMutations({
     },
       );
     },
-    [chatId, isDM],
+    [chatId],
   );
 
   const onMessageSent = useCallback(

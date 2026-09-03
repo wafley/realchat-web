@@ -145,7 +145,7 @@ export default function ImageCropModal({
       'image/jpeg',
       0.92,
     );
-  }, [imgLoaded, zoom, offset, boxWidth, boxHeight, outputWidth, outputHeight, onCropComplete, onClose]);
+  }, [imgLoaded, zoom, offset, boxWidth, boxHeight, outputWidth, outputHeight, onCropComplete, onClose, fileName]);
 
   if (!open || !imageSrc) return null;
 

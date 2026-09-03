@@ -244,7 +244,7 @@ export function useChatState() {
         },
       };
     });
-  }, [data, resolveSenderName]);
+  }, [data, resolveSenderName, chatId]);
 
   // Mengirim pesan sendiri berarti semua pesan sudah dilihat → pill hilang.
   useEffect(() => {
