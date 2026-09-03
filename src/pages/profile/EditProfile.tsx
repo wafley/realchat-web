@@ -169,7 +169,7 @@ export default function EditProfile() {
             <div className="px-4 pb-4">
               <div className="flex items-end justify-between -mt-10 mb-3">
                 <div className="relative">
-                  <Avatar className="h-20 w-20 ring-4 ring-card shadow-lg">
+                  <Avatar key={avatarPreview || user?.avatarUrl || 'fallback'} className="h-20 w-20 ring-4 ring-card shadow-lg">
                     {(avatarPreview || user?.avatarUrl) && <AvatarImage src={avatarPreview || user?.avatarUrl} className="object-cover" />}
                     <AvatarFallback className="text-xl font-bold">
                       <User size={24} />

@@ -1,4 +1,4 @@
-import { forwardRef, useState, createContext, useContext, type HTMLAttributes } from 'react';
+import { forwardRef, useState, useEffect, createContext, useContext, type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { resolveFileUrl } from '@/lib/url';
 
@@ -32,6 +32,11 @@ const AvatarImage = forwardRef<
 >(({ className, onLoad, onError, src, ...props }, ref) => {
   const { setLoaded } = useContext(AvatarContext);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setError(false);
+    setLoaded(false);
+  }, [src, setLoaded]);
 
   if (!src || error) return null;
 
