@@ -5,7 +5,17 @@ import path from 'path';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const beOrigin = env.VITE_SOCKET_URL || 'http://localhost:3000';
+  // Derive origin from VITE_API_URL/vite_SOCKET_URL to keep /api & /socket.io on same host in prod.
+  // Supports both relative (/api) and absolute (https://api.example.com/api).
+  const getOrigin = (url?: string) => {
+    if (!url) return null;
+    try {
+      return new URL(url, 'http://localhost:3000').origin;
+    } catch {
+      return null;
+    }
+  };
+  const beOrigin = getOrigin(env.VITE_API_URL) || getOrigin(env.VITE_SOCKET_URL) || 'http://localhost:3000';
 
   return {
     plugins: [react(), tailwindcss()],
