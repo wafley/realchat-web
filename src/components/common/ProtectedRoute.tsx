@@ -17,7 +17,8 @@ export default function ProtectedRoute() {
     timerRef.current = setTimeout(() => {
       const state = useAuthStore.getState();
       if (state.isLoading) {
-        useAuthStore.setState({ isLoading: false, isAuthenticated: Boolean(state.token) });
+        // Best practice: don't auth via token alone, require user object
+        useAuthStore.setState({ isLoading: false, isAuthenticated: Boolean(state.user && state.token) });
       }
     }, AUTH_TIMEOUT_MS);
 

@@ -148,5 +148,3 @@ VITE_DEV_MODE
 
 
 ---
- 
-🚧under development

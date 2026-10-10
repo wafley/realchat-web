@@ -1,11 +1,21 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, Navigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '@/store/authStore';
 
 export default function AuthLayout() {
   const { pathname } = useLocation();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+
+  // Guard: already authenticated -> go home (best practice, prevents /login flash after login)
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const isLogin = pathname === '/login';
   const isRegister = pathname === '/register';
   const isForgot = pathname === '/forgot-password';
+  const isReset = pathname === '/reset-password';
+  const isVerify = pathname === '/verify-email';
 
   return (
     <div className="auth-page-bg relative min-h-screen flex flex-col justify-between items-center p-6 pt-10 sm:p-10 font-sans overflow-hidden">
@@ -26,7 +36,7 @@ export default function AuthLayout() {
       {/* Main Content Area (Merged Directly into Mica Backdrop) */}
       <div className="relative z-10 my-auto w-full max-w-[410px] mx-auto flex flex-col items-center text-center py-8">
         
-        {/* Dynamic Titles */}
+        {/* Dynamic Titles - explicit map, no fallback to Reset for unknown routes */}
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1.5">
           {isLogin
             ? 'Yooow, welcome back!'
@@ -34,7 +44,11 @@ export default function AuthLayout() {
               ? 'Create your account'
               : isForgot
                 ? 'Forgot password?'
-                : 'Reset password'}
+                : isReset
+                  ? 'Reset password'
+                  : isVerify
+                    ? 'Verify your email'
+                    : 'Reset password'}
         </h1>
 
         <p className="text-sm text-neutral-400 mb-6 sm:mb-8">
@@ -59,6 +73,10 @@ export default function AuthLayout() {
                 Sign in
               </Link>
             </>
+          ) : isReset ? (
+            'Enter your new credentials below'
+          ) : isVerify ? (
+            'Check your inbox for the verification link'
           ) : (
             'Enter your new credentials below'
           )}
