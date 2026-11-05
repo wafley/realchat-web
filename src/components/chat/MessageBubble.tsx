@@ -1,4 +1,4 @@
-import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
+import { memo, useState, useEffect, type PointerEvent, type TouchEvent } from 'react';
 import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban, ImageOff, VideoOff, CornerUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
@@ -94,6 +94,9 @@ function MessageBubbleComp({
   const inSelectionMode = selectedIds.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
   const [mediaError, setMediaError] = useState(false);
+  useEffect(() => {
+    setMediaError(false);
+  }, [msg.fileUrl]);
   const customNames = useCustomNames();
   const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
 
@@ -293,6 +296,7 @@ function MessageBubbleComp({
                       <div className="flex min-h-[100px] w-full min-w-[220px] flex-col items-center justify-center gap-1.5 bg-black/15 p-3 text-center dark:bg-white/5">
                         <ImageOff size={28} className="text-muted-foreground/70" />
                         <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setMediaError(false); }} className="mt-1 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-white/20 transition-colors">Retry</button>
                         <span className="max-w-[260px] break-all text-[10px] text-muted-foreground/60">{resolveFileUrl(msg.fileUrl)}</span>
                       </div>
                     ) : (
@@ -333,6 +337,7 @@ function MessageBubbleComp({
                     <div className="flex min-h-[100px] w-full min-w-[220px] flex-col items-center justify-center gap-1.5 bg-black/15 p-3 text-center dark:bg-white/5">
                       <ImageOff size={28} className="text-muted-foreground/70" />
                       <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setMediaError(false); }} className="mt-1 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-white/20 transition-colors">Retry</button>
                       <span className="max-w-[260px] break-all text-[10px] text-muted-foreground/60">{resolveFileUrl(msg.fileUrl)}</span>
                     </div>
                   ) : (

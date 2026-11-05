@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Capacitor } from '@capacitor/core';
 import App from './App';
+import { router } from './routes';
 import { initOneSignal, promptPushSubscribe, diagnosePushSupport } from './services/onesignal';
 import './styles/globals.css';
 
@@ -64,23 +65,44 @@ if (Capacitor.isNativePlatform()) {
         const token = parsed.searchParams.get('token');
         const refreshToken = parsed.searchParams.get('refreshToken');
         const error = parsed.searchParams.get('error');
+        const userParam = parsed.searchParams.get('user');
 
         if (error || !token) {
-          window.location.hash = '#/login';
-          window.location.href = '/login' + (error ? `?error=${error}` : '');
+          router.navigate('/login' + (error ? `?error=${error}` : ''), { replace: true });
           return;
         }
 
         localStorage.setItem('accessToken', token);
         if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
-        const { getMe } = await import('@/services/auth');
-        const user = await getMe();
+        let user: any = null;
+        if (userParam) {
+          try {
+            user = JSON.parse(decodeURIComponent(userParam));
+          } catch {}
+        }
+
+        try {
+          const { getMe } = await import('@/services/auth');
+          const fullUser = await getMe();
+          if (fullUser) user = fullUser;
+        } catch (err) {
+          console.warn('[OAuth deep link] getMe failed, falling back to callback user:', err);
+        }
+
+        if (user) {
+          localStorage.setItem('authUser', JSON.stringify(user));
+        }
+
         const { useAuthStore } = await import('@/store/authStore');
         useAuthStore.setState({ user, token, isAuthenticated: true, isLoading: false });
 
-        // Auto-sync: go to home, let ProtectedRoute/AppLayout handle modal close
-        window.location.href = '/';
+        // Navigate cleanly to home without triggering a full-page webview reload
+        try {
+          await router.navigate('/', { replace: true });
+        } catch {
+          window.location.replace('/');
+        }
       } catch (e) {
         console.error('appUrlOpen handling failed', e);
       }

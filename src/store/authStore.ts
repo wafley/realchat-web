@@ -59,16 +59,32 @@ window.addEventListener('auth:force-logout', () => {
   }
 });
 
+function getInitialUser(): User | null {
+  try {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      ...parsed,
+      lastSeen: parsed.lastSeen ? new Date(parsed.lastSeen) : undefined,
+      createdAt: parsed.createdAt ? new Date(parsed.createdAt) : new Date(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  user: getInitialUser(),
   token: localStorage.getItem('accessToken'),
   isLoading: true,
-  isAuthenticated: false,
+  isAuthenticated: Boolean(localStorage.getItem('accessToken')),
   login: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
     localStorage.setItem('accessToken', res.accessToken);
     localStorage.setItem('refreshToken', res.refreshToken);
+    localStorage.setItem('authUser', JSON.stringify(res.user));
     set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
     if (Capacitor.isNativePlatform()) {
       const { setNativeExternalUserId, registerNativePushDevice } = await import('@/services/onesignal.native');
@@ -96,6 +112,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('authUser');
       queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
       if (Capacitor.isNativePlatform()) {
@@ -120,6 +137,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     try {
       const user = await authService.getMe();
+      localStorage.setItem('authUser', JSON.stringify(user));
       set({ user, token, isAuthenticated: true, isLoading: false });
       if (Capacitor.isNativePlatform()) {
         const { setNativeExternalUserId, registerNativePushDevice } = await import('@/services/onesignal.native');
@@ -134,12 +152,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (status === 401 || status === 403) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('authUser');
         set({ user: null, token: null, isAuthenticated: false, isLoading: false });
       } else {
-        // Server down / Network error / 5xx: keep token only if we already have a user (offline), otherwise stay unauthenticated
-        const prevUser = useAuthStore.getState().user;
+        // Server down / Network error / CORS: keep session active with cached user
+        const prevUser = useAuthStore.getState().user ?? getInitialUser();
         if (prevUser) {
-          set({ token, isAuthenticated: true, isLoading: false });
+          set({ user: prevUser, token, isAuthenticated: true, isLoading: false });
         } else {
           set({ token, isAuthenticated: false, isLoading: false });
         }

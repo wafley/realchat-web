@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/uploads/(.*)", "destination": "https://realchat-api-production.up.railway.app/uploads/$1" },
+    { "source": "/uploads/:path*", "destination": "https://hallowok-app.app.hostingin.net/uploads/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
