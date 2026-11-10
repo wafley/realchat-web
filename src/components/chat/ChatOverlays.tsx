@@ -441,7 +441,7 @@ export default function ChatOverlays({
               {activeMedia?.senderAvatarUrl ? <img src={resolveFileUrl(activeMedia.senderAvatarUrl)} alt={activeMedia.senderName} className="h-full w-full object-cover" /> : (activeMedia?.senderName.charAt(0).toUpperCase() || 'Y')}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{activeMedia?.senderName || 'Photo'}</p>
+              <p className="truncate text-sm font-medium">{activeMedia?.senderName && activeMedia.senderName !== 'Unknown' ? activeMedia.senderName : (chatName !== 'Chat' ? chatName : 'Photo')}</p>
               <p className="text-[11px] text-white/55">{activeMedia?.label || 'Photo'}</p>
             </div>
             <div className="flex items-center gap-1">

@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBlockedUsers } from '@/services/chat';
 import { usePrivacyStore } from '@/store/privacyStore';
+import CustomSelect from '@/components/ui/custom-select';
 
 export default function PrivacyContent() {
   const navigate = useNavigate();
@@ -13,19 +14,27 @@ export default function PrivacyContent() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm text-foreground">Last Seen</span>
-        <select value={lastSeen} onChange={(e) => setLastSeen(e.target.value as any)} className="rounded-lg border border-input bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-          <option value="everyone">Everyone</option>
-          <option value="contacts">My Contacts</option>
-          <option value="nobody">Nobody</option>
-        </select>
+        <CustomSelect
+          value={lastSeen}
+          onChange={(v) => setLastSeen(v as any)}
+          options={[
+            { value: 'everyone', label: 'Everyone' },
+            { value: 'contacts', label: 'My Contacts' },
+            { value: 'nobody', label: 'Nobody' },
+          ]}
+        />
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm text-foreground">Who can add me to groups</span>
-        <select value={addToGroups} onChange={(e) => setAddToGroups(e.target.value as any)} className="rounded-lg border border-input bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-          <option value="everyone">Everyone</option>
-          <option value="contacts">My Contacts</option>
-          <option value="nobody">Nobody</option>
-        </select>
+        <CustomSelect
+          value={addToGroups}
+          onChange={(v) => setAddToGroups(v as any)}
+          options={[
+            { value: 'everyone', label: 'Everyone' },
+            { value: 'contacts', label: 'My Contacts' },
+            { value: 'nobody', label: 'Nobody' },
+          ]}
+        />
       </div>
       <label className="flex items-center justify-between">
         <span className="text-sm text-foreground">Read Receipts</span>

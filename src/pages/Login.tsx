@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { parseAuthError } from '@/services/auth';
 import { InputField } from '@/components/auth/InputField';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
-import { getSocketUrl } from '@/lib/url';
+import { getApiUrl, isNativeApp } from '@/lib/url';
 import { loginSchema } from '@/lib/validations';
 import type { z } from 'zod';
 
@@ -122,8 +122,15 @@ export default function Login() {
       {/* Google Login */}
       <button
         type="button"
-        onClick={() => {
-          window.location.href = `${getSocketUrl()}/api/auth/google`;
+        onClick={async () => {
+          const base = getApiUrl().replace(/\/api\/?$/, '');
+          const url = `${base}/api/auth/google${isNativeApp() ? '?native=1' : ''}`;
+          if (isNativeApp()) {
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({ url });
+          } else {
+            window.location.href = url;
+          }
         }}
         className="auth-btn-secondary w-full flex items-center justify-center gap-2.5"
       >
