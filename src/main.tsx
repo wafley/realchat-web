@@ -36,11 +36,7 @@ if (Capacitor.isNativePlatform()) {
     });
   });
 
-  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-    StatusBar.setOverlaysWebView({ overlay: true });
-    StatusBar.setStyle({ style: Style.Dark });
-    StatusBar.setBackgroundColor({ color: '#09090b' });
-  });
+  // Native status bar styling is synced dynamically with the active theme in themeStore.ts.
 
   import('@capacitor/app').then(({ App }) => {
     App.addListener('backButton', ({ canGoBack }) => {

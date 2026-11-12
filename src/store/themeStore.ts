@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Capacitor } from '@capacitor/core';
 
 type ThemeMode = 'dark' | 'light' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
@@ -76,10 +77,20 @@ function getInitialAccentColor(): AccentColor {
   return 'blue';
 }
 
+function syncNativeStatusBar(resolved: 'dark' | 'light') {
+  if (!Capacitor.isNativePlatform()) return;
+  void import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+    void StatusBar.setOverlaysWebView({ overlay: true });
+    void StatusBar.setStyle({ style: resolved === 'light' ? Style.Light : Style.Dark });
+    void StatusBar.setBackgroundColor({ color: '#00000000' });
+  });
+}
+
 function applyTheme(mode: ThemeMode, persist = false) {
   currentMode = mode;
   const resolved = mode === 'system' ? getSystemTheme() : mode;
   document.documentElement.classList.toggle('light', resolved === 'light');
+  syncNativeStatusBar(resolved);
   if (persist) {
     localStorage.setItem(THEME_KEY, mode);
   }
