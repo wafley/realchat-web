@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { HalloWokLogo } from '@/components/auth/AuthBrand';
 import * as authService from '@/services/auth';
 
 export default function OAuthCallback() {
@@ -34,8 +36,17 @@ export default function OAuthCallback() {
   }, [navigate, params]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-muted-foreground">Completing sign in…</p>
+    <div className="auth-page-bg flex min-h-[100dvh] items-center justify-center p-6">
+      <div className="auth-surface-shadow flex flex-col items-center gap-3 rounded-3xl bg-[var(--auth-panel)] px-8 py-9 text-center">
+        <HalloWokLogo className="h-12 w-12" showSparkle />
+        <Loader2 className="mt-1 h-5 w-5 animate-spin text-[#2563EB]" />
+        <div>
+          <p className="text-sm font-semibold text-[var(--auth-ink)]">Signing you in…</p>
+          <p className="mt-0.5 text-xs text-[var(--auth-muted)]">
+            Just a moment while we get your chats ready.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
