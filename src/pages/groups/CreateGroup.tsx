@@ -104,7 +104,7 @@ export default function CreateGroup() {
       </div>
 
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-5 py-5">
-        <form onSubmit={handleSubmit((data) => createMutation.mutate(data))} className="space-y-5">
+        <form id="create-group-form" onSubmit={handleSubmit((data) => createMutation.mutate(data))} className="space-y-5">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -176,7 +176,7 @@ export default function CreateGroup() {
             )}
 
             {searchResults.length > 0 && (
-              <div className="mt-2 space-y-1 rounded-xl border border-border p-2">
+              <div className="mt-2 max-h-64 space-y-1 overflow-y-auto overscroll-contain rounded-xl border border-border p-2">
                 {searchResults.map((u) => {
                   const isSelected = selectedUsers.some((x) => x.id === u.id);
                   return (
@@ -241,8 +241,14 @@ export default function CreateGroup() {
             )}
           </div>
 
+        </form>
+      </div>
+
+      <div className="shrink-0 border-t border-border bg-sidebar px-5 py-3 pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="mx-auto w-full max-w-2xl">
           <button
             type="submit"
+            form="create-group-form"
             disabled={!groupName?.trim() || selectedUsers.length < 2 || createMutation.isPending}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/80 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
@@ -251,9 +257,9 @@ export default function CreateGroup() {
             ) : (
               <Plus size={18} />
             )}
-            Create Group
+            Create Group{selectedUsers.length > 0 ? ` (${selectedUsers.length})` : ''}
           </button>
-        </form>
+        </div>
       </div>
 
       <ImageCropModal

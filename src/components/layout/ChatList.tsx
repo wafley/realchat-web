@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ListSkeleton } from '@/components/layout/LayoutSkeleton';
 import Modal from '@/components/ui/modal';
 import ContactPopover from '@/components/layout/ContactPopover';
+import AvatarPreviewModal from '@/components/layout/AvatarPreviewModal';
 import { useTypingStore, formatTypingLabel } from '@/store/typingStore';
 import { usePresenceStore } from '@/store/presenceStore';
 import { getConversations, bulkDeleteConversations, searchAllMessages, DM_USER_MAP, type ChatConversation } from '@/services/chat';
@@ -85,6 +86,7 @@ export default function ChatList() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [previewChat, setPreviewChat] = useState<ChatConversation | null>(null);
   const [toast, setToast] = useState<{ message: string } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -407,8 +409,15 @@ export default function ChatList() {
                       state={{ name: chat.name, online, lastSeen, members: chat.members }}
                       className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/5 lg:gap-4 lg:px-5 lg:py-4"
                     >
-                      <div className="relative shrink-0">
-                        <Avatar className="lg:h-12 lg:w-12">
+                      <div
+                        className="relative shrink-0"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setPreviewChat(chat);
+                        }}
+                      >
+                        <Avatar className="lg:h-12 lg:w-12 cursor-pointer hover:opacity-80 transition-opacity">
                           {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
                           <AvatarFallback className="font-semibold text-xs lg:text-base">
                             {chat.type === 'group' ? <Users size={18} /> : (chat.name ? chat.name.charAt(0).toUpperCase() : 'U')}
@@ -529,18 +538,26 @@ export default function ChatList() {
                     isSelected && 'bg-accent/10',
                   )}
                 >
-                  <div className="relative shrink-0">
-                    <Avatar className="lg:h-12 lg:w-12">
+                  <div
+                    className="relative shrink-0"
+                    onClick={(e) => {
+                      if (isSelectionMode) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setPreviewChat(chat);
+                    }}
+                  >
+                    <Avatar className="lg:h-12 lg:w-12 cursor-pointer hover:opacity-80 transition-opacity">
                       {chat.avatarUrl && <AvatarImage src={chat.avatarUrl} />}
                       <AvatarFallback className="font-semibold text-xs lg:text-base">
                         {chat.type === 'group' ? <Users size={18} /> : (chat.name ? chat.name.charAt(0).toUpperCase() : 'U')}
                       </AvatarFallback>
                     </Avatar>
                     {online && !isSelectionMode && (
-                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 lg:h-3.5 lg:w-3.5" />
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 lg:h-3.5 lg:w-3.5 pointer-events-none" />
                     )}
                     {isSelected && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-accent/60">
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-accent/60 pointer-events-none">
                         <Check size={16} className="text-white" />
                       </div>
                     )}
@@ -648,6 +665,8 @@ export default function ChatList() {
           </div>
         </div>
       )}
+
+      {previewChat && <AvatarPreviewModal chat={previewChat} onClose={() => setPreviewChat(null)} />}
 
       <button
         onClick={(e) => setAnchorEl(anchorEl ? null : e.currentTarget)}

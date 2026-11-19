@@ -1,25 +1,30 @@
 import { type ButtonHTMLAttributes } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface SecondaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
-export function SecondaryButton({ children, loading, disabled, className = '', ...props }: SecondaryButtonProps) {
+/** Secondary white pill button for alternative auth actions. */
+export function SecondaryButton({
+  children,
+  loading,
+  disabled,
+  className = '',
+  ...props
+}: SecondaryButtonProps) {
   return (
     <button
       type="submit"
-      className={`auth-btn-secondary w-full ${className}`}
+      className={`auth-btn-secondary inline-flex w-full items-center justify-center gap-2 px-5 ${className}`}
       disabled={disabled || loading}
       {...props}
     >
       {loading ? (
-        <div className="flex items-center justify-center gap-2">
-          <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
           <span>Please wait...</span>
-        </div>
+        </>
       ) : (
         children
       )}

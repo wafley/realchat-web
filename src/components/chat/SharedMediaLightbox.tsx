@@ -8,16 +8,23 @@ interface SharedMediaLightboxProps {
   url: string;
   onClose: () => void;
   onSelect: (url: string) => void;
+  fallbackName?: string;
+  fallbackAvatarUrl?: string | null;
 }
 
-export default function SharedMediaLightbox({ media, url, onClose, onSelect }: SharedMediaLightboxProps) {
+export default function SharedMediaLightbox({ media, url, onClose, onSelect, fallbackName, fallbackAvatarUrl }: SharedMediaLightboxProps) {
   const [zoom, setZoom] = useState(1);
   const [moreOpen, setMoreOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [mediaError, setMediaError] = useState(false);
-  const activeIndex = Math.max(0, media.findIndex((item) => item.fileUrl === url));
-  const active = media[activeIndex];
+  const rawIndex = media.findIndex((item) => item.fileUrl === url || resolveFileUrl(item.fileUrl) === url);
+  const isAvatarPreview = rawIndex === -1 && !!fallbackName;
+  const activeIndex = isAvatarPreview ? -1 : Math.max(0, rawIndex);
+  const active = isAvatarPreview ? undefined : media[activeIndex];
   const mediaUrl = resolveFileUrl(active?.fileUrl || url) || url;
+  const displayName = active?.sender?.fullName || active?.sender?.username || fallbackName || 'Unknown';
+  const displayAvatarUrl = active?.sender?.avatarUrl || fallbackAvatarUrl || undefined;
+  const displayLabel = active?.fileName || (active?.type === 'video' ? 'Video' : 'Photo');
 
   useEffect(() => {
     setZoom(1);
@@ -46,11 +53,11 @@ export default function SharedMediaLightbox({ media, url, onClose, onSelect }: S
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/60 text-white" onClick={onClose}>
       <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-white/10 bg-black/60 px-4 pb-1 pt-[calc(env(safe-area-inset-top)+24px)] shadow-lg">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#667781] text-sm font-semibold">
-          {active?.sender?.avatarUrl ? <img src={resolveFileUrl(active.sender.avatarUrl)} alt={active.sender.fullName || 'Sender'} className="h-full w-full object-cover" /> : (active?.sender?.fullName?.charAt(0).toUpperCase() || 'U')}
+          {displayAvatarUrl ? <img src={resolveFileUrl(displayAvatarUrl)} alt={displayName} className="h-full w-full object-cover" /> : (displayName.charAt(0).toUpperCase() || 'U')}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{active?.sender?.fullName || active?.sender?.username || 'Unknown'}</p>
-          <p className="text-[11px] text-white/55">{active?.fileName || (active?.type === 'video' ? 'Video' : 'Photo')}</p>
+          <p className="truncate text-sm font-medium">{displayName}</p>
+          <p className="text-[11px] text-white/55">{displayLabel}</p>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); setZoom((value) => Math.max(0.75, value - 0.25)); }} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-white/10" aria-label="Zoom out" title="Zoom out"><ZoomOut size={19} /></button>
@@ -64,7 +71,7 @@ export default function SharedMediaLightbox({ media, url, onClose, onSelect }: S
         </div>
       </div>
       <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black/60 p-3 sm:p-5" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => select((activeIndex - 1 + media.length) % media.length)} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous media" disabled={media.length < 2}><ChevronLeft size={24} /></button>
+        <button onClick={() => select((activeIndex - 1 + media.length) % media.length)} className="absolute left-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Previous media" disabled={isAvatarPreview || media.length < 2}><ChevronLeft size={24} /></button>
         {mediaError ? (
           <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
             <X size={44} className="text-white/40" />
@@ -78,10 +85,10 @@ export default function SharedMediaLightbox({ media, url, onClose, onSelect }: S
         ) : (
           <img src={mediaUrl} alt={active?.fileName || 'Full size'} onError={() => setMediaError(true)} className="rounded-sm object-contain shadow-2xl" style={{ width: 'min(94vw, 1200px)', height: 'min(82vh, 820px)', transform: `scale(${zoom})` }} />
         )}
-        <button onClick={() => select((activeIndex + 1) % media.length)} className="absolute right-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Next media" disabled={media.length < 2}><ChevronRight size={24} /></button>
+        <button onClick={() => select((activeIndex + 1) % media.length)} className="absolute right-5 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 hover:bg-black/60 disabled:opacity-30" aria-label="Next media" disabled={isAvatarPreview || media.length < 2}><ChevronRight size={24} /></button>
       </div>
-      <div className="flex min-h-20 shrink-0 items-center gap-2 overflow-x-auto border-t border-white/10 bg-black/60 px-4 pb-[env(safe-area-inset-bottom)]">
-        {media.map((item, index) => <button key={item.id} onClick={(e) => { e.stopPropagation(); select(index); }} className={`h-14 w-14 shrink-0 rounded bg-black/30 p-0.5 ${index === activeIndex ? 'border-2 border-[#00a884]' : 'border border-transparent opacity-70 hover:opacity-100'}`} aria-label={`Open ${item.fileName || item.type}`}>
+      <div className={`flex min-h-20 shrink-0 items-center gap-2 overflow-x-auto border-t border-white/10 bg-black/60 px-4 pb-[env(safe-area-inset-bottom)] ${isAvatarPreview ? 'hidden' : ''}`}>
+        {media.map((item, index) => <button key={item.id} onClick={(e) => { e.stopPropagation(); select(index); }} className={`h-14 w-14 shrink-0 rounded bg-black/30 p-0.5 ${!isAvatarPreview && index === activeIndex ? 'border-2 border-[#00a884]' : 'border border-transparent opacity-70 hover:opacity-100'}`} aria-label={`Open ${item.fileName || item.type}`}>
           {item.type === 'video' ? (
             <video src={resolveFileUrl(item.fileUrl)} muted playsInline preload="metadata" className="h-full w-full rounded object-cover" />
           ) : (

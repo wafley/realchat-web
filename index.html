@@ -33,8 +33,8 @@
     <script>
       (function () {
         try {
-          var mode = localStorage.getItem('hallo-wok-theme');
-          var resolved = mode === 'light' ? 'light' : mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          if (!localStorage.getItem('hallo-wok-theme-default-v1')) { if (localStorage.getItem('hallo-wok-theme') === 'dark') { localStorage.removeItem('hallo-wok-theme'); } localStorage.setItem('hallo-wok-theme-default-v1', '1'); } var mode = localStorage.getItem('hallo-wok-theme');
+          var resolved = mode === 'dark' ? 'dark' : mode === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : 'light';
           if (resolved === 'light') document.documentElement.classList.add('light');
 
           var accentKey = localStorage.getItem('hallo-wok-accent');
