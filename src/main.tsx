@@ -39,10 +39,48 @@ if (Capacitor.isNativePlatform()) {
   // Native status bar styling is synced dynamically with the active theme in themeStore.ts.
 
   import('@capacitor/app').then(({ App }) => {
+    let backPressCount = 0;
+    let backPressTimer: number | undefined;
+
     App.addListener('backButton', ({ canGoBack }) => {
-      if (canGoBack) {
+      const pathname = router.state.location.pathname;
+      const isRootPage = pathname === '/' || pathname === '/login';
+
+      if (!isRootPage && canGoBack) {
+        backPressCount = 0;
         window.history.back();
+        return;
       }
+
+      backPressCount += 1;
+      if (backPressTimer) window.clearTimeout(backPressTimer);
+
+      const nativeBridge = (
+        window as Window & { HalloWokNative?: { vibrate?: (ms: number) => void } }
+      ).HalloWokNative;
+      if (nativeBridge?.vibrate) {
+        nativeBridge.vibrate(25);
+      } else {
+        navigator.vibrate?.(25);
+      }
+
+      if (backPressCount >= 3) {
+        backPressCount = 0;
+        void App.exitApp();
+        return;
+      }
+
+      const remaining = 3 - backPressCount;
+      void import('sonner').then(({ toast }) => {
+        toast.info(`Tekan kembali ${remaining}x lagi untuk keluar`, {
+          id: 'exit-app-toast',
+          duration: 1800,
+        });
+      });
+
+      backPressTimer = window.setTimeout(() => {
+        backPressCount = 0;
+      }, 2000);
     });
 
     // Handle OAuth deep link: com.hallowok.app://auth/callback?token=...

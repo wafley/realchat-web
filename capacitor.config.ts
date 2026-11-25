@@ -11,6 +11,9 @@ const config: CapacitorConfig = {
     backgroundColor: '#fafafa',
   },
   plugins: {
+    SystemBars: {
+      insetsHandling: 'disable',
+    },
     StatusBar: {
       style: 'LIGHT',
       backgroundColor: '#00000000',

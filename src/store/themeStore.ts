@@ -79,9 +79,13 @@ function getInitialAccentColor(): AccentColor {
 
 function syncNativeStatusBar(resolved: 'dark' | 'light') {
   if (!Capacitor.isNativePlatform()) return;
+  const isDark = resolved === 'dark';
+  (window as Window & { HalloWokNative?: { setDarkMode: (dark: boolean) => void } })
+    .HalloWokNative?.setDarkMode(isDark);
+
   void import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
     void StatusBar.setOverlaysWebView({ overlay: true });
-    void StatusBar.setStyle({ style: resolved === 'light' ? Style.Light : Style.Dark });
+    void StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
     void StatusBar.setBackgroundColor({ color: '#00000000' });
   });
 }
