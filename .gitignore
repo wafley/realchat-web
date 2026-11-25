@@ -86,6 +86,12 @@ test-results/
 *.tsbuildinfo
 
 # =========================
+# Firebase / FCM
+# =========================
+android/app/google-services.json
+android/app/src/main/assets/public/OneSignal*
+
+# =========================
 # Misc
 # =========================
 .vercel

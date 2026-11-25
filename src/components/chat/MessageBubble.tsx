@@ -1,4 +1,4 @@
-import { memo, useState, type PointerEvent, type TouchEvent } from 'react';
+import { memo, useState, useEffect, type PointerEvent, type TouchEvent } from 'react';
 import { Pin, Star, Check, CheckCheck, Clock, SmilePlus, CheckSquare, Square, Ban, ImageOff, VideoOff, CornerUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { resolveFileUrl } from '@/lib/url';
@@ -94,6 +94,9 @@ function MessageBubbleComp({
   const inSelectionMode = selectedIds.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
   const [mediaError, setMediaError] = useState(false);
+  useEffect(() => {
+    setMediaError(false);
+  }, [msg.fileUrl]);
   const customNames = useCustomNames();
   const senderName = customNames.get(msg.senderId) || msg.sender?.fullName;
 
@@ -290,9 +293,11 @@ function MessageBubbleComp({
                 <>
                   <div className="overflow-hidden">
                     {mediaError ? (
-                      <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                      <div className="flex min-h-[100px] w-full min-w-[220px] flex-col items-center justify-center gap-1.5 bg-black/15 p-3 text-center dark:bg-white/5">
                         <ImageOff size={28} className="text-muted-foreground/70" />
                         <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setMediaError(false); }} className="mt-1 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-white/20 transition-colors">Retry</button>
+                        <span className="max-w-[260px] break-all text-[10px] text-muted-foreground/60">{resolveFileUrl(msg.fileUrl)}</span>
                       </div>
                     ) : (
                       <img
@@ -301,7 +306,10 @@ function MessageBubbleComp({
                         className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                         style={{ maxHeight: '300px' }}
                         onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                        onError={() => setMediaError(true)}
+                        onError={() => {
+                          console.error('[hallo-wok] Image load failed:', resolveFileUrl(msg.fileUrl), 'raw:', msg.fileUrl);
+                          setMediaError(true);
+                        }}
                         loading="lazy"
                         decoding="async"
                       />
@@ -326,9 +334,11 @@ function MessageBubbleComp({
               ) : (
                 <div className="relative overflow-hidden">
                   {mediaError ? (
-                    <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                    <div className="flex min-h-[100px] w-full min-w-[220px] flex-col items-center justify-center gap-1.5 bg-black/15 p-3 text-center dark:bg-white/5">
                       <ImageOff size={28} className="text-muted-foreground/70" />
                       <span className="text-xs text-muted-foreground">Photo unavailable</span>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setMediaError(false); }} className="mt-1 rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-white/20 transition-colors">Retry</button>
+                      <span className="max-w-[260px] break-all text-[10px] text-muted-foreground/60">{resolveFileUrl(msg.fileUrl)}</span>
                     </div>
                   ) : (
                     <img
@@ -337,7 +347,10 @@ function MessageBubbleComp({
                       className="block w-full cursor-pointer object-cover transition-transform duration-200 hover:scale-[1.03]"
                       style={{ maxHeight: '300px' }}
                       onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                      onError={() => setMediaError(true)}
+                      onError={() => {
+                        console.error('[hallo-wok] Image load failed:', resolveFileUrl(msg.fileUrl), 'raw:', msg.fileUrl);
+                        setMediaError(true);
+                      }}
                       loading="lazy"
                       decoding="async"
                     />
@@ -352,21 +365,27 @@ function MessageBubbleComp({
                 <>
                   <div className="relative overflow-hidden rounded-t-2xl">
                     {mediaError ? (
-                      <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                      <div className="flex min-h-[100px] w-full min-w-[220px] flex-col items-center justify-center gap-1.5 bg-black/15 p-3 text-center dark:bg-white/5">
                         <VideoOff size={28} className="text-muted-foreground/70" />
                         <span className="text-xs text-muted-foreground">Video unavailable</span>
+                        <span className="max-w-[260px] break-all text-[10px] text-muted-foreground/60">{resolveFileUrl(msg.fileUrl)}</span>
                       </div>
                     ) : (
                       <>
                         <video
-                          src={resolveFileUrl(msg.fileUrl)}
+                          src={`${resolveFileUrl(msg.fileUrl)}#t=0.1`}
+                          muted
                           playsInline
                           controls={false}
+                          disablePictureInPicture
                           onPlay={(e) => e.currentTarget.pause()}
                           onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                          onError={() => setMediaError(true)}
-                          className="block w-full cursor-pointer"
-                          style={{ maxHeight: '400px' }}
+                          onError={() => {
+                            console.error('[hallo-wok] Video load failed:', resolveFileUrl(msg.fileUrl), 'raw:', msg.fileUrl);
+                            setMediaError(true);
+                          }}
+                          className="block w-full cursor-pointer bg-black object-cover"
+                          style={{ maxHeight: '400px', minHeight: '180px' }}
                           preload="metadata"
                         />
                         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
@@ -396,21 +415,27 @@ function MessageBubbleComp({
               ) : (
                 <div className="relative overflow-hidden rounded-xl">
                   {mediaError ? (
-                    <div className="flex h-36 w-full min-w-[220px] flex-col items-center justify-center gap-2 bg-black/15 p-4 text-center dark:bg-white/5">
+                    <div className="flex min-h-[100px] w-full min-w-[220px] flex-col items-center justify-center gap-1.5 bg-black/15 p-3 text-center dark:bg-white/5">
                       <VideoOff size={28} className="text-muted-foreground/70" />
                       <span className="text-xs text-muted-foreground">Video unavailable</span>
+                      <span className="max-w-[260px] break-all text-[10px] text-muted-foreground/60">{resolveFileUrl(msg.fileUrl)}</span>
                     </div>
                   ) : (
                     <>
                       <video
-                        src={resolveFileUrl(msg.fileUrl)}
+                        src={`${resolveFileUrl(msg.fileUrl)}#t=0.1`}
+                        muted
                         playsInline
                         controls={false}
+                        disablePictureInPicture
                         onPlay={(e) => e.currentTarget.pause()}
                         onClick={(e) => { e.stopPropagation(); onClickImage(resolveFileUrl(msg.fileUrl)!, msg.fileName, msg.mimeType); }}
-                        onError={() => setMediaError(true)}
-                        className="block w-full cursor-pointer"
-                        style={{ maxHeight: '400px' }}
+                        onError={() => {
+                          console.error('[hallo-wok] Video load failed:', resolveFileUrl(msg.fileUrl), 'raw:', msg.fileUrl);
+                          setMediaError(true);
+                        }}
+                        className="block w-full cursor-pointer bg-black object-cover"
+                        style={{ maxHeight: '400px', minHeight: '180px' }}
                         preload="metadata"
                       />
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">

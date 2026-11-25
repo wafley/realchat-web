@@ -8,6 +8,7 @@ import {
   setExternalUserId,
   removeExternalUserId,
 } from '@/services/onesignal';
+import { Capacitor } from '@capacitor/core';
 
 const DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true';
 
@@ -46,24 +47,54 @@ window.addEventListener('auth:force-logout', () => {
   if (state.isAuthenticated) {
     queryClient.clear();
     useAuthStore.setState({ user: null, token: null, isAuthenticated: false, isLoading: false });
-    void removeExternalUserId();
-    void unregisterPushDevice();
+    if (Capacitor.isNativePlatform()) {
+      import('@/services/onesignal.native').then(({ removeNativeExternalUserId, unregisterNativePushDevice }) => {
+        void removeNativeExternalUserId();
+        void unregisterNativePushDevice();
+      });
+    } else {
+      void removeExternalUserId();
+      void unregisterPushDevice();
+    }
   }
 });
 
+function getInitialUser(): User | null {
+  try {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      ...parsed,
+      lastSeen: parsed.lastSeen ? new Date(parsed.lastSeen) : undefined,
+      createdAt: parsed.createdAt ? new Date(parsed.createdAt) : new Date(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  user: getInitialUser(),
   token: localStorage.getItem('accessToken'),
   isLoading: true,
-  isAuthenticated: false,
+  isAuthenticated: Boolean(localStorage.getItem('accessToken')),
   login: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
     const res = await authService.login(payload);
     localStorage.setItem('accessToken', res.accessToken);
     localStorage.setItem('refreshToken', res.refreshToken);
+    localStorage.setItem('authUser', JSON.stringify(res.user));
     set({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false });
-    void setExternalUserId(res.user.id);
-    void registerPushDevice();
+    if (Capacitor.isNativePlatform()) {
+      const { setNativeExternalUserId, registerNativePushDevice } = await import('@/services/onesignal.native');
+      void setNativeExternalUserId(res.user.id);
+      // delay biar permission + subscription id kebentuk dulu
+      window.setTimeout(() => void registerNativePushDevice(), 1500);
+    } else {
+      void setExternalUserId(res.user.id);
+      void registerPushDevice();
+    }
   },
   register: async (payload) => {
     if (DEV_MODE) { devLogin(set); return; }
@@ -81,10 +112,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('authUser');
       queryClient.clear();
       set({ user: null, token: null, isAuthenticated: false });
-      void removeExternalUserId();
-      void unregisterPushDevice();
+      if (Capacitor.isNativePlatform()) {
+        const { removeNativeExternalUserId, unregisterNativePushDevice } = await import('@/services/onesignal.native');
+        void removeNativeExternalUserId();
+        void unregisterNativePushDevice();
+      } else {
+        void removeExternalUserId();
+        void unregisterPushDevice();
+      }
     }
   },
   checkAuth: async () => {
@@ -99,18 +137,31 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     try {
       const user = await authService.getMe();
+      localStorage.setItem('authUser', JSON.stringify(user));
       set({ user, token, isAuthenticated: true, isLoading: false });
-      void setExternalUserId(user.id);
-      void registerPushDevice();
+      if (Capacitor.isNativePlatform()) {
+        const { setNativeExternalUserId, registerNativePushDevice } = await import('@/services/onesignal.native');
+        void setNativeExternalUserId(user.id);
+        window.setTimeout(() => void registerNativePushDevice(), 1500);
+      } else {
+        void setExternalUserId(user.id);
+        void registerPushDevice();
+      }
     } catch (error: any) {
       const status = error.response?.status;
       if (status === 401 || status === 403) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('authUser');
         set({ user: null, token: null, isAuthenticated: false, isLoading: false });
       } else {
-        // Server down / Network error / 5xx error: keep token & authenticated state
-        set({ token, isAuthenticated: true, isLoading: false });
+        // Server down / Network error / CORS: keep session active with cached user
+        const prevUser = useAuthStore.getState().user ?? getInitialUser();
+        if (prevUser) {
+          set({ user: prevUser, token, isAuthenticated: true, isLoading: false });
+        } else {
+          set({ token, isAuthenticated: false, isLoading: false });
+        }
       }
     }
   },

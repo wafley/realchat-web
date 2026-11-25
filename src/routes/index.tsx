@@ -10,6 +10,10 @@ import GroupsLayout from '@/layouts/GroupsLayout';
 
 export const router = createBrowserRouter([
   {
+    path: '/auth/callback',
+    lazy: () => import('@/pages/OAuthCallback').then((m) => ({ Component: m.default })),
+  },
+  {
     element: <AuthLayout />,
     children: [
   {
@@ -19,10 +23,6 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     lazy: () => import('@/pages/Register').then((m) => ({ Component: m.default })),
-  },
-  {
-    path: '/auth/callback',
-    lazy: () => import('@/pages/OAuthCallback').then((m) => ({ Component: m.default })),
   },
   {
     path: '/forgot-password',

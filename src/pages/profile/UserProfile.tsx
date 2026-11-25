@@ -374,7 +374,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
                       )}
                       onClick={() => effectiveUser?.avatarUrl && setPreviewUrl(effectiveUser.avatarUrl)}
                     >
-                      {effectiveUser?.avatarUrl && <AvatarImage src={effectiveUser?.avatarUrl} className="object-cover" />}
+                      {effectiveUser?.avatarUrl && <AvatarImage src={resolveFileUrl(effectiveUser.avatarUrl)} className="object-cover" />}
                       <AvatarFallback className="text-2xl sm:text-3xl font-bold bg-muted text-foreground">
                         {(effectiveUser?.fullName || effectiveUser?.username || 'U').charAt(0).toUpperCase()}
                       </AvatarFallback>
@@ -777,7 +777,7 @@ export default function UserProfile({ userIdOverride, onPanelClose, onClearChat 
         </div>
       )}
 
-      {previewUrl && <SharedMediaLightbox media={sharedMedia.filter((media) => media.type === 'image' || media.type === 'video')} url={previewUrl} onClose={() => setPreviewUrl(null)} onSelect={setPreviewUrl} />}
+      {previewUrl && <SharedMediaLightbox media={sharedMedia.filter((media) => media.type === 'image' || media.type === 'video')} url={previewUrl} onClose={() => setPreviewUrl(null)} onSelect={setPreviewUrl} fallbackName={displayName || effectiveUser?.fullName || effectiveUser?.username} fallbackAvatarUrl={effectiveUser?.avatarUrl} />}
     </div>
   );
 }

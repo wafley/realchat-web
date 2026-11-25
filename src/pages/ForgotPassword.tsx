@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowRight, Mail, MailCheck } from 'lucide-react';
 import { forgotPassword, parseAuthError } from '@/services/auth';
 import { InputField } from '@/components/auth/InputField';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
@@ -38,23 +39,22 @@ export default function ForgotPassword() {
 
   if (sent) {
     return (
-      <div className="space-y-5 text-center">
-        <div className="rounded-2xl bg-white/5 border border-white/10 p-4 mx-auto w-fit">
-          <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-          </svg>
+      <div className="space-y-4 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#2563EB]/20 bg-[#2563EB]/10">
+          <MailCheck className="h-7 w-7 text-[var(--auth-link)]" />
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-white">Check Your Email</h2>
-          <p className="mt-1.5 text-xs text-neutral-400">
-            We've sent a password reset link to your email address. Please check your inbox and follow the instructions.
+        <div className="space-y-1.5">
+          <h2 className="text-lg font-bold text-[var(--auth-ink)]">Check your inbox!</h2>
+          <p className="text-xs leading-relaxed text-[var(--auth-muted)]">
+            If an account exists for that email, we&apos;ve sent over a password reset link. Check your spam folder if it doesn&apos;t arrive soon.
           </p>
         </div>
         <Link
           to="/login"
-          className="auth-btn-primary inline-flex items-center justify-center w-full"
+          className="auth-btn-primary inline-flex w-full items-center justify-center gap-2 px-5"
         >
-          Back to Sign In
+          <span>Back to sign in</span>
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     );
@@ -62,31 +62,42 @@ export default function ForgotPassword() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-3.5 text-left">
-      <p className="text-xs text-neutral-400 text-center mb-1">
-        Enter your email address and we'll send you a link to reset your password.
+      <p className="text-center text-xs leading-relaxed text-[var(--auth-muted)]">
+        Enter your email below and we&apos;ll send over a link to reset your password.
       </p>
 
       <InputField
         id="email"
         type="email"
-        placeholder="Your email address"
+        placeholder="Your email"
         autoComplete="email"
+        leftIcon={<Mail className="h-4 w-4" />}
         error={errors.email?.message}
         {...register('email')}
       />
 
       {error && (
-        <div className="rounded-xl px-3.5 py-2.5 text-xs font-medium text-rose-400 bg-rose-500/10 border border-rose-500/20 text-center">
+        <div className="rounded-2xl border border-[var(--auth-error-border)] bg-[var(--auth-error-bg)] px-4 py-2.5 text-center text-xs font-medium text-[var(--auth-error-text)]">
           {error}
         </div>
       )}
 
-      <div className="pt-2">
+      <div className="pt-0.5">
         <PrimaryButton loading={loading} disabled={loading}>
-          Send Reset Link
+          <span>Send reset link</span>
+          <ArrowRight className="h-4 w-4" />
         </PrimaryButton>
       </div>
+
+      <p className="pt-1 text-center text-xs text-[var(--auth-muted)]">
+        Remembered your password?{' '}
+        <Link
+          to="/login"
+          className="font-semibold text-[var(--auth-link)] transition-colors hover:text-[var(--auth-link-hover)]"
+        >
+          Sign in
+        </Link>
+      </p>
     </form>
   );
 }
-

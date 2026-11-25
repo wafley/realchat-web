@@ -45,7 +45,7 @@ export default function ChatRoom() {
       kind: message.type,
       senderName: message.senderId === state.currentUser?.id
         ? 'You'
-        : message.sender?.fullName || message.sender?.username || state.chatName,
+        : message.sender?.fullName || message.sender?.username || (state.chatName !== 'Chat' ? state.chatName : undefined) || 'Unknown',
       senderAvatarUrl: message.sender?.avatarUrl,
     }));
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);

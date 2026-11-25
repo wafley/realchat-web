@@ -1,7 +1,7 @@
 {
   "name": "hallo-wok-fe",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@capacitor/android": "^8.4.2",
     "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
     "@capacitor/status-bar": "^8.0.3",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
@@ -22,6 +23,7 @@
     "emoji-picker-react": "^4.19.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.23.0",
+    "onesignal-cordova-plugin": "^5.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-dropzone": "^15.0.0",
